@@ -30,19 +30,19 @@ class AIChatService {
           apiKey: _geminiApiKey,
           safetySettings: [
             SafetySetting(
-              category: HarmCategory.dangerousContent,
+              harmCategory: HarmCategory.dangerousContent,
               threshold: HarmBlockThreshold.mediumAndAbove,
             ),
             SafetySetting(
-              category: HarmCategory.harassment,
+              harmCategory: HarmCategory.harassment,
               threshold: HarmBlockThreshold.mediumAndAbove,
             ),
             SafetySetting(
-              category: HarmCategory.hateSpeech,
+              harmCategory: HarmCategory.hateSpeech,
               threshold: HarmBlockThreshold.mediumAndAbove,
             ),
             SafetySetting(
-              category: HarmCategory.sexuallyExplicit,
+              harmCategory: HarmCategory.sexuallyExplicit,
               threshold: HarmBlockThreshold.mediumAndAbove,
             ),
           ],
