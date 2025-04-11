@@ -1,0 +1,2 @@
+# user prefrences 
+- when any action for any feature is taken create a document that explains what was done and go into deatils on how it was done and why it was done that way so that the user can fully understand the change and learn from it make the document like you are a teacher using the code as an example to teach cocncepts and code style, when any future change relating to any feature with an exsisting feature document is made just add  add any new details to the previuously created feature file.
