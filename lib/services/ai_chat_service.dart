@@ -29,22 +29,10 @@ class AIChatService {
           model: 'gemini-1.5-flash',
           apiKey: _geminiApiKey,
           safetySettings: [
-            SafetySetting(
-              category: HarmCategory.dangerousContent,
-              threshold: HarmBlockThreshold.medium,
-            ),
-            SafetySetting(
-              category: HarmCategory.harassment,
-              threshold: HarmBlockThreshold.medium,
-            ),
-            SafetySetting(
-              category: HarmCategory.hateSpeech,
-              threshold: HarmBlockThreshold.medium,
-            ),
-            SafetySetting(
-              category: HarmCategory.sexuallyExplicit,
-              threshold: HarmBlockThreshold.medium,
-            ),
+            SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.medium),
+            SafetySetting(HarmCategory.harassment, HarmBlockThreshold.medium),
+            SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.medium),
+            SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.medium),
           ],
         ) {
     _initChat();
@@ -53,22 +41,12 @@ class AIChatService {
   void _initChat() {
     _chat = _model.startChat(
       history: [
-        Content(
-          role: 'user',
-          parts: [
-            TextPart(
-              'You are CookMate AI, a helpful cooking assistant. Your goal is to provide cooking advice, recipe suggestions, and food-related tips. Please provide concise, practical responses focused on cooking, food preparation, and recipe guidance. Always consider dietary restrictions when they are mentioned. If you don\'t know the answer to a cooking question, say so honestly rather than making up information.'
-            ),
-          ],
-        ),
-        Content(
-          role: 'model',
-          parts: [
-            TextPart(
-              'Hello! I\'m CookMate AI, your personal cooking assistant. I\'m here to help with recipe ideas, cooking techniques, ingredient substitutions, and any other food-related questions you might have. Feel free to ask about specific cuisines, dietary preferences, or quick meal ideas. How can I assist with your cooking today?'
-            ),
-          ],
-        ),
+        Content('user', [
+          TextPart('You are CookMate AI, a helpful cooking assistant. Your goal is to provide cooking advice, recipe suggestions, and food-related tips. Please provide concise, practical responses focused on cooking, food preparation, and recipe guidance. Always consider dietary restrictions when they are mentioned. If you don\'t know the answer to a cooking question, say so honestly rather than making up information.')
+        ]),
+        Content('model', [
+          TextPart('Hello! I\'m CookMate AI, your personal cooking assistant. I\'m here to help with recipe ideas, cooking techniques, ingredient substitutions, and any other food-related questions you might have. Feel free to ask about specific cuisines, dietary preferences, or quick meal ideas. How can I assist with your cooking today?')
+        ]),
       ],
     );
   }
@@ -126,10 +104,7 @@ class AIChatService {
   Future<String> sendMessage(String message, {int retryCount = 0}) async {
     try {
       final response = await _chat.sendMessage(
-        Content(
-          role: 'user',
-          parts: [TextPart(message)],
-        ),
+        Content('user', [TextPart(message)]),
       );
 
       final responseText = response.text;
