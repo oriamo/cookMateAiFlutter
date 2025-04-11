@@ -58,10 +58,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   @override
   Widget build(BuildContext context) {
     final searchResults = _query.isNotEmpty 
-        ? ref.watch(searchResultsProvider(_query))
+        ? ref.watch(searchRecipesProvider(_query))
         : <Recipe>[];
     
-    final recentSearches = ref.watch(recentSearchesProvider);
+    final recentSearches = ref.watch(userProfileProvider).recentSearches;
     
     return Scaffold(
       appBar: AppBar(

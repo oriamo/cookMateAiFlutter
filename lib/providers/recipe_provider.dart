@@ -1,200 +1,184 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../models/recipe.dart';
-
-// Sample data for recipes
-final List<Recipe> _sampleRecipes = [
-  Recipe(
-    id: '1',
-    title: 'Classic Margherita Pizza',
-    description: 'A traditional Italian pizza topped with tomato sauce, fresh mozzarella cheese, basil leaves, and a drizzle of olive oil.',
-    imageUrl: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    totalTimeMinutes: 45,
-    prepTimeMinutes: 15,
-    cookTimeMinutes: 30,
-    difficulty: 'Medium',
-    servings: 4,
-    calories: 285,
-    chefName: 'Marco Rossi',
-    rating: 4.8,
-    ingredients: [
-      '1 pizza dough (store-bought or homemade)',
-      '1/4 cup tomato sauce',
-      '200g fresh mozzarella cheese, sliced',
-      'Fresh basil leaves',
-      '2 tablespoons extra virgin olive oil',
-      'Salt and pepper to taste',
-      '1 clove garlic, minced (optional)'
-    ],
-    instructions: [
-      'Preheat your oven to 475°F (245°C) and place a pizza stone or baking sheet in the oven to heat.',
-      'On a floured surface, stretch or roll out the pizza dough to a 12-inch circle.',
-      'Transfer the dough to a piece of parchment paper or a floured pizza peel.',
-      'Spread the tomato sauce evenly over the dough, leaving a 1/2-inch border around the edge.',
-      'Arrange the mozzarella slices evenly over the sauce.',
-      'Slide the pizza onto the preheated stone or baking sheet and bake for 10-12 minutes, until the crust is golden and the cheese is bubbly.',
-      'Remove from the oven and immediately garnish with fresh basil leaves.',
-      'Drizzle with olive oil, and season with salt and pepper if desired.',
-      'Slice and serve hot.'
-    ],
-    tags: ['Italian', 'Pizza', 'Vegetarian', 'Dinner'],
-    aiTips: 'For the best texture, let your dough come to room temperature before stretching. If you want a crispier crust, try brushing the edge with olive oil before baking. Fresh mozzarella can release water during cooking - pat it dry with paper towels before adding to the pizza.',
-    createdAt: DateTime.now().subtract(const Duration(days: 5)),
-    categoryId: '1',
-    isFavorite: true,
-  ),
-  Recipe(
-    id: '2',
-    title: 'Chicken Tikka Masala',
-    description: 'A flavorful Indian curry dish with marinated chicken pieces in a creamy, spiced tomato sauce.',
-    imageUrl: 'https://images.unsplash.com/photo-1565557623262-b51c2513a641?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    totalTimeMinutes: 60,
-    prepTimeMinutes: 20,
-    cookTimeMinutes: 40,
-    difficulty: 'Medium',
-    servings: 6,
-    calories: 420,
-    chefName: 'Priya Sharma',
-    rating: 4.9,
-    ingredients: [
-      '800g boneless, skinless chicken thighs, cut into bite-sized pieces',
-      '1 cup plain yogurt',
-      '2 tablespoons lemon juice',
-      '6 cloves garlic, minced',
-      '2 tablespoons ginger, grated',
-      '2 teaspoons cumin powder',
-      '2 teaspoons garam masala',
-      '2 teaspoons paprika',
-      '1 large onion, finely chopped',
-      '3 tablespoons vegetable oil',
-      '2 cups tomato puree',
-      '1 cup heavy cream',
-      'Fresh cilantro for garnish',
-      'Salt to taste'
-    ],
-    instructions: [
-      'In a large bowl, combine yogurt, lemon juice, half the garlic, half the ginger, 1 tsp cumin, 1 tsp garam masala, 1 tsp paprika, and salt. Add chicken and toss to coat. Marinate for at least 1 hour, preferably overnight.',
-      'Preheat oven to 425°F (220°C). Place marinated chicken on a baking sheet and bake for 15 minutes until slightly charred.',
-      'Meanwhile, heat oil in a large pot over medium heat. Add onions and sauté until soft and translucent.',
-      'Add remaining garlic and ginger, and cook for 1-2 minutes until fragrant.',
-      'Add remaining spices and cook for another minute.',
-      'Stir in tomato puree and bring to a simmer. Cook for 10-15 minutes until sauce thickens.',
-      'Add heavy cream and simmer for 5 minutes.',
-      'Add the baked chicken pieces and simmer for another 5-10 minutes.',
-      'Garnish with fresh cilantro and serve with rice or naan bread.'
-    ],
-    tags: ['Indian', 'Curry', 'Chicken', 'Dinner', 'Spicy'],
-    aiTips: 'For a deeper flavor, toast whole spices and grind them yourself instead of using pre-ground spices. If you find the sauce too acidic, add 1/2 teaspoon of sugar to balance it. For a lighter version, you can substitute coconut milk for the heavy cream.',
-    createdAt: DateTime.now().subtract(const Duration(days: 7)),
-    categoryId: '2',
-    isFavorite: false,
-  ),
-  Recipe(
-    id: '3',
-    title: 'Fresh Summer Pasta Salad',
-    description: 'A refreshing pasta salad with seasonal vegetables, herbs, and a light lemon dressing. Perfect for picnics and summer gatherings.',
-    imageUrl: 'https://images.unsplash.com/photo-1473093295043-cdd812d0e601?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80',
-    totalTimeMinutes: 30,
-    prepTimeMinutes: 15,
-    cookTimeMinutes: 15,
-    difficulty: 'Easy',
-    servings: 8,
-    calories: 320,
-    chefName: 'Emma Wilson',
-    rating: 4.5,
-    ingredients: [
-      '500g short pasta (like rotini or penne)',
-      '1 cup cherry tomatoes, halved',
-      '1 cucumber, diced',
-      '1 bell pepper, diced',
-      '1/2 red onion, finely sliced',
-      '100g feta cheese, crumbled',
-      '1/4 cup pitted black olives, halved',
-      '1/4 cup fresh basil leaves, torn',
-      '3 tablespoons extra virgin olive oil',
-      '2 tablespoons lemon juice',
-      '1 teaspoon lemon zest',
-      '2 cloves garlic, minced',
-      '1 teaspoon dried oregano',
-      'Salt and pepper to taste'
-    ],
-    instructions: [
-      'Cook pasta according to package instructions until al dente. Drain and rinse with cold water to stop the cooking process.',
-      'While pasta is cooking, prepare the dressing by whisking together olive oil, lemon juice, lemon zest, garlic, oregano, salt, and pepper in a small bowl.',
-      'In a large bowl, combine the cooled pasta, tomatoes, cucumber, bell pepper, red onion, olives, and half of the feta cheese.',
-      'Pour the dressing over the pasta mixture and toss to coat evenly.',
-      'Refrigerate for at least 30 minutes to allow flavors to blend.',
-      'Before serving, add the torn basil leaves and remaining feta cheese. Toss gently.',
-      'Taste and adjust seasoning if necessary. Serve chilled.'
-    ],
-    tags: ['Pasta', 'Salad', 'Vegetarian', 'Summer', 'Quick'],
-    aiTips: 'Cook the pasta slightly less than al dente since it will continue to absorb the dressing as it sits. For the best flavor, bring the salad to room temperature about 15 minutes before serving. Add a can of drained tuna or grilled chicken for a protein boost.',
-    createdAt: DateTime.now().subtract(const Duration(days: 2)),
-    categoryId: '3',
-    isFavorite: true,
-  ),
-];
+import '../providers/user_provider.dart';
 
 class RecipeNotifier extends StateNotifier<List<Recipe>> {
-  RecipeNotifier() : super(_sampleRecipes);
-
-  Recipe? getRecipeById(String id) {
+  static const String _storageKey = 'favorite_recipes';
+  final Ref _ref;
+  
+  RecipeNotifier(this._ref) : super([]) {
+    _initializeRecipes();
+    _loadFavorites();
+  }
+  
+  Future<void> _loadFavorites() async {
     try {
-      return state.firstWhere((recipe) => recipe.id == id);
+      // Get user's favorite recipe IDs from userProfileProvider
+      final userProfile = _ref.read(userProfileProvider);
+      final favoriteIds = userProfile.favoriteRecipes;
+      
+      // Mark recipes as favorites based on user profile
+      if (favoriteIds.isNotEmpty) {
+        state = state.map((recipe) {
+          if (favoriteIds.contains(recipe.id)) {
+            return recipe.copyWith(isFavorite: true);
+          }
+          return recipe;
+        }).toList();
+      }
     } catch (e) {
-      return null;
+      print('Error loading favorites: $e');
     }
   }
-
-  void toggleFavorite(String id) {
+  
+  void _initializeRecipes() {
+    // Sample recipes data - in a real app, this would come from an API
+    state = [
+      Recipe(
+        id: '1',
+        title: 'Creamy Garlic Pasta',
+        description: 'A delicious creamy garlic pasta that\'s quick and easy to make. Perfect for weeknight dinners!',
+        ingredients: [
+          '250g pasta',
+          '4 cloves garlic, minced',
+          '2 tbsp butter',
+          '1 cup heavy cream',
+          '1/2 cup grated Parmesan cheese',
+          'Salt and pepper to taste',
+          'Fresh parsley for garnish'
+        ],
+        steps: [
+          'Cook pasta according to package instructions.',
+          'In a large skillet, melt butter over medium heat.',
+          'Add minced garlic and sauté until fragrant, about 1 minute.',
+          'Pour in heavy cream and bring to a simmer.',
+          'Add Parmesan cheese and stir until smooth.',
+          'Season with salt and pepper.',
+          'Drain pasta and add to the sauce, tossing to coat.',
+          'Garnish with fresh parsley and serve.'
+        ],
+        prepTimeMinutes: 10,
+        cookTimeMinutes: 15,
+        totalTimeMinutes: 25,
+        servings: 4,
+        difficulty: 'Easy',
+        cuisine: 'Italian',
+        calories: 450,
+        rating: 4.7,
+        reviews: 128,
+        imageUrl: 'https://images.unsplash.com/photo-1555072956-7758afb20e8f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1287&q=80',
+        tags: ['pasta', 'quick', 'dinner', 'vegetarian'],
+        chefName: 'Jamie Oliver',
+        isFavorite: false,
+      ),
+      Recipe(
+        id: '2',
+        title: 'Chicken Teriyaki Stir-Fry',
+        description: 'A flavorful chicken teriyaki stir-fry with colorful vegetables. Quick, healthy, and delicious!',
+        ingredients: [
+          '500g chicken breast, sliced',
+          '1 bell pepper, sliced',
+          '1 carrot, julienned',
+          '1 cup broccoli florets',
+          '1/4 cup teriyaki sauce',
+          '2 tbsp vegetable oil',
+          '2 cloves garlic, minced',
+          '1 tbsp ginger, grated',
+          'Sesame seeds for garnish',
+          'Green onions, sliced, for garnish'
+        ],
+        steps: [
+          'Heat oil in a large wok or skillet over medium-high heat.',
+          'Add chicken and cook until browned, about 5-6 minutes.',
+          'Add garlic and ginger, sauté for 1 minute.',
+          'Add vegetables and stir-fry for 3-4 minutes until crisp-tender.',
+          'Pour in teriyaki sauce and stir to coat everything.',
+          'Cook for another 2 minutes until sauce is thick and glossy.',
+          'Garnish with sesame seeds and sliced green onions.',
+          'Serve hot with rice or noodles.'
+        ],
+        prepTimeMinutes: 15,
+        cookTimeMinutes: 15,
+        totalTimeMinutes: 30,
+        servings: 4,
+        difficulty: 'Medium',
+        cuisine: 'Asian',
+        calories: 380,
+        rating: 4.5,
+        reviews: 92,
+        imageUrl: 'https://images.unsplash.com/photo-1512058556646-c4da40fba323?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1172&q=80',
+        tags: ['chicken', 'stir-fry', 'Asian', 'dinner'],
+        chefName: 'Gordon Ramsay',
+        isFavorite: false,
+      ),
+      // More sample recipes...
+    ];
+  }
+  
+  // Toggle favorite status for a recipe
+  void toggleFavorite(String recipeId) {
+    // Update recipe state
     state = state.map((recipe) {
-      if (recipe.id == id) {
-        return recipe.copyWith(isFavorite: !recipe.isFavorite);
+      if (recipe.id == recipeId) {
+        final newValue = !recipe.isFavorite;
+        
+        // Update user profile
+        if (newValue) {
+          _ref.read(userProfileProvider.notifier).addFavoriteRecipe(recipeId);
+        } else {
+          _ref.read(userProfileProvider.notifier).removeFavoriteRecipe(recipeId);
+        }
+        
+        return recipe.copyWith(isFavorite: newValue);
       }
       return recipe;
     }).toList();
   }
-
-  List<Recipe> getRecipesByCategory(String categoryId) {
-    return state.where((recipe) => recipe.categoryId == categoryId).toList();
-  }
-
-  List<Recipe> getFavoriteRecipes() {
+  
+  // Get only favorite recipes
+  List<Recipe> getFavorites() {
     return state.where((recipe) => recipe.isFavorite).toList();
   }
-
+  
+  // Search recipes
   List<Recipe> searchRecipes(String query) {
     if (query.isEmpty) return state;
     
     final normalizedQuery = query.toLowerCase();
+    
+    // Add to recent searches in user profile
+    _ref.read(userProfileProvider.notifier).addRecentSearch(query);
+    
     return state.where((recipe) {
-      return recipe.title.toLowerCase().contains(normalizedQuery) ||
-          recipe.description.toLowerCase().contains(normalizedQuery) ||
-          recipe.tags.any((tag) => tag.toLowerCase().contains(normalizedQuery));
+      final inTitle = recipe.title.toLowerCase().contains(normalizedQuery);
+      final inDescription = recipe.description.toLowerCase().contains(normalizedQuery);
+      final inTags = recipe.tags.any((tag) => tag.toLowerCase().contains(normalizedQuery));
+      final inIngredients = recipe.ingredients.any((ingredient) => ingredient.toLowerCase().contains(normalizedQuery));
+      
+      return inTitle || inDescription || inTags || inIngredients;
+    }).toList();
+  }
+  
+  // Get recipe by ID
+  Recipe? getRecipeById(String id) {
+    try {
+      return state.firstWhere((recipe) => recipe.id == id);
+    } catch (e) {
+      return null; // Return null if recipe not found
+    }
+  }
+  
+  // Filter recipes by category/tag
+  List<Recipe> getRecipesByCategory(String category) {
+    return state.where((recipe) {
+      return recipe.tags.contains(category.toLowerCase()) || 
+             recipe.cuisine.toLowerCase() == category.toLowerCase();
     }).toList();
   }
 }
 
-// Main recipes provider
 final recipeProvider = StateNotifierProvider<RecipeNotifier, List<Recipe>>((ref) {
-  return RecipeNotifier();
-});
-
-// Provider for a single recipe by ID
-final recipeDetailProvider = Provider.family<Recipe?, String>((ref, id) {
-  return ref.watch(recipeProvider.notifier).getRecipeById(id);
-});
-
-// Provider for recipes by category
-final recipesByCategoryProvider = Provider.family<List<Recipe>, String>((ref, categoryId) {
-  return ref.watch(recipeProvider.notifier).getRecipesByCategory(categoryId);
-});
-
-// Provider for favorite recipes
-final favoriteRecipesProvider = Provider<List<Recipe>>((ref) {
-  return ref.watch(recipeProvider.notifier).getFavoriteRecipes();
-});
-
-// Provider for searched recipes
-final searchRecipesProvider = Provider.family<List<Recipe>, String>((ref, query) {
-  return ref.watch(recipeProvider.notifier).searchRecipes(query);
+  return RecipeNotifier(ref);
 });

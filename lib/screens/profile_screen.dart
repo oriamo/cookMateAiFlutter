@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/user_provider.dart';
-import '../providers/recipe_provider.dart';
+import '../models/user_profile.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -10,8 +10,6 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userProfile = ref.watch(userProfileProvider);
-    final favoriteRecipes = ref.watch(favoritesProvider);
-    final recentSearches = ref.watch(recentSearchesProvider);
     
     return Scaffold(
       body: CustomScrollView(
@@ -49,7 +47,7 @@ class ProfileScreen extends ConsumerWidget {
                           ),
                           image: DecorationImage(
                             image: NetworkImage(
-                              userProfile.photoUrl ?? 'https://via.placeholder.com/150',
+                              userProfile.avatarUrl ?? 'https://via.placeholder.com/150',
                             ),
                             fit: BoxFit.cover,
                           ),
@@ -101,7 +99,7 @@ class ProfileScreen extends ConsumerWidget {
                   _buildStatColumn(
                     context,
                     'Favorites',
-                    userProfile.favoriteRecipeIds.length.toString(),
+                    userProfile.favoriteRecipes.length.toString(),
                     Icons.favorite,
                   ),
                   _buildStatColumn(
@@ -112,9 +110,9 @@ class ProfileScreen extends ConsumerWidget {
                   ),
                   _buildStatColumn(
                     context,
-                    'Preferences',
-                    userProfile.dietaryPreferences.length.toString(),
-                    Icons.food_bank,
+                    'Saved',
+                    '0',
+                    Icons.bookmark,
                   ),
                 ],
               ),
@@ -194,7 +192,7 @@ class ProfileScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  if (recentSearches.isEmpty)
+                  if (userProfile.recentSearches.isEmpty)
                     Center(
                       child: Text(
                         'No recent activity',
@@ -205,7 +203,7 @@ class ProfileScreen extends ConsumerWidget {
                     )
                   else
                     Column(
-                      children: recentSearches.take(5).map((search) {
+                      children: userProfile.recentSearches.take(5).map((search) {
                         return _buildActivityTile(
                           context,
                           'Searched for "$search"',

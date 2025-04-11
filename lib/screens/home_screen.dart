@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import 'package:animate_do/animate_do.dart';
 import '../providers/recipe_provider.dart';
 import '../providers/category_provider.dart';
+import '../models/recipe.dart';
+import '../models/category.dart';
 import '../widgets/category_card.dart';
 import '../widgets/recipe_card.dart';
 import '../widgets/shimmers/recipe_card_shimmer.dart';
@@ -395,7 +397,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
   
-  Widget _buildCategories(List<dynamic> categories) {
+  Widget _buildCategories(List<Category> categories) {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       scrollDirection: Axis.horizontal,
@@ -426,7 +428,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
   
-  Widget _buildFeaturedRecipes(List<dynamic> recipes) {
+  Widget _buildFeaturedRecipes(List<Recipe> recipes) {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       scrollDirection: Axis.horizontal,

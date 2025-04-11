@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
 import '../models/chat_message.dart';
 import '../services/ai_chat_service.dart';
+import '../providers/user_provider.dart';
 
 class AIChatScreen extends ConsumerStatefulWidget {
   const AIChatScreen({super.key});
@@ -16,16 +17,39 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isTyping = false;
   
-  final List<String> _suggestionChips = [
-    "What can I cook with chicken and pasta?",
-    "How do I make pizza dough from scratch?",
-    "Suggest a quick vegetarian dinner",
-    "How do I know when fish is cooked properly?",
-    "What's a good substitute for eggs in baking?",
-    "How do I fix an oversalted soup?",
-    "Give me a recipe for chocolate chip cookies",
-    "What pairs well with salmon?"
-  ];
+  // Store suggestions in the user's previous search and commonly used cooking queries
+  List<String> get _suggestionChips {
+    final userProfile = ref.watch(userProfileProvider);
+    
+    // Combine user's recent searches with default suggestions
+    final defaultSuggestions = [
+      "What can I cook with chicken and pasta?",
+      "How do I make pizza dough from scratch?",
+      "Suggest a quick vegetarian dinner",
+      "How do I know when fish is cooked properly?",
+      "What's a good substitute for eggs in baking?",
+      "How do I fix an oversalted soup?",
+      "Give me a recipe for chocolate chip cookies",
+      "What pairs well with salmon?"
+    ];
+    
+    // Use user's recent searches first (up to 3), then add default suggestions
+    final suggestions = <String>[];
+    
+    // Add up to 3 recent searches if available
+    if (userProfile.recentSearches.isNotEmpty) {
+      suggestions.addAll(userProfile.recentSearches.take(3));
+    }
+    
+    // Fill remaining slots with default suggestions
+    for (final suggestion in defaultSuggestions) {
+      if (!suggestions.contains(suggestion) && suggestions.length < 8) {
+        suggestions.add(suggestion);
+      }
+    }
+    
+    return suggestions;
+  }
 
   @override
   void dispose() {
@@ -51,6 +75,9 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     if (text.isEmpty) return;
     
     _messageController.clear();
+    
+    // Add query to recent searches
+    await ref.read(userProfileProvider.notifier).addRecentSearch(text);
     
     // Show typing indicator
     setState(() {
@@ -112,9 +139,19 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
             onPressed: _clearChat,
             tooltip: 'New Conversation',
           ),
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: () {},
+          PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'clearHistory') {
+                ref.read(userProfileProvider.notifier).clearRecentSearches();
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'clearHistory',
+                child: Text('Clear Search History'),
+              ),
+              // Add more menu items as needed
+            ],
           ),
         ],
       ),
@@ -164,7 +201,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
               ),
             ),
           
-          // Suggestion chips
+          // Suggestion chips - now using user's recent searches
           if (messages.length <= 2)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -199,10 +236,11 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
             padding: const EdgeInsets.all(8.0),
             child: Row(
               children: [
+                // Voice input button disabled when typing is in progress
                 IconButton(
                   icon: const Icon(Icons.mic),
-                  onPressed: () {},
-                  color: Colors.grey.shade600,
+                  onPressed: _isTyping ? null : () {},
+                  color: _isTyping ? Colors.grey.shade400 : Colors.grey.shade600,
                 ),
                 Expanded(
                   child: TextField(
@@ -221,6 +259,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                       ),
                     ),
                     textInputAction: TextInputAction.send,
+                    enabled: !_isTyping,
                     onSubmitted: (_) => _sendMessage(),
                     minLines: 1,
                     maxLines: 5,
@@ -228,8 +267,8 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                 ),
                 IconButton(
                   icon: const Icon(Icons.send),
-                  onPressed: _sendMessage,
-                  color: Colors.deepPurple,
+                  onPressed: _isTyping ? null : _sendMessage,
+                  color: _isTyping ? Colors.grey.shade400 : Colors.deepPurple,
                 ),
               ],
             ),
@@ -243,6 +282,10 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   }
   
   Widget _buildEmptyState() {
+    // Get user profile to personalize the empty state
+    final userProfile = ref.watch(userProfileProvider);
+    final hasName = userProfile.name.isNotEmpty;
+    
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -254,7 +297,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Start a conversation with Chef AI',
+            hasName ? 'Hi ${userProfile.name}, ready to cook something?' : 'Start a conversation with Chef AI',
             style: TextStyle(
               fontSize: 16,
               color: Colors.grey.shade600,
@@ -270,6 +313,19 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
             ),
             textAlign: TextAlign.center,
           ),
+          if (userProfile.dietaryPreferences.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 16),
+              child: Text(
+                'Your preferences: ${userProfile.dietaryPreferences.join(", ")}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: Colors.deepPurple.shade300,
+                  fontStyle: FontStyle.italic,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
         ],
       ),
     );
@@ -342,6 +398,24 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   }
   
   Widget _buildUserAvatar() {
+    final userProfile = ref.watch(userProfileProvider);
+    
+    // If user has an avatar, use it; otherwise, use default
+    if (userProfile.avatarUrl.isNotEmpty) {
+      return CircleAvatar(
+        radius: 16,
+        backgroundImage: NetworkImage(userProfile.avatarUrl),
+        onBackgroundImageError: (_, __) {
+          // Fallback to default avatar on error
+          return const CircleAvatar(
+            radius: 16,
+            backgroundColor: Colors.blue,
+            child: Icon(Icons.person, size: 16, color: Colors.white),
+          );
+        },
+      );
+    }
+    
     return CircleAvatar(
       radius: 16,
       backgroundColor: Colors.blue.shade500,

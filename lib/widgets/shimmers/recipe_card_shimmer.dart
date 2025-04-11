@@ -2,68 +2,140 @@ import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 
 class RecipeCardShimmer extends StatelessWidget {
-  const RecipeCardShimmer({super.key});
+  final bool isHorizontal;
+  
+  const RecipeCardShimmer({
+    super.key,
+    this.isHorizontal = false,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,
+      highlightColor: Colors.grey.shade100,
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: isHorizontal ? _buildHorizontalShimmer() : _buildVerticalShimmer(),
       ),
-      child: Shimmer.fromColors(
-        baseColor: Colors.grey.shade300,
-        highlightColor: Colors.grey.shade100,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Recipe image placeholder
-            AspectRatio(
-              aspectRatio: 1.0,
-              child: Container(
+    );
+  }
+  
+  Widget _buildVerticalShimmer() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Image placeholder
+        Container(
+          height: 140,
+          color: Colors.white,
+        ),
+        
+        // Content placeholders
+        Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Title
+              Container(
+                width: double.infinity,
+                height: 14,
                 color: Colors.white,
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              const SizedBox(height: 8),
+              Container(
+                width: 150,
+                height: 14,
+                color: Colors.white,
+              ),
+              const SizedBox(height: 12),
+              
+              // Bottom row
+              Row(
                 children: [
-                  // Title placeholder
+                  const CircleAvatar(
+                    radius: 10,
+                    backgroundColor: Colors.white,
+                  ),
+                  const SizedBox(width: 8),
                   Container(
-                    width: double.infinity,
-                    height: 16,
+                    width: 80,
+                    height: 10,
                     color: Colors.white,
                   ),
-                  const SizedBox(height: 8),
-                  // Chef placeholder
+                  const Spacer(),
                   Container(
-                    width: 100,
-                    height: 12,
+                    width: 40,
+                    height: 10,
                     color: Colors.white,
-                  ),
-                  const SizedBox(height: 8),
-                  // Rating placeholder
-                  Row(
-                    children: List.generate(
-                      5,
-                      (index) => Padding(
-                        padding: const EdgeInsets.only(right: 4),
-                        child: Container(
-                          width: 16,
-                          height: 16,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
                   ),
                 ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
+      ],
+    );
+  }
+  
+  Widget _buildHorizontalShimmer() {
+    return Row(
+      children: [
+        // Image placeholder
+        Container(
+          width: 120,
+          height: 120,
+          color: Colors.white,
+        ),
+        
+        // Content placeholders
+        Expanded(
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Title
+                Container(
+                  width: double.infinity,
+                  height: 14,
+                  color: Colors.white,
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: 150,
+                  height: 14,
+                  color: Colors.white,
+                ),
+                const SizedBox(height: 12),
+                
+                // Bottom row
+                Row(
+                  children: [
+                    Container(
+                      width: 80,
+                      height: 10,
+                      color: Colors.white,
+                    ),
+                    const Spacer(),
+                    Container(
+                      width: 40,
+                      height: 10,
+                      color: Colors.white,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
