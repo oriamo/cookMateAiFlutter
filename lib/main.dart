@@ -5,31 +5,32 @@ import 'router/router.dart';
 void main() {
   runApp(
     const ProviderScope(
-      child: MyApp(),
+      child: CookMateApp(),
     ),
   );
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+class CookMateApp extends StatelessWidget {
+  const CookMateApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp.router(
       title: 'CookMate AI',
-      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.green,
-          primary: Colors.green,
-          secondary: Colors.orange,
+          seedColor: Colors.deepPurple,
+          primary: Colors.deepPurple,
+          secondary: Colors.deepOrange,
         ),
         useMaterial3: true,
         appBarTheme: const AppBarTheme(
           centerTitle: true,
+          elevation: 0,
         ),
       ),
       routerConfig: router,
+      debugShowCheckedModeBanner: false,
     );
   }
 }

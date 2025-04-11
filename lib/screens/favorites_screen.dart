@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/recipe_provider.dart';
+import '../models/recipe.dart';
 import '../widgets/recipe_card.dart';
 import '../widgets/shimmers/recipe_card_shimmer.dart';
 
@@ -11,7 +12,7 @@ class FavoritesScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final favoriteRecipes = ref.watch(favoritesProvider);
+    final favoriteRecipes = ref.watch(favoriteRecipesProvider);
     
     return Scaffold(
       appBar: AppBar(
@@ -68,7 +69,7 @@ class FavoritesScreen extends ConsumerWidget {
     );
   }
   
-  Widget _buildFavoritesList(BuildContext context, List<dynamic> recipes) {
+  Widget _buildFavoritesList(BuildContext context, List<Recipe> recipes) {
     return CustomScrollView(
       slivers: [
         // Header section

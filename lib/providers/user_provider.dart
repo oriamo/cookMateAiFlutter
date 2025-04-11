@@ -1,66 +1,107 @@
+import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_profile.dart';
 
-// Sample user data
-final _sampleUser = UserProfile(
-  id: 'user1',
-  name: 'Jane Smith',
-  email: 'jane.smith@example.com',
-  avatarUrl: 'https://randomuser.me/api/portraits/women/17.jpg',
-  favoriteRecipes: ['1', '3'],
-  recentSearches: ['pasta', 'vegetarian', 'quick dinner'],
-);
-
 class UserProfileNotifier extends StateNotifier<UserProfile> {
-  UserProfileNotifier() : super(_sampleUser);
+  static const String _storageKey = 'user_profile_data';
+  UserProfileNotifier() : super(UserProfile.empty()) {
+    _loadUserProfile();
+  }
 
-  void updateProfile({
+  Future<void> _loadUserProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final profileJson = prefs.getString(_storageKey);
+      
+      if (profileJson != null && profileJson.isNotEmpty) {
+        final profileData = jsonDecode(profileJson);
+        state = UserProfile.fromJson(profileData);
+      }
+    } catch (e) {
+      print('Error loading user profile: $e');
+    }
+  }
+  
+  Future<void> _saveUserProfile() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_storageKey, jsonEncode(state.toJson()));
+    } catch (e) {
+      print('Error saving user profile: $e');
+    }
+  }
+  
+  Future<void> updateProfile({
     String? name,
     String? email,
     String? avatarUrl,
-  }) {
+    List<String>? dietaryPreferences,
+    List<String>? allergies,
+    List<String>? cookingSkillLevel,
+  }) async {
     state = state.copyWith(
       name: name,
       email: email,
       avatarUrl: avatarUrl,
+      dietaryPreferences: dietaryPreferences,
+      allergies: allergies,
+      cookingSkillLevel: cookingSkillLevel,
     );
+    await _saveUserProfile();
   }
-
-  void toggleFavoriteRecipe(String recipeId) {
-    final currentFavorites = [...state.favoriteRecipes];
-    if (currentFavorites.contains(recipeId)) {
-      currentFavorites.remove(recipeId);
-    } else {
-      currentFavorites.add(recipeId);
+  
+  Future<void> addFavoriteRecipe(String recipeId) async {
+    if (!state.favoriteRecipes.contains(recipeId)) {
+      final newFavorites = List<String>.from(state.favoriteRecipes)..add(recipeId);
+      state = state.copyWith(favoriteRecipes: newFavorites);
+      await _saveUserProfile();
     }
-    state = state.copyWith(favoriteRecipes: currentFavorites);
   }
-
-  void addRecentSearch(String query) {
-    if (query.isEmpty) return;
+  
+  Future<void> removeFavoriteRecipe(String recipeId) async {
+    if (state.favoriteRecipes.contains(recipeId)) {
+      final newFavorites = List<String>.from(state.favoriteRecipes)..remove(recipeId);
+      state = state.copyWith(favoriteRecipes: newFavorites);
+      await _saveUserProfile();
+    }
+  }
+  
+  Future<void> toggleFavoriteRecipe(String recipeId) async {
+    if (state.favoriteRecipes.contains(recipeId)) {
+      await removeFavoriteRecipe(recipeId);
+    } else {
+      await addFavoriteRecipe(recipeId);
+    }
+  }
+  
+  Future<void> addRecentSearch(String query) async {
+    // Prevent duplicates, move to top if exists
+    final recentSearches = List<String>.from(state.recentSearches);
+    if (recentSearches.contains(query)) {
+      recentSearches.remove(query);
+    }
     
-    final currentSearches = [...state.recentSearches];
+    // Add to beginning of list
+    recentSearches.insert(0, query);
     
-    // Remove if already exists to move to front
-    currentSearches.remove(query);
-    
-    // Add at beginning
-    currentSearches.insert(0, query);
-    
-    // Keep only last 10 searches
-    final limitedSearches = currentSearches.length > 10 
-        ? currentSearches.sublist(0, 10) 
-        : currentSearches;
+    // Keep only the latest 10 searches
+    final limitedSearches = recentSearches.take(10).toList();
     
     state = state.copyWith(recentSearches: limitedSearches);
+    await _saveUserProfile();
   }
-
-  void clearRecentSearches() {
+  
+  Future<void> clearRecentSearches() async {
     state = state.copyWith(recentSearches: []);
+    await _saveUserProfile();
+  }
+  
+  bool isFavoriteRecipe(String recipeId) {
+    return state.favoriteRecipes.contains(recipeId);
   }
 }
 
-// User profile provider
 final userProfileProvider = StateNotifierProvider<UserProfileNotifier, UserProfile>((ref) {
   return UserProfileNotifier();
 });

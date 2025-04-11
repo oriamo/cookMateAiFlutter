@@ -1,3 +1,5 @@
+import 'package:uuid/uuid.dart';
+
 enum MessageRole { user, assistant, system }
 
 class ChatMessage {
@@ -24,6 +26,7 @@ class ChatMessage {
       content: json['content'],
       role: MessageRole.values.byName(json['role']),
       timestamp: DateTime.parse(json['timestamp']),
+      isError: json['isError'] as bool? ?? false,
     );
   }
 
@@ -33,6 +36,7 @@ class ChatMessage {
       'content': content,
       'role': role.name,
       'timestamp': timestamp.toIso8601String(),
+      'isError': isError,
     };
   }
 }

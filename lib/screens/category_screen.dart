@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
 import '../providers/recipe_provider.dart';
+import '../models/recipe.dart';
 import '../widgets/recipe_card.dart';
 import '../widgets/shimmers/recipe_card_shimmer.dart';
 
@@ -17,7 +18,7 @@ class CategoryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final recipes = ref.watch(categoryRecipesProvider(categoryId));
+    final recipes = ref.watch(recipesByCategoryProvider(categoryId));
     
     return Scaffold(
       appBar: AppBar(
@@ -111,7 +112,7 @@ class CategoryScreen extends ConsumerWidget {
     );
   }
   
-  Widget _buildRecipeGrid(List<dynamic> recipes) {
+  Widget _buildRecipeGrid(List<Recipe> recipes) {
     return GridView.builder(
       padding: const EdgeInsets.all(16),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(

@@ -3,15 +3,28 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:hooks_riverpod_annotation/hooks_riverpod_annotation.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:uuid/uuid.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'dart:convert';
 import '../models/chat_message.dart';
 
 // This should be stored securely in a .env file or as a server-side secret
 // Consider replacing this with a proper secret management solution
 const String _geminiApiKey = 'AIzaSyCUWRB78A2bhi5Git8W243DyU3ANL_s1kU';
 
+enum AIServiceError {
+  network,
+  authentication,
+  rateLimited,
+  serverError,
+  modelUnavailable,
+  contentFiltered,
+  unknown
+}
+
 class AIChatService {
   final GenerativeModel _model;
   late ChatSession _chat;
+  final int _maxRetries = 2;
   
   AIChatService()
       : _model = GenerativeModel(
@@ -19,19 +32,19 @@ class AIChatService {
           apiKey: _geminiApiKey,
           safetySettings: [
             SafetySetting(
-              harmCategory: HarmCategory.dangerousContent,
+              category: HarmCategory.dangerousContent,
               threshold: HarmBlockThreshold.mediumAndAbove,
             ),
             SafetySetting(
-              harmCategory: HarmCategory.harassment,
+              category: HarmCategory.harassment,
               threshold: HarmBlockThreshold.mediumAndAbove,
             ),
             SafetySetting(
-              harmCategory: HarmCategory.hateSpeech,
+              category: HarmCategory.hateSpeech,
               threshold: HarmBlockThreshold.mediumAndAbove,
             ),
             SafetySetting(
-              harmCategory: HarmCategory.sexuallyExplicit,
+              category: HarmCategory.sexuallyExplicit,
               threshold: HarmBlockThreshold.mediumAndAbove,
             ),
           ],
@@ -45,7 +58,7 @@ class AIChatService {
         Content(
           role: 'user',
           parts: [
-            TextPart(
+            TextPart(text: 
               'You are CookMate AI, a helpful cooking assistant. Your goal is to provide cooking advice, recipe suggestions, and food-related tips. Please provide concise, practical responses focused on cooking, food preparation, and recipe guidance. Always consider dietary restrictions when they are mentioned. If you don\'t know the answer to a cooking question, say so honestly rather than making up information.'
             ),
           ],
@@ -53,7 +66,7 @@ class AIChatService {
         Content(
           role: 'model',
           parts: [
-            TextPart(
+            TextPart(text: 
               'Hello! I\'m CookMate AI, your personal cooking assistant. I\'m here to help with recipe ideas, cooking techniques, ingredient substitutions, and any other food-related questions you might have. Feel free to ask about specific cuisines, dietary preferences, or quick meal ideas. How can I assist with your cooking today?'
             ),
           ],
@@ -62,19 +75,83 @@ class AIChatService {
     );
   }
 
-  Future<String> sendMessage(String message) async {
+  AIServiceError _parseError(Exception e) {
+    final errorMessage = e.toString().toLowerCase();
+    
+    if (errorMessage.contains('network') || 
+        errorMessage.contains('socket') || 
+        errorMessage.contains('connect')) {
+      return AIServiceError.network;
+    } else if (errorMessage.contains('authentication') || 
+              errorMessage.contains('api key') ||
+              errorMessage.contains('unauthorized')) {
+      return AIServiceError.authentication;
+    } else if (errorMessage.contains('rate limit') || 
+              errorMessage.contains('quota') ||
+              errorMessage.contains('too many requests')) {
+      return AIServiceError.rateLimited;
+    } else if (errorMessage.contains('5') && 
+              errorMessage.contains('error')) {
+      return AIServiceError.serverError;
+    } else if (errorMessage.contains('model') && 
+              errorMessage.contains('unavailable')) {
+      return AIServiceError.modelUnavailable;
+    } else if (errorMessage.contains('safety') || 
+              errorMessage.contains('content') ||
+              errorMessage.contains('filtered')) {
+      return AIServiceError.contentFiltered;
+    }
+    
+    return AIServiceError.unknown;
+  }
+
+  String _getErrorMessage(AIServiceError error) {
+    switch (error) {
+      case AIServiceError.network:
+        return 'Network connection issue. Please check your internet connection and try again.';
+      case AIServiceError.authentication:
+        return 'Authentication error. Please contact support.';
+      case AIServiceError.rateLimited:
+        return 'You\'ve reached the limit of requests. Please try again later.';
+      case AIServiceError.serverError:
+        return 'Server error. Please try again later.';
+      case AIServiceError.modelUnavailable:
+        return 'The AI service is temporarily unavailable. Please try again later.';
+      case AIServiceError.contentFiltered:
+        return 'I cannot respond to this type of content. Please ask about cooking-related topics.';
+      case AIServiceError.unknown:
+      default:
+        return 'An unexpected error occurred. Please try again.';
+    }
+  }
+
+  Future<String> sendMessage(String message, {int retryCount = 0}) async {
     try {
       final response = await _chat.sendMessage(
         Content(
           role: 'user',
-          parts: [TextPart(message)],
+          parts: [TextPart(text: message)],
         ),
       );
 
       final responseText = response.text;
       return responseText ?? 'Sorry, I couldn\'t generate a response.';
     } catch (e) {
-      return 'Sorry, there was an error processing your request: ${e.toString()}';
+      // Retry logic for network and server errors
+      if (retryCount < _maxRetries) {
+        final error = e is Exception ? _parseError(e) : AIServiceError.unknown;
+        
+        if (error == AIServiceError.network || 
+            error == AIServiceError.serverError) {
+          // Wait for a bit before retrying (exponential backoff)
+          await Future.delayed(Duration(milliseconds: 500 * (retryCount + 1)));
+          return sendMessage(message, retryCount: retryCount + 1);
+        }
+      }
+      
+      // If retries exhausted or other error type
+      final error = e is Exception ? _parseError(e) : AIServiceError.unknown;
+      return _getErrorMessage(error);
     }
   }
   
@@ -86,6 +163,7 @@ class AIChatService {
 class ChatNotifier extends StateNotifier<List<ChatMessage>> {
   final AIChatService _aiService;
   final Uuid _uuid = const Uuid();
+  static const String _storageKey = 'cook_mate_chat_history';
   
   ChatNotifier(this._aiService) : super([
     ChatMessage(
@@ -93,7 +171,41 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
       content: 'Hello! I\'m CookMate AI, your personal cooking assistant. How can I help you with your cooking today?',
       role: MessageRole.assistant,
     ),
-  ]);
+  ]) {
+    // Load chat history from storage when initialized
+    _loadChatHistory();
+  }
+  
+  Future<void> _loadChatHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final historyJson = prefs.getString(_storageKey);
+      
+      if (historyJson != null && historyJson.isNotEmpty) {
+        final List<dynamic> historyData = jsonDecode(historyJson);
+        final List<ChatMessage> loadedMessages = historyData
+            .map((messageData) => ChatMessage.fromJson(messageData))
+            .toList();
+        
+        if (loadedMessages.isNotEmpty) {
+          state = loadedMessages;
+        }
+      }
+    } catch (e) {
+      // If there's an error loading history, keep using the default state
+      print('Error loading chat history: $e');
+    }
+  }
+  
+  Future<void> _saveChatHistory() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final historyData = state.map((message) => message.toJson()).toList();
+      await prefs.setString(_storageKey, jsonEncode(historyData));
+    } catch (e) {
+      print('Error saving chat history: $e');
+    }
+  }
 
   Future<void> sendMessage(String content) async {
     if (content.trim().isEmpty) return;
@@ -105,6 +217,7 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
       role: MessageRole.user,
     );
     state = [...state, userMessage];
+    await _saveChatHistory();
     
     // Show loading message
     final loadingMessageId = _uuid.v4();
@@ -117,13 +230,23 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
     // Get AI response
     final response = await _aiService.sendMessage(content);
     
+    // Check if response is an error message
+    final isError = response.startsWith('Sorry,') || 
+                   response.contains('error') ||
+                   response.contains('unavailable') ||
+                   response.contains('try again');
+    
     // Replace loading message with actual response
     state = state.where((message) => message.id != loadingMessageId).toList();
     state = [...state, ChatMessage(
       id: _uuid.v4(),
       content: response,
       role: MessageRole.assistant,
+      isError: isError,
     )];
+    
+    // Save chat history
+    await _saveChatHistory();
   }
   
   void clearChat() {
@@ -135,6 +258,7 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
         role: MessageRole.assistant,
       ),
     ];
+    _saveChatHistory();
   }
 }
 

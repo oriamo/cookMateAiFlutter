@@ -1,59 +1,86 @@
 class UserProfile {
-  final String id;
   final String name;
   final String email;
-  final String? avatarUrl;
+  final String avatarUrl;
   final List<String> favoriteRecipes;
   final List<String> recentSearches;
-
-  UserProfile({
-    required this.id,
+  final List<String> dietaryPreferences;
+  final List<String> allergies;
+  final String cookingSkillLevel;
+  
+  const UserProfile({
     required this.name,
     required this.email,
-    this.avatarUrl,
-    List<String>? favoriteRecipes,
-    List<String>? recentSearches,
-  }) : 
-    favoriteRecipes = favoriteRecipes ?? [],
-    recentSearches = recentSearches ?? [];
-
-  UserProfile copyWith({
-    String? id,
-    String? name,
-    String? email,
-    String? avatarUrl,
-    List<String>? favoriteRecipes,
-    List<String>? recentSearches,
-  }) {
-    return UserProfile(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      email: email ?? this.email,
-      avatarUrl: avatarUrl ?? this.avatarUrl,
-      favoriteRecipes: favoriteRecipes ?? this.favoriteRecipes,
-      recentSearches: recentSearches ?? this.recentSearches,
+    required this.avatarUrl,
+    required this.favoriteRecipes,
+    required this.recentSearches,
+    required this.dietaryPreferences,
+    required this.allergies,
+    required this.cookingSkillLevel,
+  });
+  
+  // Create an empty profile
+  factory UserProfile.empty() {
+    return const UserProfile(
+      name: '',
+      email: '',
+      avatarUrl: '',
+      favoriteRecipes: [],
+      recentSearches: [],
+      dietaryPreferences: [],
+      allergies: [],
+      cookingSkillLevel: 'beginner',
     );
   }
-
+  
+  // Create a user profile from JSON
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
-      id: json['id'],
-      name: json['name'],
-      email: json['email'],
-      avatarUrl: json['avatarUrl'],
+      name: json['name'] as String? ?? '',
+      email: json['email'] as String? ?? '',
+      avatarUrl: json['avatarUrl'] as String? ?? '',
       favoriteRecipes: List<String>.from(json['favoriteRecipes'] ?? []),
       recentSearches: List<String>.from(json['recentSearches'] ?? []),
+      dietaryPreferences: List<String>.from(json['dietaryPreferences'] ?? []),
+      allergies: List<String>.from(json['allergies'] ?? []),
+      cookingSkillLevel: json['cookingSkillLevel'] as String? ?? 'beginner',
     );
   }
-
+  
+  // Convert user profile to JSON
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
       'name': name,
       'email': email,
       'avatarUrl': avatarUrl,
       'favoriteRecipes': favoriteRecipes,
       'recentSearches': recentSearches,
+      'dietaryPreferences': dietaryPreferences,
+      'allergies': allergies,
+      'cookingSkillLevel': cookingSkillLevel,
     };
+  }
+  
+  // Create a copy of this user profile with some fields replaced
+  UserProfile copyWith({
+    String? name,
+    String? email,
+    String? avatarUrl,
+    List<String>? favoriteRecipes,
+    List<String>? recentSearches,
+    List<String>? dietaryPreferences,
+    List<String>? allergies,
+    String? cookingSkillLevel,
+  }) {
+    return UserProfile(
+      name: name ?? this.name,
+      email: email ?? this.email,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+      favoriteRecipes: favoriteRecipes ?? this.favoriteRecipes,
+      recentSearches: recentSearches ?? this.recentSearches,
+      dietaryPreferences: dietaryPreferences ?? this.dietaryPreferences,
+      allergies: allergies ?? this.allergies,
+      cookingSkillLevel: cookingSkillLevel ?? this.cookingSkillLevel,
+    );
   }
 }

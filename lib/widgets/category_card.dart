@@ -5,101 +5,104 @@ import '../models/category.dart';
 
 class CategoryCard extends StatelessWidget {
   final Category category;
+  final bool isFeatured;
   
   const CategoryCard({
     super.key,
     required this.category,
+    this.isFeatured = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        context.go('/category/${category.id}?name=${Uri.encodeComponent(category.name)}');
+        context.pushNamed(
+          'category',
+          pathParameters: {'id': category.id},
+          queryParameters: {'name': category.name},
+        );
       },
-      child: Column(
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 4,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+      child: Container(
+        width: isFeatured ? 280 : 160,
+        margin: const EdgeInsets.only(right: 12),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Stack(
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Category image
+            CachedNetworkImage(
+              imageUrl: category.imageUrl,
+              fit: BoxFit.cover,
+              placeholder: (context, url) => Container(
+                color: Colors.grey.shade300,
+                child: const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              errorWidget: (context, url, error) => Container(
+                color: Colors.grey.shade300,
+                child: const Icon(
+                  Icons.category,
+                  color: Colors.white,
+                  size: 40,
+                ),
+              ),
+            ),
+            
+            // Gradient overlay
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.7),
+                  ],
+                ),
+              ),
+            ),
+            
+            // Category info
+            Positioned(
+              left: 12,
+              right: 12,
+              bottom: 12,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Category image
-                  CachedNetworkImage(
-                    imageUrl: category.imageUrl,
-                    fit: BoxFit.cover,
-                    width: 80,
-                    height: 80,
-                    placeholder: (context, url) => Container(
-                      color: Colors.grey.shade300,
-                      child: const Center(
-                        child: CircularProgressIndicator(),
-                      ),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: Colors.grey.shade300,
-                      child: const Icon(Icons.category, color: Colors.white),
+                  Text(
+                    category.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
                   ),
-                  // Overlay for text contrast
-                  Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
-                        colors: [
-                          Colors.transparent,
-                          Colors.black.withOpacity(0.7),
-                        ],
-                      ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '${category.recipeCount} recipes',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.8),
+                      fontSize: 12,
                     ),
                   ),
-                  // Featured badge
-                  if (category.isFeatured)
-                    Positioned(
-                      top: 6,
-                      right: 6,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: const BoxDecoration(
-                          color: Colors.orangeAccent,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.star,
-                          color: Colors.white,
-                          size: 12,
-                        ),
-                      ),
-                    ),
                 ],
               ),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            category.name,
-            style: const TextStyle(
-              fontWeight: FontWeight.w500,
-              fontSize: 12,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
