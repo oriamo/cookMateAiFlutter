@@ -30,23 +30,12 @@ class AIChatService {
       : _model = GenerativeModel(
           model: 'gemini-1.5-flash',
           apiKey: _geminiApiKey,
+          // SafetySettings constructor requires two positional parameters
           safetySettings: [
-            SafetySetting(
-              harmCategory: HarmCategory.dangerousContent,
-              threshold: HarmBlockThreshold.mediumAndAbove,
-            ),
-            SafetySetting(
-              harmCategory: HarmCategory.harassment,
-              threshold: HarmBlockThreshold.mediumAndAbove,
-            ),
-            SafetySetting(
-              harmCategory: HarmCategory.hateSpeech,
-              threshold: HarmBlockThreshold.mediumAndAbove,
-            ),
-            SafetySetting(
-              harmCategory: HarmCategory.sexuallyExplicit,
-              threshold: HarmBlockThreshold.mediumAndAbove,
-            ),
+            SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.mediumAndAbove),
+            SafetySetting(HarmCategory.harassment, HarmBlockThreshold.mediumAndAbove),
+            SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.mediumAndAbove),
+            SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.mediumAndAbove),
           ],
         ) {
     _initChat();
@@ -55,22 +44,17 @@ class AIChatService {
   void _initChat() {
     _chat = _model.startChat(
       history: [
-        Content(
-          role: 'user',
-          parts: [
-            TextPart(text: 
-              'You are CookMate AI, a helpful cooking assistant. Your goal is to provide cooking advice, recipe suggestions, and food-related tips. Please provide concise, practical responses focused on cooking, food preparation, and recipe guidance. Always consider dietary restrictions when they are mentioned. If you don\'t know the answer to a cooking question, say so honestly rather than making up information.'
-            ),
-          ],
-        ),
-        Content(
-          role: 'model',
-          parts: [
-            TextPart(text: 
-              'Hello! I\'m CookMate AI, your personal cooking assistant. I\'m here to help with recipe ideas, cooking techniques, ingredient substitutions, and any other food-related questions you might have. Feel free to ask about specific cuisines, dietary preferences, or quick meal ideas. How can I assist with your cooking today?'
-            ),
-          ],
-        ),
+        // Content constructor requires role parameter to be passed as positional argument
+        Content('user', [
+          TextPart(text: 
+            'You are CookMate AI, a helpful cooking assistant. Your goal is to provide cooking advice, recipe suggestions, and food-related tips. Please provide concise, practical responses focused on cooking, food preparation, and recipe guidance. Always consider dietary restrictions when they are mentioned. If you don\'t know the answer to a cooking question, say so honestly rather than making up information.'
+          ),
+        ]),
+        Content('model', [
+          TextPart(text: 
+            'Hello! I\'m CookMate AI, your personal cooking assistant. I\'m here to help with recipe ideas, cooking techniques, ingredient substitutions, and any other food-related questions you might have. Feel free to ask about specific cuisines, dietary preferences, or quick meal ideas. How can I assist with your cooking today?'
+          ),
+        ]),
       ],
     );
   }
@@ -129,8 +113,8 @@ class AIChatService {
     try {
       final response = await _chat.sendMessage(
         Content(
-          role: 'user',
-          parts: [TextPart(text: message)],
+          'user',
+          [TextPart(text: message)],
         ),
       );
 
