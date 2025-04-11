@@ -3,14 +3,14 @@ class Category {
   final String name;
   final String imageUrl;
   final String description;
-  final bool isFeatured;
+  final int recipeCount;
 
   Category({
     required this.id,
     required this.name,
     required this.imageUrl,
-    this.description = '',
-    this.isFeatured = false,
+    required this.description,
+    this.recipeCount = 0,
   });
 
   factory Category.fromJson(Map<String, dynamic> json) {
@@ -18,8 +18,8 @@ class Category {
       id: json['id'],
       name: json['name'],
       imageUrl: json['imageUrl'],
-      description: json['description'] ?? '',
-      isFeatured: json['isFeatured'] ?? false,
+      description: json['description'],
+      recipeCount: json['recipeCount'] ?? 0,
     );
   }
 
@@ -29,7 +29,23 @@ class Category {
       'name': name,
       'imageUrl': imageUrl,
       'description': description,
-      'isFeatured': isFeatured,
+      'recipeCount': recipeCount,
     };
+  }
+
+  Category copyWith({
+    String? id,
+    String? name,
+    String? imageUrl,
+    String? description,
+    int? recipeCount,
+  }) {
+    return Category(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      imageUrl: imageUrl ?? this.imageUrl,
+      description: description ?? this.description,
+      recipeCount: recipeCount ?? this.recipeCount,
+    );
   }
 }
