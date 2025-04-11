@@ -19,7 +19,7 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
         state = UserProfile.fromJson(profileData);
       }
     } catch (e) {
-      print('Error loading user profile: $e');
+      _logDebug('Error loading user profile: $e');
     }
   }
   
@@ -28,7 +28,7 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_storageKey, jsonEncode(state.toJson()));
     } catch (e) {
-      print('Error saving user profile: $e');
+      _logDebug('Error saving user profile: $e');
     }
   }
   
@@ -38,7 +38,7 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
     String? avatarUrl,
     List<String>? dietaryPreferences,
     List<String>? allergies,
-    List<String>? cookingSkillLevel,
+    String? cookingSkillLevel,
   }) async {
     state = state.copyWith(
       name: name,
@@ -56,6 +56,7 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
       final newFavorites = List<String>.from(state.favoriteRecipes)..add(recipeId);
       state = state.copyWith(favoriteRecipes: newFavorites);
       await _saveUserProfile();
+      _logDebug('Added recipe to favorites: $recipeId');
     }
   }
   
@@ -64,6 +65,7 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
       final newFavorites = List<String>.from(state.favoriteRecipes)..remove(recipeId);
       state = state.copyWith(favoriteRecipes: newFavorites);
       await _saveUserProfile();
+      _logDebug('Removed recipe from favorites: $recipeId');
     }
   }
   
@@ -99,6 +101,15 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
   
   bool isFavoriteRecipe(String recipeId) {
     return state.favoriteRecipes.contains(recipeId);
+  }
+
+  void _logDebug(String message) {
+    // Only log in debug mode
+    assert(() {
+      // ignore: avoid_print
+      print('[UserProfile] $message');
+      return true;
+    }());
   }
 }
 

@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
-import '../providers/recipe_provider.dart';
 import '../models/recipe.dart';
 import '../widgets/recipe_card.dart';
 import '../widgets/shimmers/recipe_card_shimmer.dart';
+
+// Define a provider to get recipes by category
+final recipesByCategoryProvider = Provider.family<List<Recipe>, String>((ref, categoryId) {
+  // This would normally fetch from a repository or API
+  // For now, we return an empty list
+  return [];
+});
 
 class CategoryScreen extends ConsumerWidget {
   final String categoryId;
