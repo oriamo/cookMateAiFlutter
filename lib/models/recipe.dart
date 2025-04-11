@@ -11,12 +11,14 @@ class Recipe {
   final int calories;
   final String chefName;
   final double rating;
+  final int reviewCount;
   final List<String> ingredients;
   final List<String> instructions;
   final List<String> tags;
   final String? aiTips;
   final DateTime createdAt;
   final String categoryId;
+  final String cuisineType;
   final bool isFavorite;
 
   Recipe({
@@ -32,12 +34,14 @@ class Recipe {
     required this.calories,
     required this.chefName,
     required this.rating,
+    required this.reviewCount,
     required this.ingredients,
     required this.instructions,
     required this.tags,
     this.aiTips,
     required this.createdAt,
     required this.categoryId,
+    required this.cuisineType,
     this.isFavorite = false,
   });
 
@@ -54,12 +58,14 @@ class Recipe {
     int? calories,
     String? chefName,
     double? rating,
+    int? reviewCount,
     List<String>? ingredients,
     List<String>? instructions,
     List<String>? tags,
     String? aiTips,
     DateTime? createdAt,
     String? categoryId,
+    String? cuisineType,
     bool? isFavorite,
   }) {
     return Recipe(
@@ -75,12 +81,14 @@ class Recipe {
       calories: calories ?? this.calories,
       chefName: chefName ?? this.chefName,
       rating: rating ?? this.rating,
+      reviewCount: reviewCount ?? this.reviewCount,
       ingredients: ingredients ?? this.ingredients,
       instructions: instructions ?? this.instructions,
       tags: tags ?? this.tags,
       aiTips: aiTips ?? this.aiTips,
       createdAt: createdAt ?? this.createdAt,
       categoryId: categoryId ?? this.categoryId,
+      cuisineType: cuisineType ?? this.cuisineType,
       isFavorite: isFavorite ?? this.isFavorite,
     );
   }
@@ -99,12 +107,14 @@ class Recipe {
       calories: json['calories'],
       chefName: json['chefName'],
       rating: json['rating'].toDouble(),
+      reviewCount: json['reviewCount'] ?? 0,
       ingredients: List<String>.from(json['ingredients']),
       instructions: List<String>.from(json['instructions']),
       tags: List<String>.from(json['tags']),
       aiTips: json['aiTips'],
       createdAt: DateTime.parse(json['createdAt']),
       categoryId: json['categoryId'],
+      cuisineType: json['cuisineType'] ?? '',
       isFavorite: json['isFavorite'] ?? false,
     );
   }
@@ -123,12 +133,14 @@ class Recipe {
       'calories': calories,
       'chefName': chefName,
       'rating': rating,
+      'reviewCount': reviewCount,
       'ingredients': ingredients,
       'instructions': instructions,
       'tags': tags,
       'aiTips': aiTips,
       'createdAt': createdAt.toIso8601String(),
       'categoryId': categoryId,
+      'cuisineType': cuisineType,
       'isFavorite': isFavorite,
     };
   }
