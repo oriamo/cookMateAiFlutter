@@ -112,14 +112,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               ),
                             ),
                             const SizedBox(width: 4),
-                            Text(
-                              'AI',
-                              style: TextStyle(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.white.withOpacity(0.8),
-                                backgroundColor: Colors.white.withOpacity(0.2),
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.2),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'AI',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white.withOpacity(0.8),
+                                ),
                               ),
                             ),
                             const Spacer(),

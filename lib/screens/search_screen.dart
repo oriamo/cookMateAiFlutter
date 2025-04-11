@@ -6,6 +6,20 @@ import '../providers/user_provider.dart';
 import '../models/recipe.dart';
 import '../screens/recipe_screen.dart';
 
+// Define the searchRecipesProvider that accepts a search query parameter
+final searchRecipesProvider = FutureProvider.family<List<Recipe>, String>((ref, query) async {
+  final allRecipes = ref.watch(recipeProvider);
+  
+  // Filter recipes based on the search query
+  return allRecipes.where((recipe) {
+    final lowerCaseQuery = query.toLowerCase();
+    return recipe.title.toLowerCase().contains(lowerCaseQuery) ||
+           recipe.description.toLowerCase().contains(lowerCaseQuery) ||
+           recipe.ingredients.any((ingredient) => 
+               ingredient.toLowerCase().contains(lowerCaseQuery));
+  }).toList();
+});
+
 class SearchScreen extends ConsumerStatefulWidget {
   final String? initialQuery;
 
