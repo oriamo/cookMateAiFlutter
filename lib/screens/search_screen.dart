@@ -71,9 +71,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final searchResults = _query.isNotEmpty 
+    final searchResultsAsync = _query.isNotEmpty 
         ? ref.watch(searchRecipesProvider(_query))
-        : <Recipe>[];
+        : AsyncValue.data(<Recipe>[]);
     
     final recentSearches = ref.watch(userProfileProvider).recentSearches;
     
@@ -115,7 +115,16 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       ),
       body: _query.isEmpty
           ? _buildRecentSearches(recentSearches)
-          : _buildSearchResults(searchResults),
+          : searchResultsAsync.when(
+              data: (searchResults) => _buildSearchResults(searchResults),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, stackTrace) => Center(
+                child: Text(
+                  'Error loading search results: $error',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ),
     );
   }
   
