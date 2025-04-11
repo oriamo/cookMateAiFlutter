@@ -1,11 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:convert';
 import '../models/recipe.dart';
 import '../providers/user_provider.dart';
 
 class RecipeNotifier extends StateNotifier<List<Recipe>> {
-  static const String _storageKey = 'favorite_recipes';
   final Ref _ref;
   
   RecipeNotifier(this._ref) : super([]) {
@@ -29,8 +26,20 @@ class RecipeNotifier extends StateNotifier<List<Recipe>> {
         }).toList();
       }
     } catch (e) {
-      print('Error loading favorites: $e');
+      // Log error without using print in production
+      // Consider using a proper logging package in a real app
+      _logError('Error loading favorites', e);
     }
+  }
+  
+  // A safer logging method that can be replaced with a proper logger
+  void _logError(String message, Object error) {
+    // In production, this would use a proper logging framework
+    // like logger package instead of print
+    assert(() {
+      print('$message: $error');
+      return true;
+    }());
   }
   
   void _initializeRecipes() {
@@ -49,7 +58,7 @@ class RecipeNotifier extends StateNotifier<List<Recipe>> {
           'Salt and pepper to taste',
           'Fresh parsley for garnish'
         ],
-        steps: [
+        instructions: [
           'Cook pasta according to package instructions.',
           'In a large skillet, melt butter over medium heat.',
           'Add minced garlic and sauté until fragrant, about 1 minute.',
@@ -64,14 +73,16 @@ class RecipeNotifier extends StateNotifier<List<Recipe>> {
         totalTimeMinutes: 25,
         servings: 4,
         difficulty: 'Easy',
-        cuisine: 'Italian',
+        cuisineType: 'Italian',
         calories: 450,
         rating: 4.7,
-        reviews: 128,
+        reviewCount: 128,
         imageUrl: 'https://images.unsplash.com/photo-1555072956-7758afb20e8f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1287&q=80',
         tags: ['pasta', 'quick', 'dinner', 'vegetarian'],
         chefName: 'Jamie Oliver',
         isFavorite: false,
+        categoryId: 'pasta',
+        createdAt: DateTime.now(),
       ),
       Recipe(
         id: '2',
@@ -89,7 +100,7 @@ class RecipeNotifier extends StateNotifier<List<Recipe>> {
           'Sesame seeds for garnish',
           'Green onions, sliced, for garnish'
         ],
-        steps: [
+        instructions: [
           'Heat oil in a large wok or skillet over medium-high heat.',
           'Add chicken and cook until browned, about 5-6 minutes.',
           'Add garlic and ginger, sauté for 1 minute.',
@@ -104,14 +115,16 @@ class RecipeNotifier extends StateNotifier<List<Recipe>> {
         totalTimeMinutes: 30,
         servings: 4,
         difficulty: 'Medium',
-        cuisine: 'Asian',
+        cuisineType: 'Asian',
         calories: 380,
         rating: 4.5,
-        reviews: 92,
+        reviewCount: 92,
         imageUrl: 'https://images.unsplash.com/photo-1512058556646-c4da40fba323?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1172&q=80',
         tags: ['chicken', 'stir-fry', 'Asian', 'dinner'],
         chefName: 'Gordon Ramsay',
         isFavorite: false,
+        categoryId: 'chicken',
+        createdAt: DateTime.now(),
       ),
       // More sample recipes...
     ];
@@ -174,11 +187,27 @@ class RecipeNotifier extends StateNotifier<List<Recipe>> {
   List<Recipe> getRecipesByCategory(String category) {
     return state.where((recipe) {
       return recipe.tags.contains(category.toLowerCase()) || 
-             recipe.cuisine.toLowerCase() == category.toLowerCase();
+             recipe.cuisineType.toLowerCase() == category.toLowerCase();
     }).toList();
   }
 }
 
 final recipeProvider = StateNotifierProvider<RecipeNotifier, List<Recipe>>((ref) {
   return RecipeNotifier(ref);
+});
+
+// Provider for favorite recipes
+final favoriteRecipesProvider = Provider<List<Recipe>>((ref) {
+  final recipes = ref.watch(recipeProvider);
+  return recipes.where((recipe) => recipe.isFavorite).toList();
+});
+
+// Provider for getting recipe details by ID
+final recipeDetailProvider = Provider.family<Recipe?, String>((ref, id) {
+  final recipes = ref.watch(recipeProvider);
+  try {
+    return recipes.firstWhere((recipe) => recipe.id == id);
+  } catch (e) {
+    return null;
+  }
 });
