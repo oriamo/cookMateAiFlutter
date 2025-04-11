@@ -37,6 +37,8 @@ class RecipeNotifier extends StateNotifier<List<Recipe>> {
     // In production, this would use a proper logging framework
     // like logger package instead of print
     assert(() {
+      // This code only runs in debug mode
+      // ignore: avoid_print
       print('$message: $error');
       return true;
     }());

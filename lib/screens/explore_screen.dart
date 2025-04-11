@@ -1,14 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:animate_do/animate_do.dart';
-import '../providers/category_provider.dart';
-import '../providers/recipe_provider.dart';
 import '../models/category.dart';
 import '../models/recipe.dart';
 import '../widgets/category_card.dart';
 import '../widgets/recipe_card.dart';
 import '../widgets/shimmers/category_card_shimmer.dart';
 import '../widgets/shimmers/recipe_card_shimmer.dart';
+
+// Define providers for explore screen
+final exploreRecipesProvider = Provider<List<Recipe>>((ref) {
+  // This would normally fetch from a repository or API
+  // For now, we return an empty list
+  return [];
+});
+
+final exploreCategoriesProvider = Provider<List<Category>>((ref) {
+  // This would normally fetch from a repository or API
+  // For now, we return an empty list
+  return [];
+});
 
 class ExploreScreen extends ConsumerStatefulWidget {
   const ExploreScreen({super.key});
@@ -59,8 +70,8 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> with SingleTicker
 
   @override
   Widget build(BuildContext context) {
-    final categories = ref.watch(categoriesProvider);
-    final allRecipes = ref.watch(recipesProvider);
+    final categories = ref.watch(exploreCategoriesProvider);
+    final allRecipes = ref.watch(exploreRecipesProvider);
     
     // Filter recipes based on search
     final filteredRecipes = _searchQuery.isEmpty
@@ -218,7 +229,7 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> with SingleTicker
       itemBuilder: (context, index) {
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
-          child: RecipeCardShimmer(isHorizontal: true),
+          child: const RecipeCardShimmer(isHorizontal: true),
         );
       },
     );

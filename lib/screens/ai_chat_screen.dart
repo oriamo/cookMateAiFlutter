@@ -407,11 +407,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
         backgroundImage: NetworkImage(userProfile.avatarUrl),
         onBackgroundImageError: (_, __) {
           // Fallback to default avatar on error
-          return const CircleAvatar(
-            radius: 16,
-            backgroundColor: Colors.blue,
-            child: Icon(Icons.person, size: 16, color: Colors.white),
-          );
+          return;  // Don't return anything here, just handle the error
         },
       );
     }
