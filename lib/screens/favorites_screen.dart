@@ -5,7 +5,6 @@ import 'package:go_router/go_router.dart';
 import '../providers/recipe_provider.dart';
 import '../models/recipe.dart';
 import '../widgets/recipe_card.dart';
-import '../widgets/shimmers/recipe_card_shimmer.dart';
 
 class FavoritesScreen extends ConsumerWidget {
   const FavoritesScreen({super.key});

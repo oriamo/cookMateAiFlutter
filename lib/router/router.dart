@@ -47,7 +47,7 @@ final router = GoRouter(
           name: 'category',
           builder: (context, state) {
             final categoryId = state.pathParameters['id'] ?? '';
-            final categoryName = state.queryParameters['name'] ?? 'Category';
+            final categoryName = state.uri.queryParameters['name'] ?? 'Category';
             return CategoryScreen(
               categoryId: categoryId,
               categoryName: categoryName,
