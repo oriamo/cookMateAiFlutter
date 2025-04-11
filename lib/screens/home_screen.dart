@@ -11,6 +11,26 @@ import '../widgets/recipe_card.dart';
 import '../widgets/shimmers/recipe_card_shimmer.dart';
 import '../widgets/shimmers/category_card_shimmer.dart';
 
+// Define providers for home screen
+final featuredRecipesProvider = Provider<List<Recipe>>((ref) {
+  final allRecipes = ref.watch(recipeProvider);
+  // Return the first 5 recipes as featured recipes
+  return allRecipes.take(5).toList();
+});
+
+final popularRecipesProvider = Provider<List<Recipe>>((ref) {
+  final allRecipes = ref.watch(recipeProvider);
+  // Sort recipes by rating and return top ones
+  final sortedRecipes = List<Recipe>.from(allRecipes)
+    ..sort((a, b) => b.rating.compareTo(a.rating));
+  return sortedRecipes.take(6).toList();
+});
+
+// Use the existing categoriesProvider from category_provider.dart
+final categoriesProvider = Provider<List<Category>>((ref) {
+  return ref.watch(categoryProvider);
+});
+
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 

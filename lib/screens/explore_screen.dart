@@ -227,9 +227,9 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen> with SingleTicker
       padding: const EdgeInsets.all(16),
       itemCount: 8,
       itemBuilder: (context, index) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: const RecipeCardShimmer(isHorizontal: true),
+        return const Padding(
+          padding: EdgeInsets.only(bottom: 16),
+          child: RecipeCardShimmer(isHorizontal: true),
         );
       },
     );
