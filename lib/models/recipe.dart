@@ -2,74 +2,86 @@ class Recipe {
   final String id;
   final String title;
   final String description;
-  final List<String> ingredients;
-  final List<String> instructions;
   final String? imageUrl;
-  final String? aiTips;
-  final double rating;
+  final int totalTimeMinutes;
   final int prepTimeMinutes;
   final int cookTimeMinutes;
   final String difficulty;
-  final List<String> categories;
-  final String chefName;
-  final bool isFavorite;
-  final double calories;
   final int servings;
+  final int calories;
+  final String chefName;
+  final double rating;
+  final List<String> ingredients;
+  final List<String> instructions;
+  final List<String> tags;
+  final String? aiTips;
+  final DateTime createdAt;
+  final String categoryId;
+  final bool isFavorite;
 
   Recipe({
     required this.id,
     required this.title,
     required this.description,
+    this.imageUrl,
+    required this.totalTimeMinutes,
+    required this.prepTimeMinutes,
+    required this.cookTimeMinutes,
+    required this.difficulty,
+    required this.servings,
+    required this.calories,
+    required this.chefName,
+    required this.rating,
     required this.ingredients,
     required this.instructions,
-    this.imageUrl,
+    required this.tags,
     this.aiTips,
-    this.rating = 0.0,
-    this.prepTimeMinutes = 0,
-    this.cookTimeMinutes = 0,
-    this.difficulty = 'Medium',
-    this.categories = const [],
-    this.chefName = '',
+    required this.createdAt,
+    required this.categoryId,
     this.isFavorite = false,
-    this.calories = 0,
-    this.servings = 1,
   });
 
   Recipe copyWith({
     String? id,
     String? title,
     String? description,
-    List<String>? ingredients,
-    List<String>? instructions,
     String? imageUrl,
-    String? aiTips,
-    double? rating,
+    int? totalTimeMinutes,
     int? prepTimeMinutes,
     int? cookTimeMinutes,
     String? difficulty,
-    List<String>? categories,
-    String? chefName,
-    bool? isFavorite,
-    double? calories,
     int? servings,
+    int? calories,
+    String? chefName,
+    double? rating,
+    List<String>? ingredients,
+    List<String>? instructions,
+    List<String>? tags,
+    String? aiTips,
+    DateTime? createdAt,
+    String? categoryId,
+    bool? isFavorite,
   }) {
     return Recipe(
       id: id ?? this.id,
       title: title ?? this.title,
       description: description ?? this.description,
-      ingredients: ingredients ?? this.ingredients,
-      instructions: instructions ?? this.instructions,
       imageUrl: imageUrl ?? this.imageUrl,
-      aiTips: aiTips ?? this.aiTips,
-      rating: rating ?? this.rating,
+      totalTimeMinutes: totalTimeMinutes ?? this.totalTimeMinutes,
       prepTimeMinutes: prepTimeMinutes ?? this.prepTimeMinutes,
       cookTimeMinutes: cookTimeMinutes ?? this.cookTimeMinutes,
       difficulty: difficulty ?? this.difficulty,
-      categories: categories ?? this.categories,
-      chefName: chefName ?? this.chefName,
-      isFavorite: isFavorite ?? this.isFavorite,
-      calories: calories ?? this.calories,
       servings: servings ?? this.servings,
+      calories: calories ?? this.calories,
+      chefName: chefName ?? this.chefName,
+      rating: rating ?? this.rating,
+      ingredients: ingredients ?? this.ingredients,
+      instructions: instructions ?? this.instructions,
+      tags: tags ?? this.tags,
+      aiTips: aiTips ?? this.aiTips,
+      createdAt: createdAt ?? this.createdAt,
+      categoryId: categoryId ?? this.categoryId,
+      isFavorite: isFavorite ?? this.isFavorite,
     );
   }
 
@@ -78,21 +90,22 @@ class Recipe {
       id: json['id'],
       title: json['title'],
       description: json['description'],
+      imageUrl: json['imageUrl'],
+      totalTimeMinutes: json['totalTimeMinutes'],
+      prepTimeMinutes: json['prepTimeMinutes'],
+      cookTimeMinutes: json['cookTimeMinutes'],
+      difficulty: json['difficulty'],
+      servings: json['servings'],
+      calories: json['calories'],
+      chefName: json['chefName'],
+      rating: json['rating'].toDouble(),
       ingredients: List<String>.from(json['ingredients']),
       instructions: List<String>.from(json['instructions']),
-      imageUrl: json['imageUrl'],
+      tags: List<String>.from(json['tags']),
       aiTips: json['aiTips'],
-      rating: json['rating'] ?? 0.0,
-      prepTimeMinutes: json['prepTimeMinutes'] ?? 0,
-      cookTimeMinutes: json['cookTimeMinutes'] ?? 0,
-      difficulty: json['difficulty'] ?? 'Medium',
-      categories: json['categories'] != null 
-          ? List<String>.from(json['categories']) 
-          : [],
-      chefName: json['chefName'] ?? '',
+      createdAt: DateTime.parse(json['createdAt']),
+      categoryId: json['categoryId'],
       isFavorite: json['isFavorite'] ?? false,
-      calories: json['calories'] ?? 0,
-      servings: json['servings'] ?? 1,
     );
   }
 
@@ -101,21 +114,22 @@ class Recipe {
       'id': id,
       'title': title,
       'description': description,
-      'ingredients': ingredients,
-      'instructions': instructions,
       'imageUrl': imageUrl,
-      'aiTips': aiTips,
-      'rating': rating,
+      'totalTimeMinutes': totalTimeMinutes,
       'prepTimeMinutes': prepTimeMinutes,
       'cookTimeMinutes': cookTimeMinutes,
       'difficulty': difficulty,
-      'categories': categories,
-      'chefName': chefName,
-      'isFavorite': isFavorite,
-      'calories': calories,
       'servings': servings,
+      'calories': calories,
+      'chefName': chefName,
+      'rating': rating,
+      'ingredients': ingredients,
+      'instructions': instructions,
+      'tags': tags,
+      'aiTips': aiTips,
+      'createdAt': createdAt.toIso8601String(),
+      'categoryId': categoryId,
+      'isFavorite': isFavorite,
     };
   }
-  
-  int get totalTimeMinutes => prepTimeMinutes + cookTimeMinutes;
 }

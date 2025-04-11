@@ -3,11 +3,13 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:uuid/uuid.dart';
 import '../models/chat_message.dart';
 
+// This should be stored securely in a .env file or as a server-side secret
+// Consider replacing this with a proper secret management solution
 const String _geminiApiKey = 'AIzaSyCUWRB78A2bhi5Git8W243DyU3ANL_s1kU';
 
 class AIChatService {
   final GenerativeModel _model;
-  late GenerativeModelChat _chat;
+  late ChatSession _chat;
   
   AIChatService()
       : _model = GenerativeModel(
@@ -15,28 +17,22 @@ class AIChatService {
           apiKey: _geminiApiKey,
           safetySettings: [
             SafetySetting(
-              category: HarmCategory.dangerousContent,
+              harmCategory: HarmCategory.dangerousContent,
               threshold: HarmBlockThreshold.mediumAndAbove,
             ),
             SafetySetting(
-              category: HarmCategory.harassment,
+              harmCategory: HarmCategory.harassment,
               threshold: HarmBlockThreshold.mediumAndAbove,
             ),
             SafetySetting(
-              category: HarmCategory.hateSpeech,
+              harmCategory: HarmCategory.hateSpeech,
               threshold: HarmBlockThreshold.mediumAndAbove,
             ),
             SafetySetting(
-              category: HarmCategory.sexuallyExplicit,
+              harmCategory: HarmCategory.sexuallyExplicit,
               threshold: HarmBlockThreshold.mediumAndAbove,
             ),
           ],
-          generationConfig: GenerationConfig(
-            temperature: 0.7,
-            topK: 40,
-            topP: 0.95,
-            maxOutputTokens: 2048,
-          ),
         ) {
     _initChat();
   }

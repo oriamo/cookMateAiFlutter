@@ -79,8 +79,8 @@ final router = GoRouter(
         GoRoute(
           path: '/search',
           name: 'search',
-          pageBuilder: (context, state) => NoTransitionPage(
-            child: const SearchScreen(),
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: SearchScreen(),
           ),
         ),
         
@@ -88,8 +88,8 @@ final router = GoRouter(
         GoRoute(
           path: '/ai-chat',
           name: 'ai-chat',
-          pageBuilder: (context, state) => NoTransitionPage(
-            child: const AIChatScreen(),
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: AIChatScreen(),
           ),
         ),
         
@@ -97,8 +97,8 @@ final router = GoRouter(
         GoRoute(
           path: '/profile',
           name: 'profile',
-          pageBuilder: (context, state) => NoTransitionPage(
-            child: const ProfileScreen(),
+          pageBuilder: (context, state) => const NoTransitionPage(
+            child: ProfileScreen(),
           ),
         ),
         
@@ -106,20 +106,28 @@ final router = GoRouter(
         GoRoute(
           path: '/favorites',
           name: 'favorites',
-          pageBuilder: (context, state) => CustomTransitionPage(
-            child: const FavoritesScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0.0, 1.0),
-                  end: Offset.zero,
-                ).animate(animation),
-                child: child,
-              );
-            },
+          pageBuilder: (context, state) => const CustomTransitionPage(
+            child: FavoritesScreen(),
+            transitionsBuilder: _slideUpTransition,
           ),
         ),
       ],
     ),
   ],
 );
+
+// Common transition builder for slide-up effect
+Widget _slideUpTransition(
+  BuildContext context,
+  Animation<double> animation,
+  Animation<double> secondaryAnimation,
+  Widget child,
+) {
+  return SlideTransition(
+    position: Tween<Offset>(
+      begin: const Offset(0.0, 1.0),
+      end: Offset.zero,
+    ).animate(animation),
+    child: child,
+  );
+}

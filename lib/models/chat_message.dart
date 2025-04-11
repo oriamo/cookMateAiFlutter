@@ -1,17 +1,22 @@
-enum MessageRole { user, assistant }
+enum MessageRole { user, assistant, system }
 
 class ChatMessage {
   final String id;
   final String content;
   final MessageRole role;
   final DateTime timestamp;
+  final bool isError;
 
   ChatMessage({
     required this.id,
     required this.content,
     required this.role,
     DateTime? timestamp,
+    this.isError = false,
   }) : timestamp = timestamp ?? DateTime.now();
+
+  // Getter for checking if message is from user
+  bool get isUser => role == MessageRole.user;
 
   factory ChatMessage.fromJson(Map<String, dynamic> json) {
     return ChatMessage(

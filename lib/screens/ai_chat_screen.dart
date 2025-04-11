@@ -14,7 +14,6 @@ class AIChatScreen extends ConsumerStatefulWidget {
 class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  final List<ChatMessage> _messages = [];
   bool _isTyping = false;
   
   final List<String> _suggestionChips = [
@@ -29,28 +28,10 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   ];
 
   @override
-  void initState() {
-    super.initState();
-    _addWelcomeMessage();
-  }
-  
-  @override
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
-  }
-  
-  void _addWelcomeMessage() {
-    setState(() {
-      _messages.add(
-        ChatMessage(
-          text: "Hello! I'm your AI Chef assistant. How can I help you in the kitchen today?",
-          isUser: false,
-          timestamp: DateTime.now(),
-        ),
-      );
-    });
   }
   
   void _scrollToBottom() {
@@ -71,62 +52,41 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     
     _messageController.clear();
     
-    // Add user message
+    // Show typing indicator
     setState(() {
-      _messages.add(
-        ChatMessage(
-          text: text,
-          isUser: true,
-          timestamp: DateTime.now(),
-        ),
-      );
       _isTyping = true;
     });
     
-    _scrollToBottom();
+    // Send message using Riverpod
+    await ref.read(chatMessagesProvider.notifier).sendMessage(text);
     
-    try {
-      // Call AI service
-      final response = await AIChatService().generateResponse(text);
-      
-      // Add AI response
-      setState(() {
-        _messages.add(
-          ChatMessage(
-            text: response,
-            isUser: false,
-            timestamp: DateTime.now(),
-          ),
-        );
-        _isTyping = false;
-      });
-      
-      _scrollToBottom();
-    } catch (e) {
-      // Handle error
-      setState(() {
-        _messages.add(
-          ChatMessage(
-            text: "Sorry, I couldn't process your request. Please try again later.",
-            isUser: false,
-            timestamp: DateTime.now(),
-            isError: true,
-          ),
-        );
-        _isTyping = false;
-      });
-      
-      _scrollToBottom();
-    }
+    // Hide typing indicator
+    setState(() {
+      _isTyping = false;
+    });
+    
+    _scrollToBottom();
   }
   
   void _useSuggestion(String suggestion) {
     _messageController.text = suggestion;
     _sendMessage();
   }
+  
+  void _clearChat() {
+    ref.read(chatMessagesProvider.notifier).clearChat();
+  }
 
   @override
   Widget build(BuildContext context) {
+    // Watch chat messages
+    final messages = ref.watch(chatMessagesProvider);
+    
+    // Scroll to bottom when messages change
+    if (messages.isNotEmpty) {
+      _scrollToBottom();
+    }
+    
     return Scaffold(
       appBar: AppBar(
         title: const Row(
@@ -149,12 +109,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: () {
-              setState(() {
-                _messages.clear();
-                _addWelcomeMessage();
-              });
-            },
+            onPressed: _clearChat,
             tooltip: 'New Conversation',
           ),
           IconButton(
@@ -166,14 +121,14 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
       body: Column(
         children: [
           Expanded(
-            child: _messages.isEmpty
+            child: messages.isEmpty
                 ? _buildEmptyState()
                 : ListView.builder(
                     controller: _scrollController,
                     padding: const EdgeInsets.all(16),
-                    itemCount: _messages.length,
+                    itemCount: messages.length,
                     itemBuilder: (context, index) {
-                      final message = _messages[index];
+                      final message = messages[index];
                       return FadeInUp(
                         duration: const Duration(milliseconds: 300),
                         from: 20,
@@ -210,7 +165,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
             ),
           
           // Suggestion chips
-          if (_messages.length <= 2)
+          if (messages.length <= 2)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               width: double.infinity,
@@ -321,22 +276,20 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   }
   
   Widget _buildMessageBubble(ChatMessage message) {
-    final isUser = message.isUser;
-    
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment: message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (!isUser) _buildAvatar(),
+          if (!message.isUser) _buildAvatar(),
           const SizedBox(width: 8),
           
           Flexible(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: isUser
+                color: message.isUser
                     ? Colors.deepPurple.shade100
                     : message.isError
                         ? Colors.red.shade50
@@ -347,7 +300,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    message.text,
+                    message.content,
                     style: TextStyle(
                       fontSize: 14,
                       height: 1.4,
@@ -370,7 +323,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
           ),
           
           const SizedBox(width: 8),
-          if (isUser) _buildUserAvatar(),
+          if (message.isUser) _buildUserAvatar(),
         ],
       ),
     );
