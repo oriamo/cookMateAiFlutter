@@ -75,7 +75,7 @@ class VadService {
       _state = VadState.processing;
       _stateController.add(_state);
       _speechEndController.add(audio);
-      debugPrint('VAD: Speech ended');
+      debugPrint('VAD: Speech ended with audio length: ${audio.length}');
     });
 
     // Handle error events
