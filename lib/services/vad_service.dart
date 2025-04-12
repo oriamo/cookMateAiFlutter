@@ -13,7 +13,7 @@ enum VadState {
 /// Voice Activity Detection service that handles detecting when a user is speaking
 class VadService {
   // VAD controller instance
-  late VadHandler _vadHandler;
+  late VadHandlerBase _vadHandler;
 
   // Stream subscriptions
   StreamSubscription? _speechStartSubscription;
@@ -63,7 +63,7 @@ class VadService {
   /// Set up stream subscriptions for VAD events
   void _setupStreams() {
     // Handle speech start events
-    _speechStartSubscription = _vadHandler.onSpeechStart.listen((_) {
+    _speechStartSubscription = _vadHandler.onSpeechStart?.listen((_) {
       _state = VadState.listening;
       _stateController.add(_state);
       _speechStartController.add(null);
@@ -71,8 +71,7 @@ class VadService {
     });
 
     // Handle speech end events
-    _speechEndController.add([]);
-    _speechEndSubscription = _vadHandler.onSpeechEnd.listen((audio) {
+    _speechEndSubscription = _vadHandler.onSpeechEnd?.listen((audio) {
       _state = VadState.processing;
       _stateController.add(_state);
       _speechEndController.add(audio);
@@ -80,9 +79,9 @@ class VadService {
     });
 
     // Handle error events
-    _errorSubscription = _vadHandler.onError.listen((error) {
-      _errorController.add(error);
-      debugPrint('VAD Error: ${error.toString()}');
+    _errorSubscription = _vadHandler.onError?.listen((error) {
+      _errorController.add(Exception(error));
+      debugPrint('VAD Error: $error');
     });
   }
 
@@ -92,7 +91,7 @@ class VadService {
 
     try {
       // Start VAD with default parameters
-      _vadHandler.startListening(
+      _vadHandler.start(
         positiveSpeechThreshold: 0.5,
         negativeSpeechThreshold: 0.35,
         minSpeechFrames: 5,
@@ -111,7 +110,7 @@ class VadService {
     if (_state == VadState.idle) return;
 
     try {
-      _vadHandler.stopListening();
+      _vadHandler.stop();
       _state = VadState.idle;
       _stateController.add(_state);
       debugPrint('VAD: Stopped listening');
@@ -130,7 +129,7 @@ class VadService {
 
     // Start listening with updated parameters
     stopListening();
-    _vadHandler.startListening(
+    _vadHandler.start(
       positiveSpeechThreshold: threshold,
       negativeSpeechThreshold: threshold - 0.15, // Adjust negative threshold accordingly
       minSpeechFrames: 5,
