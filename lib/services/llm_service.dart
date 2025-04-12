@@ -183,7 +183,9 @@ You have both voice and vision capabilities, allowing you to see images and resp
       if (role == 'user') {
         chatHistory.add(genai.Content.text(content));
       } else if (role == 'assistant') {
-        chatHistory.add(genai.Content.model(content));
+        // Fix: Use the correct method to create model content
+        // Instead of passing a string directly, wrap it as a TextPart in a list
+        chatHistory.add(genai.Content.model([genai.TextPart(content)]));
       }
       // System messages are handled differently in Gemini
     }
