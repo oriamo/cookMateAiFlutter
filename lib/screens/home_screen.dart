@@ -41,20 +41,20 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isSearchBarVisible = false;
-
+  
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
   }
-
+  
   @override
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
   }
-
+  
   void _onScroll() {
     final isVisible = _scrollController.position.pixels > 140;
     if (isVisible != _isSearchBarVisible) {
@@ -69,7 +69,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final featuredRecipes = ref.watch(featuredRecipesProvider);
     final popularRecipes = ref.watch(popularRecipesProvider);
     final categories = ref.watch(categoriesProvider);
-
+    
     return Scaffold(
       body: CustomScrollView(
         controller: _scrollController,
@@ -113,8 +113,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                             const SizedBox(width: 4),
                             Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(4),
@@ -130,16 +129,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                             const Spacer(),
                             IconButton(
-                              icon: const Icon(Icons.shopping_cart_outlined,
-                                  color: Colors.white),
-                              tooltip: 'Ingredients List',
-                              onPressed: () {
-                                context.go('/ingredients');
-                              },
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.notifications_outlined,
-                                  color: Colors.white),
+                              icon: const Icon(Icons.notifications_outlined, color: Colors.white),
                               onPressed: () {},
                             ),
                           ],
@@ -163,8 +153,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 context.go('/search');
                               },
                               child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 12),
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(8),
@@ -210,7 +199,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ],
           ),
-
+          
           // Categories section
           SliverToBoxAdapter(
             child: Padding(
@@ -221,8 +210,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Text(
                     'Categories',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   TextButton(
                     onPressed: () {
@@ -234,7 +223,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
           ),
-
+          
           SliverToBoxAdapter(
             child: SizedBox(
               height: 120,
@@ -243,7 +232,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   : _buildCategories(categories),
             ),
           ),
-
+          
           // Featured recipes section
           SliverToBoxAdapter(
             child: Padding(
@@ -256,13 +245,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       Text(
                         'Featured',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: Colors.orange,
                           borderRadius: BorderRadius.circular(12),
@@ -286,7 +274,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
           ),
-
+          
           SliverToBoxAdapter(
             child: SizedBox(
               height: 300,
@@ -295,7 +283,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   : _buildFeaturedRecipes(featuredRecipes),
             ),
           ),
-
+          
           // Popular recipes section
           SliverToBoxAdapter(
             child: Padding(
@@ -306,8 +294,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Text(
                     'Popular Recipes',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                   TextButton(
                     onPressed: () {},
@@ -317,13 +305,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
           ),
-
+          
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
             sliver: popularRecipes.isEmpty
                 ? SliverGrid.builder(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
                       mainAxisSpacing: 16,
                       crossAxisSpacing: 16,
@@ -335,8 +322,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     },
                   )
                 : SliverGrid.builder(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
+                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: 2,
                       mainAxisSpacing: 16,
                       crossAxisSpacing: 16,
@@ -351,7 +337,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     },
                   ),
           ),
-
+          
           // AI Assistant banner
           SliverToBoxAdapter(
             child: Padding(
@@ -436,7 +422,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
-
+  
   Widget _buildCategories(List<Category> categories) {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -453,7 +439,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       },
     );
   }
-
+  
   Widget _buildCategoryShimmers() {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -467,7 +453,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       },
     );
   }
-
+  
   Widget _buildFeaturedRecipes(List<Recipe> recipes) {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -487,7 +473,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       },
     );
   }
-
+  
   Widget _buildRecipeShimmers() {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
