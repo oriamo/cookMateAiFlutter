@@ -1,18 +1,19 @@
 // lib/ui/screens/assistant_screen.dart
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:camera/camera.dart';
 import '../../services/assistant_service.dart';
+import '../../services/assistant_provider.dart';
 import '../widgets/message_bubble.dart';
 
-class AssistantScreen extends StatefulWidget {
+class AssistantScreen extends ConsumerStatefulWidget {
   const AssistantScreen({Key? key}) : super(key: key);
 
   @override
-  _AssistantScreenState createState() => _AssistantScreenState();
+  ConsumerState<AssistantScreen> createState() => _AssistantScreenState();
 }
 
-class _AssistantScreenState extends State<AssistantScreen> {
+class _AssistantScreenState extends ConsumerState<AssistantScreen> {
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isContinuousListening = false;
@@ -36,22 +37,20 @@ class _AssistantScreenState extends State<AssistantScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<AssistantProvider>(
-      builder: (context, provider, child) {
-        // Show loading screen if initializing
-        if (provider.isInitializing) {
-          return _buildLoadingScreen();
-        }
+    final provider = ref.watch(assistantProvider);
+    
+    // Show loading screen if initializing
+    if (provider.isInitializing) {
+      return _buildLoadingScreen();
+    }
 
-        // Show error screen if there was an error
-        if (provider.error != null && !provider.isInitialized) {
-          return _buildErrorScreen(provider.error!);
-        }
+    // Show error screen if there was an error
+    if (provider.error != null && !provider.isInitialized) {
+      return _buildErrorScreen(provider.error!);
+    }
 
-        // Show the main screen
-        return _buildMainScreen(provider);
-      },
-    );
+    // Show the main screen
+    return _buildMainScreen(provider);
   }
 
   Widget _buildLoadingScreen() {
@@ -311,7 +310,7 @@ class _AssistantScreenState extends State<AssistantScreen> {
         label: Text(text),
         onPressed: () {
           _textController.text = text;
-          _sendMessage(Provider.of<AssistantProvider>(context, listen: false));
+          _sendMessage(ref.read(assistantProvider));
         },
       ),
     );
