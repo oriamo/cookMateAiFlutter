@@ -13,7 +13,7 @@ enum VadState {
 /// Voice Activity Detection service that handles detecting when a user is speaking
 class VadService {
   // VAD controller instance
-  late VADHandler _vadHandler;
+  late VadHandler _vadHandler;
 
   // Stream subscriptions
   StreamSubscription? _speechStartSubscription;
@@ -47,22 +47,8 @@ class VadService {
         return false;
       }
 
-      // Initialize VAD Handler with appropriate settings
-      _vadHandler = await VADHandler.initialize(
-        // VAD parameters can be adjusted for different environments
-        vadConfig: VADConfig(
-          // Threshold for speech detection - lower values are more sensitive
-          threshold: 0.8,
-          // Min speech frames before triggering speech start
-          minSpeechFrames: 5,
-          // Min silence frames before triggering speech end
-          silenceFrames: 30,
-          // Sample rate of audio input
-          sampleRate: 16000,
-          // Frame length in milliseconds
-          frameLengthMs: 30,
-        ),
-      );
+      // Initialize VAD Handler
+      _vadHandler = VadHandler.create(isDebug: true);
 
       // Set up stream subscriptions for VAD events
       _setupStreams();
@@ -105,7 +91,13 @@ class VadService {
     if (_state != VadState.idle) return;
 
     try {
-      await _vadHandler.start();
+      // Start VAD with default parameters
+      _vadHandler.startListening(
+        positiveSpeechThreshold: 0.5,
+        negativeSpeechThreshold: 0.35,
+        minSpeechFrames: 5,
+        redemptionFrames: 30,
+      );
       _state = VadState.listening;
       _stateController.add(_state);
       debugPrint('VAD: Started listening');
@@ -119,7 +111,7 @@ class VadService {
     if (_state == VadState.idle) return;
 
     try {
-      await _vadHandler.stop();
+      _vadHandler.stopListening();
       _state = VadState.idle;
       _stateController.add(_state);
       debugPrint('VAD: Stopped listening');
@@ -136,13 +128,14 @@ class VadService {
       throw ArgumentError('Threshold must be between 0 and 1');
     }
 
-    _vadHandler.updateConfig(VADConfig(
-      threshold: threshold,
+    // Start listening with updated parameters
+    stopListening();
+    _vadHandler.startListening(
+      positiveSpeechThreshold: threshold,
+      negativeSpeechThreshold: threshold - 0.15, // Adjust negative threshold accordingly
       minSpeechFrames: 5,
-      silenceFrames: 30,
-      sampleRate: 16000,
-      frameLengthMs: 30,
-    ));
+      redemptionFrames: 30,
+    );
   }
 
   /// Clean up resources
