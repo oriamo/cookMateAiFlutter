@@ -177,8 +177,7 @@ class ProfileScreen extends ConsumerWidget {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) =>
-                              const DietaryPreferencesScreen(),
+                          builder: (context) => const DietaryPreferenceScreen(),
                         ),
                       );
                     },
