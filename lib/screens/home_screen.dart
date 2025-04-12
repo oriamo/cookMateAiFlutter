@@ -197,16 +197,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               collapseMode: CollapseMode.pin,
             ),
-            actions: _isSearchBarVisible
-                ? [
-                    IconButton(
-                      icon: const Icon(Icons.search),
-                      onPressed: () {
-                        context.go('/search');
-                      },
-                    ),
-                  ]
-                : null,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.add),
+                onPressed: () => context.go('/upload-meal'),
+                tooltip: 'Upload New Meal',
+              ),
+              IconButton(
+                icon: const Icon(Icons.notifications_outlined),
+                onPressed: () {},
+              ),
+            ],
           ),
           
           // Categories section

@@ -4,3 +4,7 @@
 
 azure-functions
 azure-cosmos
+python-dotenv
+azure-storage-blob
+aiohttp
+uuid
