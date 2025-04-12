@@ -1,4 +1,5 @@
 import 'package:go_router/go_router.dart';
+import '../screens/assistant_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/search_screen.dart';
 import '../screens/recipe_screen.dart';
@@ -80,7 +81,7 @@ final router = GoRouter(
         GoRoute(
           path: '/ai-chat',
           name: 'ai-chat',
-          builder: (context, state) => const AIChatScreen(),
+          builder: (context, state) => const AssistantScreen(),
         ),
       ],
     ),

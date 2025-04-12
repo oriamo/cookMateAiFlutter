@@ -36,7 +36,7 @@ class VideoService {
   // Status getters
   bool get isInitialized => _isInitialized;
   CameraController? get cameraController => _cameraController;
-  List<CameraDescription> get availableCameras => _cameras;
+  List<CameraDescription> get availableCameras1 => _cameras;
   CameraDescription? get currentCamera => _currentCamera;
 
   // Latest processed frame
