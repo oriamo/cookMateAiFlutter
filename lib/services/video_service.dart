@@ -1,4 +1,3 @@
-
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
@@ -57,8 +56,14 @@ class VideoService {
         return false;
       }
 
-      // Get available cameras
-      _cameras = await availableCameras();
+      try {
+        // Get available cameras using the global function from camera package
+        _cameras = await availableCameras();
+      } catch (e) {
+        _errorController.add('Failed to get available cameras: $e');
+        return false;
+      }
+      
       if (_cameras.isEmpty) {
         _errorController.add('No cameras available');
         return false;
