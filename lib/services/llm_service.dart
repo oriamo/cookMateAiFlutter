@@ -48,7 +48,7 @@ You have both voice and vision capabilities, allowing you to see images and resp
       
       // Initialize GenerativeModel for more advanced features
       _generativeModel = genai.GenerativeModel(
-        model: 'gemini-pro',
+        model: 'gemini-2.0-flash',
         apiKey: apiKey,
       );
 
