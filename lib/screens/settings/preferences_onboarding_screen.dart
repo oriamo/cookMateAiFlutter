@@ -18,16 +18,13 @@ class PreferencesOnboardingScreen extends ConsumerStatefulWidget {
 class _PreferencesOnboardingScreenState
     extends ConsumerState<PreferencesOnboardingScreen> {
   int _currentStep = 0;
-  final int _totalSteps = 5;
+  final int _totalSteps = 4;
 
   // Health goals
   List<String> _selectedHealthGoals = [];
 
   // Dietary preferences
   List<String> _selectedDietaryPreferences = [];
-
-  // Allergies
-  List<String> _selectedAllergies = [];
 
   // Cooking skill level
   String _selectedSkillLevel = 'Beginner';
@@ -39,8 +36,6 @@ class _PreferencesOnboardingScreenState
   final GlobalKey<HealthGoalsScreenState> _healthGoalsKey =
       GlobalKey<HealthGoalsScreenState>();
   final GlobalKey<DietaryRestrictionsScreenState> _dietaryKey =
-      GlobalKey<DietaryRestrictionsScreenState>();
-  final GlobalKey<DietaryRestrictionsScreenState> _allergiesKey =
       GlobalKey<DietaryRestrictionsScreenState>();
   final GlobalKey<CookingSkillLevelScreenState> _skillLevelKey =
       GlobalKey<CookingSkillLevelScreenState>();
@@ -78,15 +73,7 @@ class _PreferencesOnboardingScreenState
           });
         }
         break;
-      case 2: // Allergies
-        if (_allergiesKey.currentState != null) {
-          setState(() {
-            _selectedAllergies =
-                _allergiesKey.currentState!.getSelectedRestrictions();
-          });
-        }
-        break;
-      case 3: // Cooking Skill Level
+      case 2: // Cooking Skill Level
         if (_skillLevelKey.currentState != null) {
           setState(() {
             _selectedSkillLevel =
@@ -94,7 +81,7 @@ class _PreferencesOnboardingScreenState
           });
         }
         break;
-      case 4: // Prep Time
+      case 3: // Max Prep Time
         if (_prepTimeKey.currentState != null) {
           setState(() {
             _selectedPrepTime =
@@ -120,7 +107,6 @@ class _PreferencesOnboardingScreenState
     await userProfileNotifier.updateProfile(
       healthGoals: _selectedHealthGoals,
       dietaryPreferences: _selectedDietaryPreferences,
-      allergies: _selectedAllergies,
       cookingSkillLevel: _selectedSkillLevel.toLowerCase(),
       maxPrepTimeMinutes: _selectedPrepTime,
     );
@@ -146,12 +132,6 @@ class _PreferencesOnboardingScreenState
   void _updateDietaryPreferences(List<String> dietaryPreferences) {
     setState(() {
       _selectedDietaryPreferences = dietaryPreferences;
-    });
-  }
-
-  void updatePreferences(List<String> allergies) {
-    setState(() {
-      _selectedAllergies = allergies;
     });
   }
 
@@ -244,19 +224,12 @@ class _PreferencesOnboardingScreenState
           isInCoordinator: true,
         );
       case 2:
-        return DietaryPreferenceScreen(
-          key: _allergiesKey,
-          isOnboarding: true,
-          isAllergiesScreen: true,
-          isInCoordinator: true,
-        );
-      case 3:
         return CookingSkillLevelScreen(
           key: _skillLevelKey,
           isOnboarding: true,
           isInCoordinator: true,
         );
-      case 4:
+      case 3:
         return PrepTimePreferencesScreen(
           key: _prepTimeKey,
           isOnboarding: true,

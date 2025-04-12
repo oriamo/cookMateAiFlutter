@@ -19,7 +19,7 @@ class PrepTimePreferencesScreen extends ConsumerStatefulWidget {
       PrepTimePreferencesScreenState();
 }
 
-// Changed from _PrepTimePreferencesScreenState to public PrepTimePreferencesScreenState
+// Public state class for external access
 class PrepTimePreferencesScreenState
     extends ConsumerState<PrepTimePreferencesScreen> {
   late int _maxPrepTimeMinutes;
@@ -27,31 +27,43 @@ class PrepTimePreferencesScreenState
   final List<Map<String, dynamic>> _prepTimeOptions = [
     {
       'value': 15,
+      'icon': Icons.timer,
+      'color': Colors.green,
       'label': '15 minutes or less',
       'description': 'Quick and easy recipes only'
     },
     {
       'value': 30,
+      'icon': Icons.timer_3,
+      'color': Colors.blue,
       'label': '30 minutes or less',
       'description': 'Fast recipes with a bit more complexity'
     },
     {
       'value': 45,
+      'icon': Icons.hourglass_bottom,
+      'color': Colors.amber,
       'label': '45 minutes or less',
       'description': 'Medium-length cooking time'
     },
     {
       'value': 60,
+      'icon': Icons.hourglass_top,
+      'color': Colors.orange,
       'label': '1 hour or less',
       'description': 'More involved recipes'
     },
     {
       'value': 120,
+      'icon': Icons.schedule,
+      'color': Colors.red,
       'label': '2 hours or less',
       'description': 'Complex recipes and slow-cooking dishes'
     },
     {
       'value': 999,
+      'icon': Icons.all_inclusive,
+      'color': Colors.purple,
       'label': 'Any duration',
       'description': 'No time restrictions'
     },
@@ -71,118 +83,204 @@ class PrepTimePreferencesScreenState
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Scaffold(
-      appBar: widget.isOnboarding
-          ? AppBar(
-              title: const Text('Preparation Time'),
-              automaticallyImplyLeading: false,
-            )
-          : AppBar(
-              title: const Text('Preparation Time'),
-            ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'How much time do you want to spend cooking?',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+      appBar: AppBar(
+        title: const Text('Preparation Time'),
+        automaticallyImplyLeading: !widget.isOnboarding,
+        backgroundColor: Colors.green,
+        foregroundColor: Colors.white,
+        actions: [
+          if (widget.isOnboarding)
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.white),
               ),
             ),
-            const SizedBox(height: 16),
-            const Text(
-              'This helps us recommend recipes that fit your schedule.',
-              style: TextStyle(color: Colors.grey),
-            ),
-            const SizedBox(height: 24),
-            Expanded(
-              child: ListView.builder(
-                itemCount: _prepTimeOptions.length,
-                itemBuilder: (context, index) {
-                  final option = _prepTimeOptions[index];
-                  final isSelected = _maxPrepTimeMinutes == option['value'];
-
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    elevation: isSelected ? 4 : 1,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      side: BorderSide(
-                        color: isSelected
-                            ? colorScheme.primary
-                            : Colors.transparent,
-                        width: 2,
-                      ),
+        ],
+      ),
+      body: Column(
+        children: [
+          // Progress Indicator
+          if (widget.isOnboarding)
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      height: 8,
+                      color: Colors.green,
                     ),
-                    child: InkWell(
-                      onTap: () {
-                        setState(() {
-                          _maxPrepTimeMinutes = option['value'];
-                        });
-                      },
-                      borderRadius: BorderRadius.circular(12),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    option['label'],
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: isSelected
-                                          ? colorScheme.primary
-                                          : null,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    option['description'],
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.grey.shade600,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            if (isSelected)
-                              Icon(
-                                Icons.check_circle,
-                                color: colorScheme.primary,
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                },
-              ),
-            ),
-            if (!widget.isInCoordinator)
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _savePrepTimePreference,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
-                  child: Text(widget.isOnboarding ? 'Next' : 'Save Preference'),
+                  Expanded(
+                    child: Container(
+                      height: 8,
+                      color: Colors.green,
+                    ),
+                  ),
+                  Expanded(
+                    child: Container(
+                      height: 8,
+                      color: Colors.green,
+                    ),
+                  ),
+                  Expanded(
+                    child: Container(
+                      height: 8,
+                      color: Colors.green,
+                    ),
+                  ),
+                  Expanded(
+                    child: Container(
+                      height: 8,
+                      color: Colors.green,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'How much time do you want to spend cooking?',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'This helps us recommend recipes that fit your schedule.',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 32),
+
+                  // Prep time options
+                  ...buildPrepTimeCards(),
+                ],
+              ),
+            ),
+          ),
+
+          // Continue button
+          if (!widget.isInCoordinator)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              child: ElevatedButton(
+                onPressed: _savePrepTimePreference,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: Text(
+                  widget.isOnboarding ? 'Continue' : 'Save Preference',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
-          ],
-        ),
+            ),
+        ],
       ),
     );
+  }
+
+  List<Widget> buildPrepTimeCards() {
+    return _prepTimeOptions.map((option) {
+      final bool isSelected = _maxPrepTimeMinutes == option['value'];
+
+      return Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        child: InkWell(
+          onTap: () {
+            setState(() {
+              _maxPrepTimeMinutes = option['value'];
+            });
+          },
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: isSelected ? Colors.green : Colors.grey.shade300,
+                width: 2,
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  // Icon in circle
+                  CircleAvatar(
+                    backgroundColor: option['color'].withOpacity(0.2),
+                    radius: 24,
+                    child: Icon(
+                      option['icon'],
+                      color: option['color'],
+                      size: 28,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  // Text content
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          option['label'],
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          option['description'],
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Selection indicator
+                  if (isSelected)
+                    Container(
+                      decoration: const BoxDecoration(
+                        color: Colors.green,
+                        shape: BoxShape.circle,
+                      ),
+                      padding: const EdgeInsets.all(2),
+                      child: const Icon(
+                        Icons.check,
+                        size: 20,
+                        color: Colors.white,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }).toList();
   }
 
   void _savePrepTimePreference() async {
