@@ -1,4 +1,3 @@
-
 import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
@@ -46,7 +45,7 @@ You have both voice and vision capabilities, allowing you to see images and resp
 
       // Initialize Gemini
       _gemini = Gemini.instance;
-      _gemini.init(apiKey: apiKey);
+      await Gemini.init(apiKey: apiKey);
 
       // Initialize GenerativeModel for more advanced features
       _generativeModel = genai.GenerativeModel(
@@ -122,12 +121,12 @@ You have both voice and vision capabilities, allowing you to see images and resp
       final chatSession = _generativeModel.startChat(history: chat);
 
       // Stream response
-      final response = await chatSession.sendMessageStream(
+      final responseStream = chatSession.sendMessageStream(
         genai.Content.text(_chatHistory.last['content'] ?? ''),
       );
 
       // Process streaming response
-      response.listen(
+      responseStream.listen(
             (chunk) {
           final text = chunk.text ?? '';
           buffer.write(text);
@@ -155,11 +154,9 @@ You have both voice and vision capabilities, allowing you to see images and resp
   /// Generate a single (non-streaming) text response
   Future<String> _generateSingleTextResponse(String prompt) async {
     try {
-      final response = await _gemini.prompt(
-        parts: [Part.text(prompt)],
-      );
+      final response = await _gemini.text(prompt);
 
-      final responseText = response?.output ?? 'No response';
+      final responseText = response?.content?.parts?.last.text ?? 'No response';
 
       // Add assistant response to chat history
       _addAssistantMessage(responseText);
@@ -184,7 +181,7 @@ You have both voice and vision capabilities, allowing you to see images and resp
       final content = message['content'] ?? '';
 
       if (role == 'user') {
-        chatHistory.add(genai.Content.user(content));
+        chatHistory.add(genai.Content.text(content));
       } else if (role == 'assistant') {
         chatHistory.add(genai.Content.model(content));
       }
