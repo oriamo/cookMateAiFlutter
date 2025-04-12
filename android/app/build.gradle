@@ -6,8 +6,6 @@ plugins {
 }
 def kotlin_version = "1.8.10"
 
-def kotlin_version = '1.8.10'
-
 android {
     namespace = "com.oraimo.us.cook_mate_ai"
     compileSdk = flutter.compileSdkVersion
