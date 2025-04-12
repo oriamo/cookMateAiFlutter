@@ -7,7 +7,8 @@ class UserProfile {
   final List<String> dietaryPreferences;
   final List<String> allergies;
   final String cookingSkillLevel;
-  
+  final String measurementUnit; // Added measurementUnit property
+
   const UserProfile({
     required this.name,
     required this.email,
@@ -17,8 +18,9 @@ class UserProfile {
     required this.dietaryPreferences,
     required this.allergies,
     required this.cookingSkillLevel,
+    required this.measurementUnit, // Added required parameter
   });
-  
+
   // Create an empty profile
   factory UserProfile.empty() {
     return const UserProfile(
@@ -30,9 +32,10 @@ class UserProfile {
       dietaryPreferences: [],
       allergies: [],
       cookingSkillLevel: 'beginner',
+      measurementUnit: 'metric', // Default to metric
     );
   }
-  
+
   // Create a user profile from JSON
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
@@ -44,9 +47,10 @@ class UserProfile {
       dietaryPreferences: List<String>.from(json['dietaryPreferences'] ?? []),
       allergies: List<String>.from(json['allergies'] ?? []),
       cookingSkillLevel: json['cookingSkillLevel'] as String? ?? 'beginner',
+      measurementUnit: json['measurementUnit'] as String? ?? 'metric',
     );
   }
-  
+
   // Convert user profile to JSON
   Map<String, dynamic> toJson() {
     return {
@@ -58,9 +62,10 @@ class UserProfile {
       'dietaryPreferences': dietaryPreferences,
       'allergies': allergies,
       'cookingSkillLevel': cookingSkillLevel,
+      'measurementUnit': measurementUnit,
     };
   }
-  
+
   // Create a copy of this user profile with some fields replaced
   UserProfile copyWith({
     String? name,
@@ -71,6 +76,7 @@ class UserProfile {
     List<String>? dietaryPreferences,
     List<String>? allergies,
     String? cookingSkillLevel,
+    String? measurementUnit,
   }) {
     return UserProfile(
       name: name ?? this.name,
@@ -81,6 +87,7 @@ class UserProfile {
       dietaryPreferences: dietaryPreferences ?? this.dietaryPreferences,
       allergies: allergies ?? this.allergies,
       cookingSkillLevel: cookingSkillLevel ?? this.cookingSkillLevel,
+      measurementUnit: measurementUnit ?? this.measurementUnit,
     );
   }
 }

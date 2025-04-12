@@ -5,6 +5,8 @@ plugins {
     id "dev.flutter.flutter-gradle-plugin"
 }
 
+def kotlin_version = '1.8.10'
+
 android {
     namespace = "com.oraimo.us.cook_mate_ai"
     compileSdk = flutter.compileSdkVersion
@@ -41,4 +43,15 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    constraints {
+        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk7:${kotlin_version}") {
+            because "kotlin-stdlib-jdk7 is now a part of kotlin-stdlib"
+        }
+        implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8:${kotlin_version}") {
+            because "kotlin-stdlib-jdk8 is now a part of kotlin-stdlib"
+        }
+    }
 }

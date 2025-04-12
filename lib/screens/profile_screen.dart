@@ -3,6 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/user_provider.dart';
 import '../models/user_profile.dart';
+import 'settings/edit_profile_screen.dart';
+import 'settings/dietary_preferences_screen.dart';
+import 'settings/cooking_skill_level_screen.dart';
+import 'settings/measurement_units_screen.dart';
+import 'settings/app_settings_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -10,7 +15,8 @@ class ProfileScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final userProfile = ref.watch(userProfileProvider);
-    
+    final userNotifier = ref.read(userProfileProvider.notifier);
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -47,7 +53,8 @@ class ProfileScreen extends ConsumerWidget {
                           ),
                           image: DecorationImage(
                             image: NetworkImage(
-                              userProfile.avatarUrl ?? 'https://via.placeholder.com/150',
+                              userProfile.avatarUrl ??
+                                  'https://via.placeholder.com/150',
                             ),
                             fit: BoxFit.cover,
                           ),
@@ -78,7 +85,7 @@ class ProfileScreen extends ConsumerWidget {
               titlePadding: EdgeInsets.zero,
             ),
           ),
-          
+
           // Stats section
           SliverToBoxAdapter(
             child: Container(
@@ -118,7 +125,7 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ),
           ),
-          
+
           // Settings options
           SliverToBoxAdapter(
             child: Padding(
@@ -138,13 +145,28 @@ class ProfileScreen extends ConsumerWidget {
                     context,
                     'Edit Profile',
                     Icons.person_outline,
-                    () {},
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const EditProfileScreen(),
+                        ),
+                      );
+                    },
                   ),
                   _buildSettingTile(
                     context,
                     'Dietary Preferences',
                     Icons.food_bank_outlined,
-                    () {},
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const DietaryPreferencesScreen(),
+                        ),
+                      );
+                    },
                   ),
                   _buildSettingTile(
                     context,
@@ -158,25 +180,46 @@ class ProfileScreen extends ConsumerWidget {
                     context,
                     'Cooking Skill Level',
                     Icons.sports_score_outlined,
-                    () {},
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const CookingSkillLevelScreen(),
+                        ),
+                      );
+                    },
                   ),
                   _buildSettingTile(
                     context,
                     'Measurement Units',
                     Icons.scale_outlined,
-                    () {},
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const MeasurementUnitsScreen(),
+                        ),
+                      );
+                    },
                   ),
                   _buildSettingTile(
                     context,
                     'App Settings',
                     Icons.settings_outlined,
-                    () {},
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AppSettingsScreen(),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
             ),
           ),
-          
+
           // Recent Activity section
           SliverToBoxAdapter(
             child: Padding(
@@ -203,7 +246,8 @@ class ProfileScreen extends ConsumerWidget {
                     )
                   else
                     Column(
-                      children: userProfile.recentSearches.take(5).map((search) {
+                      children:
+                          userProfile.recentSearches.take(5).map((search) {
                         return _buildActivityTile(
                           context,
                           'Searched for "$search"',
@@ -220,13 +264,13 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ),
           ),
-          
+
           // Logout button
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: ElevatedButton(
-                onPressed: () {},
+                onPressed: () => _showLogoutConfirmation(context, userNotifier),
                 style: ElevatedButton.styleFrom(
                   foregroundColor: Colors.white,
                   backgroundColor: Colors.red.shade400,
@@ -239,7 +283,7 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ),
           ),
-          
+
           // Extra padding at the bottom
           const SliverToBoxAdapter(
             child: SizedBox(height: 32),
@@ -248,14 +292,16 @@ class ProfileScreen extends ConsumerWidget {
       ),
     );
   }
-  
-  Widget _buildStatColumn(BuildContext context, String label, String value, IconData icon) {
+
+  Widget _buildStatColumn(
+      BuildContext context, String label, String value, IconData icon) {
     return Column(
       children: [
         Container(
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.2),
+            color:
+                Theme.of(context).colorScheme.primaryContainer.withOpacity(0.2),
             shape: BoxShape.circle,
           ),
           child: Icon(
@@ -282,7 +328,7 @@ class ProfileScreen extends ConsumerWidget {
       ],
     );
   }
-  
+
   Widget _buildSettingTile(
     BuildContext context,
     String title,
@@ -303,7 +349,7 @@ class ProfileScreen extends ConsumerWidget {
       onTap: onTap,
     );
   }
-  
+
   Widget _buildActivityTile(
     BuildContext context,
     String title,
@@ -340,6 +386,35 @@ class ProfileScreen extends ConsumerWidget {
         ),
       ),
       onTap: onTap,
+    );
+  }
+
+  void _showLogoutConfirmation(
+      BuildContext context, UserProfileNotifier userNotifier) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Logout'),
+          content: const Text('Are you sure you want to logout?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                userNotifier.logout();
+                Navigator.of(context).pop();
+                context.go('/login');
+              },
+              child: const Text('Logout'),
+            ),
+          ],
+        );
+      },
     );
   }
 }
