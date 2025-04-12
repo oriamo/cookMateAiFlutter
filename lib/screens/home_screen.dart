@@ -11,6 +11,7 @@ import '../widgets/recipe_card.dart';
 import '../widgets/shimmers/recipe_card_shimmer.dart';
 import '../widgets/shimmers/category_card_shimmer.dart';
 
+// Featured recipes provider - gets first 5 recipes
 // Define providers for home screen
 final featuredRecipesProvider = Provider<List<Recipe>>((ref) {
   final allRecipes = ref.watch(recipeProvider);
@@ -18,6 +19,7 @@ final featuredRecipesProvider = Provider<List<Recipe>>((ref) {
   return allRecipes.take(5).toList();
 });
 
+// Popular recipes provider - sorts by rating and takes top 6
 final popularRecipesProvider = Provider<List<Recipe>>((ref) {
   final allRecipes = ref.watch(recipeProvider);
   // Sort recipes by rating and return top ones
@@ -26,11 +28,13 @@ final popularRecipesProvider = Provider<List<Recipe>>((ref) {
   return sortedRecipes.take(6).toList();
 });
 
+// Categories provider - uses existing category provider
 // Use the existing categoriesProvider from category_provider.dart
 final categoriesProvider = Provider<List<Category>>((ref) {
   return ref.watch(categoryProvider);
 });
 
+// Main HomeScreen Widget - a stateful widget that uses Riverpod for state management
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -38,6 +42,7 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
+// State Class (_HomeScreenState) - Manages scroll behavior to show/hide search bar based on scroll position
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isSearchBarVisible = false;
@@ -63,6 +68,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       });
     }
   }
+
+// Build Method - uses a CustomScrollView with the following slivers
+//    - SliverAppBar: Collapsible app bar with search functionality
+//    - SliverToBoxAdapter: For categories, featured recipes, and popular recipes sections
+//    - SliverPadding and SliverGrid: For the popular recipes grid
 
   @override
   Widget build(BuildContext context) {
