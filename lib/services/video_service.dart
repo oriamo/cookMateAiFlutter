@@ -5,6 +5,9 @@ import 'package:camera/camera.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:image/image.dart' as img;
 
+// Import the availableCameras function explicitly from camera package
+import 'package:camera/camera.dart' show availableCameras;
+
 /// Service that handles video capture and processing
 class VideoService {
   // Camera controller
