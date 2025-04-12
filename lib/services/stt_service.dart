@@ -75,10 +75,11 @@ class SttService {
     if (_isListening) return true;
 
     try {
+      debugPrint('STT: Starting to listen...');
       _isListening = await _speechToText.listen(
         onResult: (result) {
           _resultController.add(result);
-          debugPrint('STT result: ${result.recognizedWords}');
+          debugPrint('STT result: "${result.recognizedWords}", final: ${result.finalResult}, confidence: ${result.confidence}');
         },
         localeId: localeId,
         listenFor: listenFor,
@@ -87,6 +88,7 @@ class SttService {
         partialResults: partialResults,
       );
 
+      debugPrint('STT: Listening started successfully? $_isListening');
       return _isListening;
     } catch (e) {
       debugPrint('Failed to start speech recognition: $e');
@@ -98,8 +100,10 @@ class SttService {
   Future<void> stopListening() async {
     if (!_isListening) return;
 
+    debugPrint('STT: Stopping speech recognition...');
     await _speechToText.stop();
     _isListening = false;
+    debugPrint('STT: Speech recognition stopped');
   }
 
   /// Cancel speech recognition

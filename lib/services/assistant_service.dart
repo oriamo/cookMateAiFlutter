@@ -280,6 +280,7 @@ class AssistantService {
   /// Handle STT result
   void _handleSttResult(SpeechRecognitionResult result) {
     final recognizedWords = result.recognizedWords;
+    debugPrint('STT result received: "${recognizedWords}", final: ${result.finalResult}');
 
     if (recognizedWords.isEmpty) return;
 
@@ -288,16 +289,17 @@ class AssistantService {
       final updatedMessage = AssistantMessage(
         content: recognizedWords,
         type: MessageType.user,
-        isInterim: true,
+        isInterim: !result.finalResult,
       );
 
       _currentInterimMessage = updatedMessage;
       _messageController.add(updatedMessage);
-    }
-
-    // If final result and we're not in continuous mode, process it
-    if (result.finalResult && !_isContinuousListening) {
-      _handleSpeechEnd();
+      
+      // If this is the final result, process it
+      if (result.finalResult) {
+        debugPrint('Processing final speech result: "$recognizedWords"');
+        _handleSpeechEnd();
+      }
     }
   }
 
