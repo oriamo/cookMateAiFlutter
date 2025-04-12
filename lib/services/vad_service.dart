@@ -13,7 +13,7 @@ enum VadState {
 /// Voice Activity Detection service that handles detecting when a user is speaking
 class VadService {
   // VAD controller instance
-  late VadHandlerBase _vadHandler;
+  late dynamic _vadHandler;
 
   // Stream subscriptions
   StreamSubscription? _speechStartSubscription;
