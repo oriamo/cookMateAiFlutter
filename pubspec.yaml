@@ -36,7 +36,7 @@ dependencies:
   flutter_gemini: ^2.0.1
 
   # Speech and Voice Processing
-  speech_to_text: ^6.6.0
+  speech_to_text: ^7.0.0
   flutter_tts: ^3.8.5
   vad: ^0.0.3
 
@@ -52,6 +52,9 @@ dependencies:
   path_provider: ^2.1.2
   permission_handler: ^11.3.1
   flutter_dotenv: ^5.1.0
+
+
+
 
 dev_dependencies:
   flutter_test:

@@ -109,6 +109,7 @@ class _PermissionsScreenState extends State<PermissionsScreen> {
     // Request storage permission
     if (!_storagePermission.isGranted) {
       final status = await Permission.storage.request();
+      print("status for storage permisons is: ${status}");
       setState(() {
         _storagePermission = PermissionStatus(
           isGranted: status.isGranted,
