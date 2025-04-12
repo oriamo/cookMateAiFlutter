@@ -1,6 +1,7 @@
 // lib/services/assistant_provider.dart
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'assistant_service.dart';
 
 /// Provider that wraps the AssistantService and exposes its functionality
@@ -147,3 +148,8 @@ class AssistantProvider extends ChangeNotifier {
     super.dispose();
   }
 }
+
+// Define a Riverpod provider for the AssistantProvider
+final assistantProvider = ChangeNotifierProvider<AssistantProvider>((ref) {
+  return AssistantProvider();
+});
