@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../models/user_profile.dart';
 import '../../providers/user_provider.dart';
+import 'dietary_preferences_screen.dart';
+import 'cooking_skill_level_screen.dart';
+import 'health_goals_screen.dart';
+import 'prep_time_preferences_screen.dart'; // Add this if it exists
 
 class PreferencesOnboardingScreen extends ConsumerStatefulWidget {
   const PreferencesOnboardingScreen({Key? key}) : super(key: key);
@@ -17,63 +20,88 @@ class _PreferencesOnboardingScreenState
   int _currentStep = 0;
   final int _totalSteps = 5;
 
-  // Health goals options
-  final List<String> _availableHealthGoals = [
-    'Lose Weight',
-    'Gain Muscle',
-    'Improve Energy',
-    'Better Digestion',
-    'Heart Health',
-    'Balanced Diet',
-  ];
+  // Health goals
   List<String> _selectedHealthGoals = [];
 
-  // Dietary preferences options
-  final List<String> _availableDietaryPreferences = [
-    'Vegetarian',
-    'Vegan',
-    'Pescatarian',
-    'Keto',
-    'Paleo',
-    'Low Carb',
-    'Mediterranean',
-    'Gluten-Free',
-    'Dairy-Free',
-  ];
+  // Dietary preferences
   List<String> _selectedDietaryPreferences = [];
 
-  // Allergies options
-  final List<String> _availableAllergies = [
-    'Peanuts',
-    'Tree Nuts',
-    'Milk',
-    'Eggs',
-    'Fish',
-    'Shellfish',
-    'Soy',
-    'Wheat',
-  ];
+  // Allergies
   List<String> _selectedAllergies = [];
 
-  // Cooking skill level options
-  final List<String> _cookingSkillLevels = [
-    'Beginner',
-    'Intermediate',
-    'Advanced',
-  ];
+  // Cooking skill level
   String _selectedSkillLevel = 'Beginner';
 
-  // Max prep time options (in minutes)
-  final List<int> _prepTimeOptions = [15, 30, 45, 60, 90, 120];
+  // Max prep time (in minutes)
   int _selectedPrepTime = 60;
 
+  // Reference keys to access child screens
+  final GlobalKey<HealthGoalsScreenState> _healthGoalsKey =
+      GlobalKey<HealthGoalsScreenState>();
+  final GlobalKey<DietaryRestrictionsScreenState> _dietaryKey =
+      GlobalKey<DietaryRestrictionsScreenState>();
+  final GlobalKey<DietaryRestrictionsScreenState> _allergiesKey =
+      GlobalKey<DietaryRestrictionsScreenState>();
+  final GlobalKey<CookingSkillLevelScreenState> _skillLevelKey =
+      GlobalKey<CookingSkillLevelScreenState>();
+  final GlobalKey<PrepTimePreferencesScreenState> _prepTimeKey =
+      GlobalKey<PrepTimePreferencesScreenState>();
+
   void _nextStep() {
+    // Save the data from the current screen before moving to the next one
+    _saveCurrentStepData();
+
     if (_currentStep < _totalSteps - 1) {
       setState(() {
         _currentStep++;
       });
     } else {
       _completeOnboarding();
+    }
+  }
+
+  void _saveCurrentStepData() {
+    switch (_currentStep) {
+      case 0: // Health Goals
+        if (_healthGoalsKey.currentState != null) {
+          setState(() {
+            _selectedHealthGoals =
+                _healthGoalsKey.currentState!.getSelectedHealthGoals();
+          });
+        }
+        break;
+      case 1: // Dietary Preferences
+        if (_dietaryKey.currentState != null) {
+          setState(() {
+            _selectedDietaryPreferences =
+                _dietaryKey.currentState!.getSelectedRestrictions();
+          });
+        }
+        break;
+      case 2: // Allergies
+        if (_allergiesKey.currentState != null) {
+          setState(() {
+            _selectedAllergies =
+                _allergiesKey.currentState!.getSelectedRestrictions();
+          });
+        }
+        break;
+      case 3: // Cooking Skill Level
+        if (_skillLevelKey.currentState != null) {
+          setState(() {
+            _selectedSkillLevel =
+                _skillLevelKey.currentState!.getSelectedSkillLevel();
+          });
+        }
+        break;
+      case 4: // Prep Time
+        if (_prepTimeKey.currentState != null) {
+          setState(() {
+            _selectedPrepTime =
+                _prepTimeKey.currentState!.getSelectedPrepTime();
+          });
+        }
+        break;
     }
   }
 
@@ -100,13 +128,43 @@ class _PreferencesOnboardingScreenState
     // Mark onboarding as complete
     await userProfileNotifier.completeOnboarding();
 
-    // Navigate to the home page instead of just popping
+    // Navigate to the home page
     if (mounted) {
       if (context.mounted) {
-        // Using GoRouter to navigate to the home page
         context.go('/');
       }
     }
+  }
+
+  // Callback functions to receive data from child screens
+  void _updateHealthGoals(List<String> healthGoals) {
+    setState(() {
+      _selectedHealthGoals = healthGoals;
+    });
+  }
+
+  void _updateDietaryPreferences(List<String> dietaryPreferences) {
+    setState(() {
+      _selectedDietaryPreferences = dietaryPreferences;
+    });
+  }
+
+  void updatePreferences(List<String> allergies) {
+    setState(() {
+      _selectedAllergies = allergies;
+    });
+  }
+
+  void _updateCookingSkill(String skillLevel) {
+    setState(() {
+      _selectedSkillLevel = skillLevel;
+    });
+  }
+
+  void _updatePrepTime(int prepTime) {
+    setState(() {
+      _selectedPrepTime = prepTime;
+    });
   }
 
   @override
@@ -175,251 +233,37 @@ class _PreferencesOnboardingScreenState
   Widget _buildCurrentStep() {
     switch (_currentStep) {
       case 0:
-        return _buildHealthGoalsStep();
+        return HealthGoalsScreen(
+          key: _healthGoalsKey,
+          isInCoordinator: true,
+        );
       case 1:
-        return _buildDietaryPreferencesStep();
+        return DietaryPreferenceScreen(
+          key: _dietaryKey,
+          isOnboarding: true,
+          isInCoordinator: true,
+        );
       case 2:
-        return _buildAllergiesStep();
+        return DietaryPreferenceScreen(
+          key: _allergiesKey,
+          isOnboarding: true,
+          isAllergiesScreen: true,
+          isInCoordinator: true,
+        );
       case 3:
-        return _buildCookingSkillStep();
+        return CookingSkillLevelScreen(
+          key: _skillLevelKey,
+          isOnboarding: true,
+          isInCoordinator: true,
+        );
       case 4:
-        return _buildPrepTimeStep();
+        return PrepTimePreferencesScreen(
+          key: _prepTimeKey,
+          isOnboarding: true,
+          isInCoordinator: true,
+        );
       default:
         return const SizedBox.shrink();
     }
-  }
-
-  Widget _buildHealthGoalsStep() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'What are your health goals?',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Select all that apply. This will help us recommend recipes that match your goals.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 24),
-          Wrap(
-            spacing: 8.0,
-            runSpacing: 8.0,
-            children: _availableHealthGoals.map((goal) {
-              final isSelected = _selectedHealthGoals.contains(goal);
-              return FilterChip(
-                label: Text(goal),
-                selected: isSelected,
-                onSelected: (selected) {
-                  setState(() {
-                    if (selected) {
-                      _selectedHealthGoals.add(goal);
-                    } else {
-                      _selectedHealthGoals.remove(goal);
-                    }
-                  });
-                },
-                backgroundColor: Colors.grey[200],
-                selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
-                checkmarkColor: Theme.of(context).primaryColor,
-                showCheckmark: true,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  side: BorderSide(
-                    color: isSelected
-                        ? Theme.of(context).primaryColor
-                        : Colors.transparent,
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDietaryPreferencesStep() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Dietary Preferences',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Select any special diets you follow.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 24),
-          Wrap(
-            spacing: 8.0,
-            runSpacing: 8.0,
-            children: _availableDietaryPreferences.map((diet) {
-              final isSelected = _selectedDietaryPreferences.contains(diet);
-              return FilterChip(
-                label: Text(diet),
-                selected: isSelected,
-                onSelected: (selected) {
-                  setState(() {
-                    if (selected) {
-                      _selectedDietaryPreferences.add(diet);
-                    } else {
-                      _selectedDietaryPreferences.remove(diet);
-                    }
-                  });
-                },
-                backgroundColor: Colors.grey[200],
-                selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
-                checkmarkColor: Theme.of(context).primaryColor,
-                showCheckmark: true,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  side: BorderSide(
-                    color: isSelected
-                        ? Theme.of(context).primaryColor
-                        : Colors.transparent,
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAllergiesStep() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Any Food Allergies?',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Select any ingredients you need to avoid.',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 24),
-          Wrap(
-            spacing: 8.0,
-            runSpacing: 8.0,
-            children: _availableAllergies.map((allergy) {
-              final isSelected = _selectedAllergies.contains(allergy);
-              return FilterChip(
-                label: Text(allergy),
-                selected: isSelected,
-                onSelected: (selected) {
-                  setState(() {
-                    if (selected) {
-                      _selectedAllergies.add(allergy);
-                    } else {
-                      _selectedAllergies.remove(allergy);
-                    }
-                  });
-                },
-                backgroundColor: Colors.grey[200],
-                selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
-                checkmarkColor: Theme.of(context).primaryColor,
-                showCheckmark: true,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  side: BorderSide(
-                    color: isSelected
-                        ? Theme.of(context).primaryColor
-                        : Colors.transparent,
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCookingSkillStep() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Your Cooking Experience',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'How would you describe your cooking skills?',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 24),
-          ...List.generate(_cookingSkillLevels.length, (index) {
-            final skill = _cookingSkillLevels[index];
-            return RadioListTile<String>(
-              title: Text(skill),
-              value: skill,
-              groupValue: _selectedSkillLevel,
-              onChanged: (value) {
-                setState(() {
-                  _selectedSkillLevel = value!;
-                });
-              },
-              activeColor: Theme.of(context).primaryColor,
-              contentPadding: EdgeInsets.zero,
-            );
-          }),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPrepTimeStep() {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Maximum Preparation Time',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'How much time are you willing to spend preparing a meal?',
-            style: Theme.of(context).textTheme.bodyMedium,
-          ),
-          const SizedBox(height: 24),
-          ...List.generate(_prepTimeOptions.length, (index) {
-            final minutes = _prepTimeOptions[index];
-            String displayText = minutes >= 60
-                ? '${minutes ~/ 60} hour${minutes >= 120 ? "s" : ""}'
-                : '$minutes minutes';
-            return RadioListTile<int>(
-              title: Text(displayText),
-              value: minutes,
-              groupValue: _selectedPrepTime,
-              onChanged: (value) {
-                setState(() {
-                  _selectedPrepTime = value!;
-                });
-              },
-              activeColor: Theme.of(context).primaryColor,
-              contentPadding: EdgeInsets.zero,
-            );
-          }),
-        ],
-      ),
-    );
   }
 }

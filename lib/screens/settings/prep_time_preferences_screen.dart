@@ -4,20 +4,23 @@ import '../../providers/user_provider.dart';
 
 class PrepTimePreferencesScreen extends ConsumerStatefulWidget {
   final bool isOnboarding;
+  final bool isInCoordinator;
   final VoidCallback? onComplete;
 
   const PrepTimePreferencesScreen({
     super.key,
     this.isOnboarding = false,
+    this.isInCoordinator = false,
     this.onComplete,
   });
 
   @override
-  ConsumerState<PrepTimePreferencesScreen> createState() =>
-      _PrepTimePreferencesScreenState();
+  PrepTimePreferencesScreenState createState() =>
+      PrepTimePreferencesScreenState();
 }
 
-class _PrepTimePreferencesScreenState
+// Changed from _PrepTimePreferencesScreenState to public PrepTimePreferencesScreenState
+class PrepTimePreferencesScreenState
     extends ConsumerState<PrepTimePreferencesScreen> {
   late int _maxPrepTimeMinutes;
 
@@ -59,6 +62,11 @@ class _PrepTimePreferencesScreenState
     super.initState();
     final userProfile = ref.read(userProfileProvider);
     _maxPrepTimeMinutes = userProfile.maxPrepTimeMinutes;
+  }
+
+  // Method to expose the selected prep time to parent
+  int getSelectedPrepTime() {
+    return _maxPrepTimeMinutes;
   }
 
   @override
@@ -160,16 +168,17 @@ class _PrepTimePreferencesScreenState
                 },
               ),
             ),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _savePrepTimePreference,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
+            if (!widget.isInCoordinator)
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _savePrepTimePreference,
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  ),
+                  child: Text(widget.isOnboarding ? 'Next' : 'Save Preference'),
                 ),
-                child: Text(widget.isOnboarding ? 'Next' : 'Save Preference'),
               ),
-            ),
           ],
         ),
       ),

@@ -13,10 +13,11 @@ class HealthGoalsScreen extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<HealthGoalsScreen> createState() => _HealthGoalsScreenState();
+  HealthGoalsScreenState createState() => HealthGoalsScreenState();
 }
 
-class _HealthGoalsScreenState extends ConsumerState<HealthGoalsScreen> {
+// Changed from _HealthGoalsScreenState to public HealthGoalsScreenState
+class HealthGoalsScreenState extends ConsumerState<HealthGoalsScreen> {
   List<String> _selectedHealthGoals = [];
 
   final List<Map<String, dynamic>> _healthGoalOptions = [
@@ -77,6 +78,11 @@ class _HealthGoalsScreenState extends ConsumerState<HealthGoalsScreen> {
     _selectedHealthGoals = List<String>.from(userProfile.healthGoals);
   }
 
+  // Add this method to expose the selected health goals to the parent
+  List<String> getSelectedHealthGoals() {
+    return _selectedHealthGoals;
+  }
+
   @override
   Widget build(BuildContext context) {
     return widget.isInCoordinator
@@ -122,6 +128,7 @@ class _HealthGoalsScreenState extends ConsumerState<HealthGoalsScreen> {
             ),
           ),
         ),
+        // Only show the save button when not in coordinator
         if (!widget.isInCoordinator) _buildSaveButton(),
       ],
     );

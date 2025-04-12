@@ -4,20 +4,22 @@ import '../../providers/user_provider.dart';
 
 class CookingSkillLevelScreen extends ConsumerStatefulWidget {
   final bool isOnboarding;
+  final bool isInCoordinator;
   final VoidCallback? onComplete;
 
   const CookingSkillLevelScreen({
     super.key,
     this.isOnboarding = false,
+    this.isInCoordinator = false,
     this.onComplete,
   });
 
   @override
-  ConsumerState<CookingSkillLevelScreen> createState() =>
-      _CookingSkillLevelScreenState();
+  CookingSkillLevelScreenState createState() => CookingSkillLevelScreenState();
 }
 
-class _CookingSkillLevelScreenState
+// Changed from _CookingSkillLevelScreenState to public CookingSkillLevelScreenState
+class CookingSkillLevelScreenState
     extends ConsumerState<CookingSkillLevelScreen> {
   late String _selectedSkillLevel;
 
@@ -58,6 +60,11 @@ class _CookingSkillLevelScreenState
     _selectedSkillLevel = userProfile.cookingSkillLevel ?? 'Beginner';
   }
 
+  // Method to expose the selected skill level to parent
+  String getSelectedSkillLevel() {
+    return _selectedSkillLevel;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -67,7 +74,7 @@ class _CookingSkillLevelScreenState
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
         actions: [
-          if (widget.isOnboarding)
+          if (widget.isOnboarding && !widget.isInCoordinator)
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text(
@@ -133,29 +140,30 @@ class _CookingSkillLevelScreenState
             ),
           ),
 
-          // Continue button
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            child: ElevatedButton(
-              onPressed: _saveSkillLevel,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+          // Continue button - only show when not in coordinator
+          if (!widget.isInCoordinator)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              child: ElevatedButton(
+                onPressed: _saveSkillLevel,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
-              ),
-              child: Text(
-                widget.isOnboarding ? 'Finish' : 'Save Preference',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                child: Text(
+                  widget.isOnboarding ? 'Finish' : 'Save Preference',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );

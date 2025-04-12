@@ -4,20 +4,24 @@ import '../../providers/user_provider.dart';
 
 class DietaryPreferenceScreen extends ConsumerStatefulWidget {
   final bool isOnboarding;
+  final bool isAllergiesScreen;
+  final bool isInCoordinator;
   final VoidCallback? onComplete;
 
   const DietaryPreferenceScreen({
     super.key,
     this.isOnboarding = false,
+    this.isAllergiesScreen = false,
+    this.isInCoordinator = false,
     this.onComplete,
   });
 
   @override
-  ConsumerState<DietaryPreferenceScreen> createState() =>
-      _DietaryRestrictionsScreenState();
+  DietaryRestrictionsScreenState createState() =>
+      DietaryRestrictionsScreenState();
 }
 
-class _DietaryRestrictionsScreenState
+class DietaryRestrictionsScreenState
     extends ConsumerState<DietaryPreferenceScreen> {
   late List<String> _selectedRestrictions;
 
@@ -88,8 +92,13 @@ class _DietaryRestrictionsScreenState
   void initState() {
     super.initState();
     final userProfile = ref.read(userProfileProvider);
-    _selectedRestrictions =
-        List<String>.from(userProfile.dietaryPreferences ?? []);
+
+    if (widget.isAllergiesScreen) {
+      _selectedRestrictions = List<String>.from(userProfile.allergies ?? []);
+    } else {
+      _selectedRestrictions =
+          List<String>.from(userProfile.dietaryPreferences ?? []);
+    }
 
     // Default to 'No Restrictions' if nothing is selected
     if (_selectedRestrictions.isEmpty) {
@@ -97,16 +106,26 @@ class _DietaryRestrictionsScreenState
     }
   }
 
+  // Add this method to expose the selected restrictions to the parent
+  List<String> getSelectedRestrictions() {
+    // Don't include "No Restrictions" in the returned list
+    return _selectedRestrictions.contains('No Restrictions')
+        ? <String>[]
+        : _selectedRestrictions;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dietary Restrictions'),
+        title: Text(widget.isAllergiesScreen
+            ? 'Food Allergies'
+            : 'Dietary Restrictions'),
         automaticallyImplyLeading: !widget.isOnboarding,
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
         actions: [
-          if (widget.isOnboarding)
+          if (widget.isOnboarding && !widget.isInCoordinator)
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: const Text(
@@ -118,8 +137,8 @@ class _DietaryRestrictionsScreenState
       ),
       body: Column(
         children: [
-          // Progress Indicator
-          if (widget.isOnboarding)
+          // Progress Indicator - only show this when NOT in coordinator
+          if (widget.isOnboarding && !widget.isInCoordinator)
             Container(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Row(
@@ -164,17 +183,21 @@ class _DietaryRestrictionsScreenState
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text(
-                    'Any dietary restrictions?',
-                    style: TextStyle(
+                  Text(
+                    widget.isAllergiesScreen
+                        ? 'Any food allergies?'
+                        : 'Any dietary restrictions?',
+                    style: const TextStyle(
                       fontSize: 28,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'Select any dietary restrictions you follow. We\'ll tailor your meal options accordingly.',
-                    style: TextStyle(
+                  Text(
+                    widget.isAllergiesScreen
+                        ? 'Select any food allergies you have. We\'ll make sure to exclude these ingredients from your recipes.'
+                        : 'Select any dietary restrictions you follow. We\'ll tailor your meal options accordingly.',
+                    style: const TextStyle(
                       fontSize: 16,
                       color: Colors.grey,
                     ),
@@ -190,29 +213,30 @@ class _DietaryRestrictionsScreenState
             ),
           ),
 
-          // Continue button
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            child: ElevatedButton(
-              onPressed: _saveDietaryRestrictions,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+          // Continue button - only show when not in coordinator
+          if (!widget.isInCoordinator)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              child: ElevatedButton(
+                onPressed: _saveDietaryRestrictions,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
-              ),
-              child: Text(
-                widget.isOnboarding ? 'Continue' : 'Save Preferences',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
+                child: Text(
+                  widget.isOnboarding ? 'Continue' : 'Save Preferences',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
