@@ -43,10 +43,9 @@ You have both voice and vision capabilities, allowing you to see images and resp
         return false;
       }
 
-      // Initialize Gemini
+      // Initialize Gemini - use the singleton that was already initialized in main.dart
       _gemini = Gemini.instance;
-      await Gemini.init(apiKey: apiKey);
-
+      
       // Initialize GenerativeModel for more advanced features
       _generativeModel = genai.GenerativeModel(
         model: 'gemini-pro',
