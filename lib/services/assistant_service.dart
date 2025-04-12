@@ -232,74 +232,144 @@ class AssistantService {
 
   /// Handle start of speech detected by VAD
   void _handleSpeechStart() async {
-    debugPrint('Speech start detected');
+    debugPrint('ASSISTANT_DEBUG: Speech start detected by VAD');
 
-    // Start STT
-    await _sttService.startListening(
-      partialResults: true,
-    );
+    try {
+      // Log status before starting
+      _sttService.logSpeechStatus();
+      
+      // Start STT with more specific parameters
+      final sttStarted = await _sttService.startListening(
+        partialResults: true,
+        pauseFor: const Duration(seconds: 1), // Shorter pause to be more responsive
+        listenFor: const Duration(seconds: 15), // Reasonable timeout
+      );
+      
+      debugPrint('ASSISTANT_DEBUG: STT start result: $sttStarted');
+      
+      if (!sttStarted) {
+        debugPrint('ASSISTANT_DEBUG: Failed to start STT, will try again');
+        // Try once more after a short delay
+        await Future.delayed(const Duration(milliseconds: 200));
+        await _sttService.startListening(partialResults: true);
+      }
 
-    // Create interim message
-    _currentInterimMessage = AssistantMessage(
-      content: '',
-      type: MessageType.user,
-      isInterim: true,
-    );
+      // Create interim message
+      _currentInterimMessage = AssistantMessage(
+        content: '',
+        type: MessageType.user,
+        isInterim: true,
+      );
 
-    // Add to stream
-    _messageController.add(_currentInterimMessage!);
+      // Add to stream
+      _messageController.add(_currentInterimMessage!);
+      debugPrint('ASSISTANT_DEBUG: Created empty interim message');
 
-    _updateState(AssistantState.listening);
+      _updateState(AssistantState.listening);
+    } catch (e) {
+      debugPrint('ASSISTANT_DEBUG: Error in _handleSpeechStart: $e');
+      _errorController.add('Failed to start speech recognition: $e');
+    }
   }
 
   /// Handle end of speech detected by VAD
   void _handleSpeechEnd() async {
-    debugPrint('Speech end detected');
+    debugPrint('ASSISTANT_DEBUG: Speech end detected by VAD');
 
-    // Stop STT
-    await _sttService.stopListening();
+    try {
+      // Get current status
+      _sttService.logSpeechStatus();
 
-    // Finalize current message if it exists and has content
-    if (_currentInterimMessage != null && _currentInterimMessage!.content.isNotEmpty) {
-      final finalMessage = AssistantMessage(
-        content: _currentInterimMessage!.content,
-        type: MessageType.user,
-        isInterim: false,
-      );
+      // Stop STT
+      await _sttService.stopListening();
+      
+      debugPrint('ASSISTANT_DEBUG: Current interim message: ${_currentInterimMessage?.content}');
 
-      _messages.add(finalMessage);
-      _messageController.add(finalMessage);
+      // Finalize current message if it exists and has content
+      if (_currentInterimMessage != null) {
+        final content = _currentInterimMessage!.content.trim();
+        
+        if (content.isNotEmpty) {
+          debugPrint('ASSISTANT_DEBUG: Creating final message with content: "$content"');
+          
+          final finalMessage = AssistantMessage(
+            content: content,
+            type: MessageType.user,
+            isInterim: false,
+          );
 
-      // Process the message
-      _processUserMessage(finalMessage);
+          _messages.add(finalMessage);
+          _messageController.add(finalMessage);
+
+          // Process the message
+          _processUserMessage(finalMessage);
+        } else {
+          debugPrint('ASSISTANT_DEBUG: No content in interim message, not processing');
+          _updateState(AssistantState.idle);
+        }
+      } else {
+        debugPrint('ASSISTANT_DEBUG: No interim message exists, nothing to process');
+        _updateState(AssistantState.idle);
+      }
+
+      _currentInterimMessage = null;
+    } catch (e) {
+      debugPrint('ASSISTANT_DEBUG: Error in _handleSpeechEnd: $e');
+      _errorController.add('Failed to process speech: $e');
+      _updateState(AssistantState.idle);
     }
-
-    _currentInterimMessage = null;
   }
 
   /// Handle STT result
   void _handleSttResult(SpeechRecognitionResult result) {
-    final recognizedWords = result.recognizedWords;
-    debugPrint('STT result received: "${recognizedWords}", final: ${result.finalResult}');
+    final recognizedWords = result.recognizedWords.trim();
+    final confidence = result.confidence;
+    
+    debugPrint('ASSISTANT_DEBUG: STT result received - words: "${recognizedWords}", final: ${result.finalResult}, confidence: $confidence');
 
-    if (recognizedWords.isEmpty) return;
+    // Skip empty results or very low confidence results
+    if (recognizedWords.isEmpty) {
+      debugPrint('ASSISTANT_DEBUG: Empty speech result, ignoring');
+      return;
+    }
+    
+    if (confidence < 0.1 && result.finalResult) {
+      debugPrint('ASSISTANT_DEBUG: Very low confidence final result, ignoring');
+      return;
+    }
 
-    // Update interim message
-    if (_currentInterimMessage != null) {
-      final updatedMessage = AssistantMessage(
-        content: recognizedWords,
-        type: MessageType.user,
-        isInterim: !result.finalResult,
-      );
+    try {
+      // Update interim message
+      if (_currentInterimMessage != null) {
+        debugPrint('ASSISTANT_DEBUG: Updating interim message from "${_currentInterimMessage!.content}" to "$recognizedWords"');
+        
+        final updatedMessage = AssistantMessage(
+          content: recognizedWords,
+          type: MessageType.user,
+          isInterim: !result.finalResult,
+        );
 
-      _currentInterimMessage = updatedMessage;
-      _messageController.add(updatedMessage);
-      
-      // If this is the final result, process it
-      if (result.finalResult) {
-        debugPrint('Processing final speech result: "$recognizedWords"');
-        _handleSpeechEnd();
+        _currentInterimMessage = updatedMessage;
+        _messageController.add(updatedMessage);
+        
+        // Log speech recognition status after updating message
+        _sttService.logSpeechStatus();
+        
+        // If this is the final result, process it immediately
+        // This helps in case the VAD speech end event doesn't trigger properly
+        if (result.finalResult) {
+          debugPrint('ASSISTANT_DEBUG: Processing final speech result directly from STT');
+          
+          // Use a slight delay to avoid race conditions with other events
+          Future.delayed(const Duration(milliseconds: 100), () {
+            _handleSpeechEnd();
+          });
+        }
+      } else {
+        debugPrint('ASSISTANT_DEBUG: Received STT result but no interim message exists');
       }
+    } catch (e) {
+      debugPrint('ASSISTANT_DEBUG: Error in _handleSttResult: $e');
     }
   }
 
