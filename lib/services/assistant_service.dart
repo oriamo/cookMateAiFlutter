@@ -172,7 +172,7 @@ class AssistantService {
       } else if (ttsState == TtsState.stopped || ttsState == TtsState.paused) {
         // If we're in continuous listening mode, go back to listening
         if (_isContinuousListening) {
-          _startListening();
+          startListening(continuous: true);
         } else {
           _updateState(AssistantState.idle);
         }
@@ -315,10 +315,7 @@ class AssistantService {
       String response;
       if (needsImage) {
         // Capture a frame if not already provided
-        Uint8List? imageData = message.image;
-        if (imageData == null) {
-          imageData = await _videoService.captureFrame();
-        }
+        Uint8List? imageData = message.image ?? await _videoService.captureFrame();
 
         if (imageData == null || imageData.isEmpty) {
           response = "I'd like to see what you're referring to, but I'm having trouble accessing the camera.";
@@ -438,11 +435,8 @@ class AssistantService {
     _addSystemMessage('Chat history cleared.');
   }
 
-  /  // Get the camera controller for UI display
+  /// Get the camera controller for UI display
   CameraController? get cameraController => _videoService.cameraController;
-
-  // Expose video service for direct access
-  VideoService get videoService => _videoService;
 
   /// Clean up resources
   void dispose() async {
