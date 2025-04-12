@@ -47,7 +47,7 @@ class _MeasurementUnitsScreenState
   void initState() {
     super.initState();
     final userProfile = ref.read(userProfileProvider);
-    _selectedMeasurementSystem = userProfile.measurementUnit ?? 'Metric';
+    _selectedMeasurementSystem = userProfile.measurementUnit;
   }
 
   @override

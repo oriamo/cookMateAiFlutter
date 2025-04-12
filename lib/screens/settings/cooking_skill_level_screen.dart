@@ -57,7 +57,7 @@ class CookingSkillLevelScreenState
   void initState() {
     super.initState();
     final userProfile = ref.read(userProfileProvider);
-    _selectedSkillLevel = userProfile.cookingSkillLevel ?? 'Beginner';
+    _selectedSkillLevel = userProfile.cookingSkillLevel;
   }
 
   // Method to expose the selected skill level to parent

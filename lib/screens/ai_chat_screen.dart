@@ -16,11 +16,11 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   bool _isTyping = false;
-  
+
   // Store suggestions in the user's previous search and commonly used cooking queries
   List<String> get _suggestionChips {
     final userProfile = ref.watch(userProfileProvider);
-    
+
     // Combine user's recent searches with default suggestions
     final defaultSuggestions = [
       "What can I cook with chicken and pasta?",
@@ -32,22 +32,22 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
       "Give me a recipe for chocolate chip cookies",
       "What pairs well with salmon?"
     ];
-    
+
     // Use user's recent searches first (up to 3), then add default suggestions
     final suggestions = <String>[];
-    
+
     // Add up to 3 recent searches if available
     if (userProfile.recentSearches.isNotEmpty) {
       suggestions.addAll(userProfile.recentSearches.take(3));
     }
-    
+
     // Fill remaining slots with default suggestions
     for (final suggestion in defaultSuggestions) {
       if (!suggestions.contains(suggestion) && suggestions.length < 8) {
         suggestions.add(suggestion);
       }
     }
-    
+
     return suggestions;
   }
 
@@ -57,7 +57,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
     _scrollController.dispose();
     super.dispose();
   }
-  
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -69,37 +69,37 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
       }
     });
   }
-  
+
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
-    
+
     _messageController.clear();
-    
+
     // Add query to recent searches
     await ref.read(userProfileProvider.notifier).addRecentSearch(text);
-    
+
     // Show typing indicator
     setState(() {
       _isTyping = true;
     });
-    
+
     // Send message using Riverpod
     await ref.read(chatMessagesProvider.notifier).sendMessage(text);
-    
+
     // Hide typing indicator
     setState(() {
       _isTyping = false;
     });
-    
+
     _scrollToBottom();
   }
-  
+
   void _useSuggestion(String suggestion) {
     _messageController.text = suggestion;
     _sendMessage();
   }
-  
+
   void _clearChat() {
     ref.read(chatMessagesProvider.notifier).clearChat();
   }
@@ -108,12 +108,12 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
   Widget build(BuildContext context) {
     // Watch chat messages
     final messages = ref.watch(chatMessagesProvider);
-    
+
     // Scroll to bottom when messages change
     if (messages.isNotEmpty) {
       _scrollToBottom();
     }
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Row(
@@ -124,14 +124,14 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
               child: Icon(
                 Icons.restaurant,
                 size: 18,
-                color: Colors.deepPurple,
+                color: Colors.green,
               ),
             ),
             SizedBox(width: 8),
             Text('Chef AI'),
           ],
         ),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Colors.green,
         foregroundColor: Colors.white,
         actions: [
           IconButton(
@@ -174,7 +174,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                     },
                   ),
           ),
-          
+
           if (_isTyping)
             Container(
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
@@ -186,7 +186,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                     height: 16,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Colors.deepPurple,
+                      color: Colors.green,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -200,7 +200,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                 ],
               ),
             ),
-          
+
           // Suggestion chips - now using user's recent searches
           if (messages.length <= 2)
             Container(
@@ -215,22 +215,22 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                       suggestion,
                       style: TextStyle(
                         fontSize: 12,
-                        color: Colors.deepPurple.shade700,
+                        color: Colors.green.shade700,
                       ),
                     ),
-                    backgroundColor: Colors.deepPurple.shade50,
+                    backgroundColor: Colors.green.shade50,
                     onPressed: () => _useSuggestion(suggestion),
                   );
                 }).toList(),
               ),
             ),
-          
+
           // Divider
           Container(
             height: 1,
             color: Colors.grey.shade200,
           ),
-          
+
           // Message input
           Padding(
             padding: const EdgeInsets.all(8.0),
@@ -240,7 +240,8 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                 IconButton(
                   icon: const Icon(Icons.mic),
                   onPressed: _isTyping ? null : () {},
-                  color: _isTyping ? Colors.grey.shade400 : Colors.grey.shade600,
+                  color:
+                      _isTyping ? Colors.grey.shade400 : Colors.grey.shade600,
                 ),
                 Expanded(
                   child: TextField(
@@ -268,24 +269,24 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                 IconButton(
                   icon: const Icon(Icons.send),
                   onPressed: _isTyping ? null : _sendMessage,
-                  color: _isTyping ? Colors.grey.shade400 : Colors.deepPurple,
+                  color: _isTyping ? Colors.grey.shade400 : Colors.green,
                 ),
               ],
             ),
           ),
-          
+
           // Bottom safe area padding
           SizedBox(height: MediaQuery.of(context).padding.bottom),
         ],
       ),
     );
   }
-  
+
   Widget _buildEmptyState() {
     // Get user profile to personalize the empty state
     final userProfile = ref.watch(userProfileProvider);
     final hasName = userProfile.name.isNotEmpty;
-    
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -297,7 +298,9 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            hasName ? 'Hi ${userProfile.name}, ready to cook something?' : 'Start a conversation with Chef AI',
+            hasName
+                ? 'Hi ${userProfile.name}, ready to cook something?'
+                : 'Start a conversation with Chef AI',
             style: TextStyle(
               fontSize: 16,
               color: Colors.grey.shade600,
@@ -320,7 +323,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                 'Your preferences: ${userProfile.dietaryPreferences.join(", ")}',
                 style: TextStyle(
                   fontSize: 12,
-                  color: Colors.deepPurple.shade300,
+                  color: Colors.green.shade300,
                   fontStyle: FontStyle.italic,
                 ),
                 textAlign: TextAlign.center,
@@ -330,23 +333,23 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
       ),
     );
   }
-  
+
   Widget _buildMessageBubble(ChatMessage message) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
-        mainAxisAlignment: message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+        mainAxisAlignment:
+            message.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!message.isUser) _buildAvatar(),
           const SizedBox(width: 8),
-          
           Flexible(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: message.isUser
-                    ? Colors.deepPurple.shade100
+                    ? Colors.green.shade100
                     : message.isError
                         ? Colors.red.shade50
                         : Colors.grey.shade100,
@@ -377,18 +380,17 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
               ),
             ),
           ),
-          
           const SizedBox(width: 8),
           if (message.isUser) _buildUserAvatar(),
         ],
       ),
     );
   }
-  
+
   Widget _buildAvatar() {
     return const CircleAvatar(
       radius: 16,
-      backgroundColor: Colors.deepPurple,
+      backgroundColor: Colors.green,
       child: Icon(
         Icons.restaurant,
         size: 16,
@@ -396,10 +398,10 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
       ),
     );
   }
-  
+
   Widget _buildUserAvatar() {
     final userProfile = ref.watch(userProfileProvider);
-    
+
     // If user has an avatar, use it; otherwise, use default
     if (userProfile.avatarUrl.isNotEmpty) {
       return CircleAvatar(
@@ -407,11 +409,11 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
         backgroundImage: NetworkImage(userProfile.avatarUrl),
         onBackgroundImageError: (_, __) {
           // Fallback to default avatar on error
-          return;  // Don't return anything here, just handle the error
+          return; // Don't return anything here, just handle the error
         },
       );
     }
-    
+
     return CircleAvatar(
       radius: 16,
       backgroundColor: Colors.blue.shade500,
@@ -422,7 +424,7 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
       ),
     );
   }
-  
+
   String _formatTime(DateTime timestamp) {
     final hour = timestamp.hour.toString().padLeft(2, '0');
     final minute = timestamp.minute.toString().padLeft(2, '0');

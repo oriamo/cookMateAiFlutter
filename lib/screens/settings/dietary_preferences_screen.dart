@@ -94,7 +94,7 @@ class DietaryRestrictionsScreenState
     final userProfile = ref.read(userProfileProvider);
 
     if (widget.isAllergiesScreen) {
-      _selectedRestrictions = List<String>.from(userProfile.allergies ?? []);
+      _selectedRestrictions = List<String>.from(userProfile.allergies);
     } else {
       _selectedRestrictions =
           List<String>.from(userProfile.dietaryPreferences ?? []);

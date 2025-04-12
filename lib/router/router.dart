@@ -10,6 +10,8 @@ import '../screens/category_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/explore_screen.dart';
 import '../screens/ai_chat_screen.dart';
+import '../screens/ingredients_screen.dart';
+import '../screens/ingredient_detail_screen.dart';
 import '../screens/settings/preferences_onboarding_screen.dart';
 import '../widgets/app_scaffold.dart';
 
@@ -107,6 +109,23 @@ final router = GoRouter(
           path: '/ai-chat',
           name: 'ai-chat',
           builder: (context, state) => const AIChatScreen(),
+        ),
+
+        // Ingredients route (Shopping List)
+        GoRoute(
+          path: '/ingredients',
+          name: 'ingredients',
+          builder: (context, state) => const IngredientsScreen(),
+        ),
+
+        // Ingredient detail route
+        GoRoute(
+          path: '/ingredient/:id',
+          name: 'ingredient-detail',
+          builder: (context, state) {
+            final ingredientId = state.pathParameters['id'] ?? '';
+            return IngredientDetailScreen(ingredientId: ingredientId);
+          },
         ),
       ],
     ),

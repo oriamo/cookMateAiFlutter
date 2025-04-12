@@ -1,3 +1,4 @@
+import 'package:cook_mate_ai/screens/settings/app_settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/user_provider.dart';
@@ -121,9 +122,11 @@ class UserPreferencesScreen extends ConsumerWidget {
                   'App Settings',
                   Icons.settings_rounded,
                   () {
-                    // Navigate to app settings when implemented
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Coming soon!')),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AppSettingsScreen(),
+                      ),
                     );
                   },
                 ),

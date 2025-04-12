@@ -20,7 +20,8 @@ class CookMateApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.deepPurple,
-          primary: Colors.deepPurple,
+          primary: Colors.green,
+          // primary: Colors.deepPurple,
           secondary: Colors.deepOrange,
         ),
         useMaterial3: true,
