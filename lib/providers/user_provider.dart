@@ -39,6 +39,10 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
     List<String>? dietaryPreferences,
     List<String>? allergies,
     String? cookingSkillLevel,
+    List<String>? healthGoals,
+    String? measurementUnit,
+    int? maxPrepTimeMinutes,
+    bool? hasCompletedOnboarding,
   }) async {
     state = state.copyWith(
       name: name,
@@ -47,6 +51,9 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
       dietaryPreferences: dietaryPreferences,
       allergies: allergies,
       cookingSkillLevel: cookingSkillLevel,
+      healthGoals: healthGoals,
+      maxPrepTimeMinutes: maxPrepTimeMinutes,
+      hasCompletedOnboarding: hasCompletedOnboarding,
     );
     await _saveUserProfile();
   }
@@ -124,6 +131,35 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
     );
     await _saveUserProfile();
     _logDebug('Measurement unit updated to: $unit');
+  }
+
+  Future<void> updateHealthGoals(List<String> healthGoals) async {
+    state = state.copyWith(
+      healthGoals: healthGoals,
+    );
+    await _saveUserProfile();
+    _logDebug('Health goals updated: $healthGoals');
+  }
+
+  Future<void> updateMaxPrepTime(int minutes) async {
+    state = state.copyWith(
+      maxPrepTimeMinutes: minutes,
+    );
+    await _saveUserProfile();
+    _logDebug('Max preparation time updated to: $minutes minutes');
+  }
+
+  Future<void> completeOnboarding() async {
+    state = state.copyWith(
+      hasCompletedOnboarding: true,
+    );
+    await _saveUserProfile();
+    _logDebug('User onboarding completed');
+  }
+
+  bool shouldShowOnboarding() {
+    // Show onboarding if user hasn't completed it yet
+    return !state.hasCompletedOnboarding;
   }
 
   void _logDebug(String message) {

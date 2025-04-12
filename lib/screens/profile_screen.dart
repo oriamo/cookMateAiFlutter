@@ -8,6 +8,7 @@ import 'settings/dietary_preferences_screen.dart';
 import 'settings/cooking_skill_level_screen.dart';
 import 'settings/measurement_units_screen.dart';
 import 'settings/app_settings_screen.dart';
+import 'settings/user_preferences_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -53,8 +54,9 @@ class ProfileScreen extends ConsumerWidget {
                           ),
                           image: DecorationImage(
                             image: NetworkImage(
-                              userProfile.avatarUrl ??
-                                  'https://via.placeholder.com/150',
+                              userProfile.avatarUrl != null
+                                  ? userProfile.avatarUrl!
+                                  : 'https://via.placeholder.com/150',
                             ),
                             fit: BoxFit.cover,
                           ),
@@ -150,6 +152,19 @@ class ProfileScreen extends ConsumerWidget {
                         context,
                         MaterialPageRoute(
                           builder: (context) => const EditProfileScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  _buildSettingTile(
+                    context,
+                    'User Preferences',
+                    Icons.tune_outlined,
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const UserPreferencesScreen(),
                         ),
                       );
                     },
