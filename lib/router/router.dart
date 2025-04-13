@@ -1,4 +1,5 @@
 import 'package:go_router/go_router.dart';
+import '../screens/assistant_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/user_provider.dart';
@@ -10,6 +11,7 @@ import '../screens/category_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/explore_screen.dart';
 import '../screens/ai_chat_screen.dart';
+import '../screens/voice_agent_screen.dart';
 import '../screens/ingredients_screen.dart';
 import '../screens/ingredient_detail_screen.dart';
 import '../screens/settings/preferences_onboarding_screen.dart';
@@ -109,7 +111,14 @@ final router = GoRouter(
         GoRoute(
           path: '/ai-chat',
           name: 'ai-chat',
-          builder: (context, state) => const AIChatScreen(),
+          builder: (context, state) => const AssistantScreen(),
+        ),
+        
+        // Voice Agent route
+        GoRoute(
+          path: '/voice-agent',
+          name: 'voice-agent',
+          builder: (context, state) => const VoiceAgentScreen(),
         ),
 
         // Ingredients route (Shopping List)

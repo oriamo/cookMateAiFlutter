@@ -1,15 +1,13 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:google_generative_ai/google_generative_ai.dart' as genai;
+import 'package:flutter_gemini/flutter_gemini.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:uuid/uuid.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'dart:convert';
 import '../models/chat_message.dart';
-
-// This should be stored securely in a .env file or as a server-side secret
-// Consider replacing this with a proper secret management solution
-const String _geminiApiKey = 'AIzaSyCUWRB78A2bhi5Git8W243DyU3ANL_s1kU';
 
 enum AIServiceError {
   network,
@@ -22,19 +20,19 @@ enum AIServiceError {
 }
 
 class AIChatService {
-  final GenerativeModel _model;
-  late ChatSession _chat;
+  final genai.GenerativeModel _model;
+  late genai.ChatSession _chat;
   final int _maxRetries = 2;
   
   AIChatService()
-      : _model = GenerativeModel(
+      : _model = genai.GenerativeModel(
           model: 'gemini-1.5-flash',
-          apiKey: _geminiApiKey,
+          apiKey: dotenv.env['GEMINI_API_KEY'] ?? '',
           safetySettings: [
-            SafetySetting(HarmCategory.dangerousContent, HarmBlockThreshold.medium),
-            SafetySetting(HarmCategory.harassment, HarmBlockThreshold.medium),
-            SafetySetting(HarmCategory.hateSpeech, HarmBlockThreshold.medium),
-            SafetySetting(HarmCategory.sexuallyExplicit, HarmBlockThreshold.medium),
+            genai.SafetySetting(genai.HarmCategory.dangerousContent, genai.HarmBlockThreshold.medium),
+            genai.SafetySetting(genai.HarmCategory.harassment, genai.HarmBlockThreshold.medium),
+            genai.SafetySetting(genai.HarmCategory.hateSpeech, genai.HarmBlockThreshold.medium),
+            genai.SafetySetting(genai.HarmCategory.sexuallyExplicit, genai.HarmBlockThreshold.medium),
           ],
         ) {
     _initChat();
@@ -43,11 +41,11 @@ class AIChatService {
   void _initChat() {
     _chat = _model.startChat(
       history: [
-        Content('user', [
-          TextPart('You are CookMate AI, a helpful cooking assistant. Your goal is to provide cooking advice, recipe suggestions, and food-related tips. Please provide concise, practical responses focused on cooking, food preparation, and recipe guidance. Always consider dietary restrictions when they are mentioned. If you don\'t know the answer to a cooking question, say so honestly rather than making up information.')
+        genai.Content('user', [
+          genai.TextPart('You are CookMate AI, a helpful cooking assistant. Your goal is to provide cooking advice, recipe suggestions, and food-related tips. Please provide concise, practical responses focused on cooking, food preparation, and recipe guidance. Always consider dietary restrictions when they are mentioned. If you don\'t know the answer to a cooking question, say so honestly rather than making up information.')
         ]),
-        Content('model', [
-          TextPart('Hello! I\'m CookMate AI, your personal cooking assistant. I\'m here to help with recipe ideas, cooking techniques, ingredient substitutions, and any other food-related questions you might have. Feel free to ask about specific cuisines, dietary preferences, or quick meal ideas. How can I assist with your cooking today?')
+        genai.Content('model', [
+          genai.TextPart('Hello! I\'m CookMate AI, your personal cooking assistant. I\'m here to help with recipe ideas, cooking techniques, ingredient substitutions, and any other food-related questions you might have. Feel free to ask about specific cuisines, dietary preferences, or quick meal ideas. How can I assist with your cooking today?')
         ]),
       ],
     );
@@ -106,7 +104,7 @@ class AIChatService {
   Future<String> sendMessage(String message, {int retryCount = 0}) async {
     try {
       final response = await _chat.sendMessage(
-        Content('user', [TextPart(message)]),
+        genai.Content('user', [genai.TextPart(message)]),
       );
 
       final responseText = response.text;
