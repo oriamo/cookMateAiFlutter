@@ -642,7 +642,8 @@ class DeepgramAgentService {
     }
   }
   
-  /// Stop listening for voice input
+  /// Stop listening for voice input but keep the connection open 
+  /// (pauses the conversation)
   Future<bool> stopListening() async {
     if (!_isConnected || !_isListening) return false;
     
@@ -668,6 +669,58 @@ class DeepgramAgentService {
     } catch (e) {
       debugPrint('🔴 DEEPGRAM: Failed to stop listening: $e');
       _errorController.add('Failed to stop listening: $e');
+      return false;
+    }
+  }
+  
+  /// Completely end the conversation and close all connections
+  Future<bool> endConversation() async {
+    debugPrint('🔵 DEEPGRAM: Ending conversation and closing all connections');
+    
+    try {
+      // Stop recording first to ensure no more audio is sent
+      await _stopRecording();
+      
+      // Stop all timers
+      _stopForcedAudioTimer();
+      _inactivityTimer?.cancel();
+      _inactivityTimer = null;
+      _stopHeartbeatTimer();
+      
+      // Stop audio playback
+      await _stopAudioStream();
+      
+      // Set states before disconnecting
+      _isListening = false;
+      
+      // Close the WebSocket connection
+      if (_isConnected) {
+        debugPrint('🔵 DEEPGRAM: Closing WebSocket connection');
+        try {
+          _channel?.sink.close();
+        } catch (e) {
+          debugPrint('🔴 DEEPGRAM: Error closing WebSocket: $e');
+        }
+      }
+      
+      _channel = null;
+      _isConnected = false;
+      
+      // Update state to idle
+      _updateState(DeepgramAgentState.idle);
+      
+      debugPrint('🟢 DEEPGRAM: Conversation ended successfully');
+      return true;
+    } catch (e) {
+      debugPrint('🔴 DEEPGRAM: Error ending conversation: $e');
+      _errorController.add('Error ending conversation: $e');
+      
+      // Make sure we still set the disconnected state even if there was an error
+      _isConnected = false;
+      _isListening = false;
+      _channel = null;
+      _updateState(DeepgramAgentState.idle);
+      
       return false;
     }
   }

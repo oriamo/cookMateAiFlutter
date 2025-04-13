@@ -6,7 +6,10 @@ import 'package:go_router/go_router.dart';
 import 'package:animate_do/animate_do.dart';
 
 import '../services/assistant_service.dart';
+import '../services/deepgram_agent_provider.dart';
+import '../services/deepgram_agent_types.dart';
 import '../widgets/message_bubble.dart';
+import '../widgets/glowing_live_button.dart';
 
 // Provider for the assistant service
 final assistantServiceProvider = Provider<AssistantService>((ref) {
@@ -106,9 +109,15 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
     }
   }
   
-  // Navigate to voice agent screen
-  void _navigateToVoiceAgent() {
-    context.push('/voice-agent');
+  // Navigate to voice agent screen and start conversation automatically
+  void _navigateToVoiceAgentAndStart() {
+    context.push('/voice-agent').then((_) {
+      // Start conversation automatically when routed to voice agent
+      final deepgramProvider = ref.read(deepgramAgentProvider);
+      if (deepgramProvider.state == DeepgramAgentState.idle) {
+        deepgramProvider.startConversation();
+      }
+    });
   }
   
   @override
@@ -185,23 +194,6 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
               ),
             ),
           
-          // Live voice conversation button
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: ElevatedButton.icon(
-              icon: const Icon(Icons.mic),
-              label: const Text('Start Live Voice Conversation'),
-              style: ElevatedButton.styleFrom(
-                foregroundColor: Colors.white,
-                backgroundColor: Colors.green,
-                minimumSize: const Size(double.infinity, 44),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(22),
-                ),
-              ),
-              onPressed: _navigateToVoiceAgent,
-            ),
-          ),
           
           // Chat messages
           Expanded(
@@ -371,28 +363,14 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
       ),
       child: Row(
         children: [
-          // Voice input button
-          IconButton(
-            icon: Icon(
-              isListening ? Icons.mic : Icons.mic_none,
-              color: isListening ? Colors.red : null,
+          // Glowing LIVE button (replaces mic and camera buttons)
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: GlowingLiveButton(
+              onPressed: _navigateToVoiceAgentAndStart,
+              baseColor: Colors.deepPurple,
+              glowColor: Colors.purple.withOpacity(0.6),
             ),
-            onPressed: () {
-              if (isListening) {
-                assistantService.stopListening();
-              } else {
-                // Use manual mode for the mic button - don't use VAD to auto-stop
-                assistantService.startListening(continuous: true);
-              }
-            },
-            tooltip: isListening ? 'Stop listening' : 'Start listening',
-          ),
-          
-          // Camera capture button
-          IconButton(
-            icon: const Icon(Icons.camera_alt),
-            onPressed: isInputDisabled ? null : _captureAndSendImage,
-            tooltip: 'Capture image',
           ),
           
           // Text input field
