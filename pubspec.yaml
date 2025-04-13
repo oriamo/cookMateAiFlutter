@@ -58,7 +58,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
-  # Uncomment these lines once you've created the asset directories
-  # assets:
-  #   - assets/images/
-  #   - assets/animations/
+  assets:
+    - assets/images/
+    - assets/animations/
+    - assets/
