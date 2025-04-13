@@ -59,9 +59,11 @@ class DeepgramAgentService {
   // Create a TTS engine for audio playback
   final FlutterTts _tts = FlutterTts();
   
-  // Direct audio playback
+  // Optimized real-time audio playback
   bool _isPlayingAudio = false;
   AudioPlayer? _currentPlayer;
+  int _currentAudioResponseId = 0;
+  bool _shouldClearAudioOnNextPacket = false;
   
   // Message tracking for context
   final List<Map<String, dynamic>> _messages = [];
@@ -245,6 +247,9 @@ class DeepgramAgentService {
                 debugPrint('🔵 DEEPGRAM: User started speaking event');
                 _updateState(DeepgramAgentState.listening);
                 
+                // Flag to clear audio on next packet and cancel current playback
+                _shouldClearAudioOnNextPacket = true;
+                
                 // Cancel any ongoing audio playback
                 if (_isPlayingAudio) {
                   debugPrint('🔵 DEEPGRAM: Cancelling ongoing audio playback because user started speaking');
@@ -286,6 +291,14 @@ class DeepgramAgentService {
                   debugPrint('🔴 DEEPGRAM: $errorMsg');
                   _errorController.add(errorMsg);
                 }
+                break;
+                
+              case 'EndOfThought':
+                // Mark the transition from processing to speaking
+                debugPrint('🔵 DEEPGRAM: Received EndOfThought - AI finished processing');
+                // Reset audio sequence ID to prepare for fresh audio
+                _currentAudioResponseId++;
+                _shouldClearAudioOnNextPacket = true;
                 break;
                 
               default:
@@ -672,121 +685,89 @@ class DeepgramAgentService {
     debugPrint('🟢 DEEPGRAM: TTS engine initialized');
   }
   
-  // Collect all audio data here
-  final List<Uint8List> _incomingAudio = [];
-  bool _isCollectingAudio = false;
-  Timer? _playbackTimer;
-  
-  /// Handle audio data from Deepgram
+  /// Handle audio data from Deepgram - ultra-low latency approach
   void _handleAudioData(Uint8List audioData) {
     try {
+      // When new conversation starts, we need to clear previous audio
+      if (_shouldClearAudioOnNextPacket) {
+        _cancelAudioPlayback();
+        _shouldClearAudioOnNextPacket = false;
+        _currentAudioResponseId++; // New response ID to track this conversation
+        debugPrint('🔄 DEEPGRAM: Starting new audio response (#${_currentAudioResponseId})');
+      }
+      
       // Update state to indicate the agent is speaking
       _updateState(DeepgramAgentState.speaking);
       
-      // Add incoming audio data
-      _incomingAudio.add(audioData);
+      // Play this audio chunk immediately without buffering
+      final int currentResponseId = _currentAudioResponseId;
+      _playAudioChunkImmediately(audioData, currentResponseId);
       
-      // Debug measurements
-      debugPrint('🔵 DEEPGRAM: Received audio packet: ${audioData.length} bytes');
-      
-      // If this is the first packet, start a timer to play immediately
-      if (!_isCollectingAudio) {
-        _isCollectingAudio = true;
-        
-        // Start immediate playback - no waiting
-        _playAudioDirectly();
-      }
     } catch (e) {
       debugPrint('🔴 DEEPGRAM: Error handling audio data: $e');
     }
   }
   
-  /// Play audio directly without processing
-  Future<void> _playAudioDirectly() async {
-    if (_isPlayingAudio || _incomingAudio.isEmpty) return;
+  /// Play a single audio chunk immediately with minimal processing
+  Future<void> _playAudioChunkImmediately(Uint8List audioData, int responseId) async {
+    if (audioData.isEmpty) return;
     
-    debugPrint('⏱️ DEEPGRAM: Starting direct audio playback');
     Stopwatch stopwatch = Stopwatch()..start();
+    debugPrint('⚡ DEEPGRAM: Processing audio chunk: ${audioData.length} bytes');
     
     try {
-      _isPlayingAudio = true;
+      // Create WAV data in memory without writing to a file first
+      final wavHeader = _createWavHeader(audioData.length, 1, 24000, 16);
       
-      // Combine all received audio
+      // Combine header and audio data
       final BytesBuilder builder = BytesBuilder();
-      for (final chunk in _incomingAudio) {
-        builder.add(chunk);
-      }
-      final Uint8List combinedAudio = builder.toBytes();
-      _incomingAudio.clear();
+      builder.add(wavHeader);
+      builder.add(audioData);
+      final Uint8List wavData = builder.toBytes();
       
-      debugPrint('⏱️ DEEPGRAM: Audio combined in ${stopwatch.elapsedMilliseconds}ms');
-      
-      // Create a temp file
+      // Write to temp file (necessary for audio player)
       final tempDir = await getTemporaryDirectory();
-      final tempFile = File('${tempDir.path}/deepgram_audio_${DateTime.now().millisecondsSinceEpoch}.wav');
+      final tempFile = File('${tempDir.path}/deepgram_chunk_${responseId}_${DateTime.now().millisecondsSinceEpoch}.wav');
+      await tempFile.writeAsBytes(wavData);
       
-      // Create WAV header
-      final wavHeader = _createWavHeader(combinedAudio.length, 1, 24000, 16);
+      debugPrint('⚡ DEEPGRAM: WAV file prepared in ${stopwatch.elapsedMilliseconds}ms');
       
-      // Write data directly to file
-      final fileWriter = tempFile.openSync(mode: FileMode.write);
-      fileWriter.writeFromSync(wavHeader);
-      fileWriter.writeFromSync(combinedAudio);
-      fileWriter.closeSync();
+      // Create or reuse player
+      if (_currentPlayer == null) {
+        _currentPlayer = AudioPlayer();
+        await _currentPlayer!.setVolume(1.0);
+        debugPrint('⚡ DEEPGRAM: Created new audio player');
+      }
       
-      debugPrint('⏱️ DEEPGRAM: Audio file created in ${stopwatch.elapsedMilliseconds}ms');
+      // Check if response ID still matches (conversation hasn't changed)
+      if (responseId != _currentAudioResponseId) {
+        debugPrint('🔄 DEEPGRAM: Skipping outdated audio chunk for response #$responseId (current: #${_currentAudioResponseId})');
+        await tempFile.delete();
+        return;
+      }
       
-      // Create player and set volume
-      _currentPlayer = AudioPlayer();
-      await _currentPlayer!.setVolume(1.0);
-      
-      // Load and play immediately
+      // Load and play immediately without waiting for previous chunk to finish
       await _currentPlayer!.setFilePath(tempFile.path);
-      
-      debugPrint('⏱️ DEEPGRAM: Audio loaded in ${stopwatch.elapsedMilliseconds}ms');
-      
       await _currentPlayer!.play();
       
-      debugPrint('⏱️ DEEPGRAM: Audio playback started in ${stopwatch.elapsedMilliseconds}ms');
+      debugPrint('⚡ DEEPGRAM: Playback started in ${stopwatch.elapsedMilliseconds}ms');
       
-      // Wait for playback to complete
-      await _currentPlayer!.processingStateStream.firstWhere(
-        (state) => state == ProcessingState.completed,
-        orElse: () => ProcessingState.idle,
-      );
-      
-      // Clean up
-      await _currentPlayer!.dispose();
-      _currentPlayer = null;
-      await tempFile.delete();
-      
-      // Update state when done speaking
-      if (_state == DeepgramAgentState.speaking) {
-        _updateState(DeepgramAgentState.idle);
-      }
+      // Delete the file after a delay
+      Future.delayed(const Duration(seconds: 2), () {
+        tempFile.delete().catchError((e) => 
+          debugPrint('🟡 DEEPGRAM: Failed to delete temp file: $e')
+        );
+      });
       
     } catch (e) {
-      debugPrint('🔴 DEEPGRAM: Error with direct audio playback: $e');
-      
-      // Fallback to TTS
-      try {
-        await _tts.speak('Audio playback failed');
-      } catch (ttsError) {
-        debugPrint('🔴 DEEPGRAM: Fallback TTS also failed: $ttsError');
-      }
+      debugPrint('🔴 DEEPGRAM: Error playing audio chunk: $e');
     } finally {
       stopwatch.stop();
-      _isPlayingAudio = false;
-      _isCollectingAudio = false;
-      debugPrint('⏱️ DEEPGRAM: Total audio processing time: ${stopwatch.elapsedMilliseconds}ms');
     }
   }
   
   /// Cancel any ongoing audio playback
   Future<void> _cancelAudioPlayback() async {
-    // Cancel any timer
-    _playbackTimer?.cancel();
-    
     if (_currentPlayer != null) {
       try {
         await _currentPlayer!.stop();
@@ -797,12 +778,8 @@ class DeepgramAgentService {
       } finally {
         _currentPlayer = null;
         _isPlayingAudio = false;
-        _isCollectingAudio = false;
       }
     }
-    
-    // Clear audio data
-    _incomingAudio.clear();
   }
   
   // These streaming methods are no longer used
