@@ -54,8 +54,8 @@ class DeepgramAgentProvider extends ChangeNotifier {
     _initialize();
   }
   
-  // State
-  bool _continuousListeningEnabled = false;
+  // State - enable continuous listening by default for more reliable connections
+  bool _continuousListeningEnabled = true;
   
   // Getters
   bool get isInitializing => _isInitializing;
@@ -83,8 +83,12 @@ class DeepgramAgentProvider extends ChangeNotifier {
         // Set up listeners
         _setupListeners();
         
+        // Enable continuous listening mode by default for better connection reliability
+        _deepgramAgentService.setContinuousListening(_continuousListeningEnabled);
+        
         // Add welcome message
         _addSystemMessage('Welcome to live voice conversation mode powered by Deepgram. You can speak or type to interact with the AI.');
+        _addSystemMessage('Continuous listening mode is enabled for more stable connections.');
       } else {
         _error = 'Failed to initialize Deepgram Agent';
       }

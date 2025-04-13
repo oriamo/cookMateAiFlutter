@@ -34,11 +34,19 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
       final provider = ref.read(deepgramAgentProvider);
       // Only auto-start if navigated to and not already running
       if (!_isConversationActive && provider.state == DeepgramAgentState.idle) {
-        // Enable continuous listening by default for the best experience
+        debugPrint('VoiceAgentScreen: Auto-starting conversation with continuous listening enabled');
+        
+        // Ensure continuous listening is enabled for the most stable experience
         provider.setContinuousListening(true);
-        provider.startConversation();
-        setState(() {
-          _isConversationActive = true;
+        
+        // Start conversation with a short delay to ensure screen is fully rendered
+        Future.delayed(Duration(milliseconds: 300), () {
+          if (mounted) {
+            provider.startConversation();
+            setState(() {
+              _isConversationActive = true;
+            });
+          }
         });
       }
     });
@@ -203,8 +211,15 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
                 )
               : AnimatedMicButton(
                   onPressed: () {
+                    debugPrint('VoiceAgentScreen: User pressed mic button to start conversation');
+                    // Always ensure continuous listening is enabled for stable connections
                     provider.setContinuousListening(true);
+                    // Start conversation with visual feedback
                     provider.startConversation();
+                    // Update local state
+                    setState(() {
+                      _isConversationActive = true;
+                    });
                   },
                   isActive: false,
                   baseColor: Colors.deepPurple,
