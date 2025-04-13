@@ -12,6 +12,8 @@ import aiohttp
 import asyncio
 from io import BytesIO
 
+app = func.FunctionApp()
+
 def get_container():
     cosmos_endpoint = os.environ.get("COSMOS_ENDPOINT")
     cosmos_key = os.environ.get("COSMOS_KEY")
@@ -132,8 +134,7 @@ def map_recipe_to_schema(spoonacular_recipe: Dict, image_url: Optional[str] = No
         "isFavorite": False
     }
 
-app = func.FunctionApp()
-
+@app.function_name("GetMeal")
 @app.route(route="GetMeal", methods=["GET"])
 def get_meal(req: func.HttpRequest) -> func.HttpResponse:
     try:
@@ -166,6 +167,7 @@ def get_meal(req: func.HttpRequest) -> func.HttpResponse:
             status_code=500
         )
 
+@app.function_name("CreateMeal")
 @app.route(route="meals", methods=["POST"])
 def create_meal(req: func.HttpRequest) -> func.HttpResponse:
     try:
@@ -224,6 +226,7 @@ def create_meal(req: func.HttpRequest) -> func.HttpResponse:
             status_code=500
         )
 
+@app.function_name("ImportRecipes")
 @app.route(route="ImportRecipes", methods=["POST"])
 async def import_recipes(req: func.HttpRequest) -> func.HttpResponse:
     try:
@@ -308,6 +311,28 @@ async def import_recipes(req: func.HttpRequest) -> func.HttpResponse:
             status_code=500
         )
 
+def extract_calories_from_description(description: str) -> Optional[int]:
+    if not description:
+        return None
+        
+    # Common patterns for calorie information
+    patterns = [
+        r'(\d+)\s*calories?',  # "400 calories" or "400 calorie"
+        r'(\d+)\s*kcals?',     # "400 kcal" or "400 kcals"
+        r'(\d+)\s*cal\b',      # "400 cal"
+    ]
+    
+    import re
+    for pattern in patterns:
+        match = re.search(pattern, description.lower())
+        if match:
+            try:
+                return int(match.group(1))
+            except ValueError:
+                continue
+    return None
+
+@app.function_name(name="GetPaginatedMeals")
 @app.route(route="GetPaginatedMeals", methods=["GET"])
 def get_paginated_meals(req: func.HttpRequest) -> func.HttpResponse:
     try:
@@ -320,7 +345,12 @@ def get_paginated_meals(req: func.HttpRequest) -> func.HttpResponse:
         
         # Build the query based on whether a category is specified
         if category and category != "All Recipes":
-            query = "SELECT * FROM c WHERE c.category = @category ORDER BY c.createdAt DESC"
+            # Use LOWER() for case-insensitive comparison
+            query = """
+                SELECT * FROM c 
+                WHERE LOWER(c.category) = LOWER(@category) 
+                ORDER BY c.createdAt DESC
+            """
             parameters = [{"name": "@category", "value": category}]
         else:
             query = "SELECT * FROM c ORDER BY c.createdAt DESC"
@@ -335,8 +365,6 @@ def get_paginated_meals(req: func.HttpRequest) -> func.HttpResponse:
                 max_item_count=page_size,
                 continuation_token=continuation_token
             ))
-            # Get the new continuation token
-            new_continuation_token = container.client_connection.last_response_headers.get('x-ms-continuation')
         else:
             items = list(container.query_items(
                 query=query,
@@ -344,20 +372,45 @@ def get_paginated_meals(req: func.HttpRequest) -> func.HttpResponse:
                 enable_cross_partition_query=True,
                 max_item_count=page_size
             ))
-            # Get the new continuation token
-            new_continuation_token = container.client_connection.last_response_headers.get('x-ms-continuation')
 
-        # Get unique categories for the category tab
+        # Process items to extract calories from description if not already present
+        for item in items:
+            if not item.get('calories') and item.get('description'):
+                calories = extract_calories_from_description(item['description'])
+                if calories:
+                    item['calories'] = calories
+
+        # Get the new continuation token
+        new_continuation_token = container.client_connection.last_response_headers.get('x-ms-continuation')
+
+        # Get categories and their counts
+        # First get unique categories
         categories_query = "SELECT DISTINCT VALUE c.category FROM c WHERE c.category != null"
         categories = list(container.query_items(
             query=categories_query,
             enable_cross_partition_query=True
         ))
 
+        # Then get count for each category
+        category_counts = []
+        for cat in categories:
+            count_query = "SELECT VALUE COUNT(1) FROM c WHERE c.category = @category"
+            count_params = [{"name": "@category", "value": cat}]
+            count = list(container.query_items(
+                query=count_query,
+                parameters=count_params,
+                enable_cross_partition_query=True
+            ))[0]
+            category_counts.append({
+                "category": cat,
+                "count": count
+            })
+
         return func.HttpResponse(
             json.dumps({
                 "items": items,
                 "categories": categories,
+                "categoryCounts": category_counts,
                 "continuationToken": new_continuation_token
             }),
             mimetype="application/json"
