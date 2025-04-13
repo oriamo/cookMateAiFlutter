@@ -50,6 +50,7 @@ dependencies:
   flutter_tts: ^3.8.5
   vad: ^0.0.3
   web_socket_channel: ^2.4.0 # For Deepgram WebSocket communication
+  web_socket_channel_io: ^2.0.0 # For WebSocket channels using dart:io
   record: ^5.0.1 # For audio recording
 
   # Timer Feature

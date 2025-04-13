@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'dart:math' as Math;
 
 import 'deepgram_agent_service.dart';
+import 'deepgram_agent_types.dart';
 import 'llm_service.dart';
 import 'message_processor.dart';
 import 'timer_service.dart';

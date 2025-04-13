@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:web_socket_channel/io.dart';
 import 'package:camera/camera.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_tts/flutter_tts.dart';
@@ -37,9 +38,9 @@ class DeepgramAgentService {
   int _lastHeartbeatTimestamp = 0;
   
   // Stream controllers
-  final _messageController = StreamController<String>.broadcast();
-  final _stateController = StreamController<DeepgramAgentState>.broadcast();
-  final _errorController = StreamController<String>.broadcast();
+  final StreamController<String> _messageController = StreamController<String>.broadcast();
+  final StreamController<DeepgramAgentState> _stateController = StreamController<DeepgramAgentState>.broadcast();
+  final StreamController<String> _errorController = StreamController<String>.broadcast();
   
   // Current state
   DeepgramAgentState _state = DeepgramAgentState.idle;
@@ -76,6 +77,9 @@ class DeepgramAgentService {
   // Barge-in (interruption) configuration
   bool _bargeInEnabled = true;
   bool _isUserSpeaking = false;
+  
+  // Continuous listening mode
+  bool _continuousListeningEnabled = true;
   
   // Constructor - reuses the existing LLM service for integration
   DeepgramAgentService(this._llmService);
@@ -220,6 +224,20 @@ class DeepgramAgentService {
   void setBargeInEnabled(bool enabled) {
     _bargeInEnabled = enabled;
     debugPrint('🔊 DEEPGRAM: Barge-in ${enabled ? 'enabled' : 'disabled'}');
+  }
+  
+  /// Enable or disable continuous listening mode
+  void setContinuousListening(bool enabled) {
+    _continuousListeningEnabled = enabled;
+    debugPrint('🔊 DEEPGRAM: Continuous listening ${enabled ? 'enabled' : 'disabled'}');
+    
+    if (_isAudioSystemInitialized) {
+      // Update native layer if needed
+      _configureVoiceDetection(
+        enabled: true, 
+        threshold: enabled ? 1500 : 2500 // Lower threshold for continuous mode
+      );
+    }
   }
   
   /// Get audio system statistics
@@ -393,7 +411,7 @@ class DeepgramAgentService {
         debugPrint('🟢 DEEPGRAM: WebSocket connected successfully');
         
         // Create channel from socket
-        _channel = WebSocketChannel(socket);
+        _channel = IOWebSocketChannel(socket);
         
         // Set up WebSocket listeners
         _setupWebSocketListeners();
