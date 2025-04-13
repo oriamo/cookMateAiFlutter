@@ -25,6 +25,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.min
+import android.os.Handler
+import android.os.Looper
 
 /**
  * MainActivity that implements low-latency full-duplex audio (simultaneous playback and recording)
@@ -60,6 +62,9 @@ class MainActivity: FlutterActivity() {
     private var consecutiveQuietFrames = 0
     private var consecutiveLoudFrames = 0
     private var lastVadUpdateTimeMs = 0L
+    
+    // Handler for main thread callbacks
+    private val handler = Handler(Looper.getMainLooper())
     
     // Flutter method channel setup
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -338,14 +343,8 @@ class MainActivity: FlutterActivity() {
             )
             .build()
         
-        // Disable audio offload on newer devices - it can increase latency
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            try {
-                track.setOffloadMode(AudioTrack.OFFLOAD_MODE_NOT_SUPPORTED)
-            } catch (e: Exception) {
-                Log.w(TAG, "Failed to disable audio offload: ${e.message}")
-            }
-        }
+        // Note: Not using audio offload as it can increase latency
+        // Offload APIs require Android 10+ and are not critical for our use case
         
         return track
     }
