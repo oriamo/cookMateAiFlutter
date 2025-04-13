@@ -716,14 +716,13 @@ class DeepgramAgentService {
       _currentAudioFile = File('${tempDir.path}/deepgram_stream_${DateTime.now().millisecondsSinceEpoch}.wav');
       debugPrint('🎧 DEEPGRAM: Created streaming audio file: ${_currentAudioFile!.path}');
       
-      // Open a sink to write to the file
-      _audioFileSink = _currentAudioFile!.openWrite();
-      
-      // Write WAV header with placeholder size (we'll update it later)
-      // Using a large placeholder size for the stream
+      // Create the file with header first
       final placeholderHeader = _createWavHeader(100000000, 1, 24000, 16);
-      await _audioFileSink!.add(placeholderHeader);
+      await _currentAudioFile!.writeAsBytes(placeholderHeader);
       _totalBytesWritten = placeholderHeader.length;
+      
+      // Open a sink to append to the file
+      _audioFileSink = _currentAudioFile!.openWrite(mode: FileMode.append);
       
       // Create and prepare player for streaming
       _currentPlayer = AudioPlayer();
