@@ -219,7 +219,7 @@ class TimerService {
       details,
       payload: timer.id,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation: DateTimeComponents.absoluteTime,
+      matchDateTimeComponents: null,
     );
   }
   
