@@ -8,6 +8,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:uuid/uuid.dart';
+import 'package:timezone/timezone.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz_data;
 
 /// Model class for timer data
 class CookingTimer {
@@ -88,6 +90,10 @@ class TimerService {
   /// Initialize timer service and notifications
   Future<void> init() async {
     if (_isInitialized) return;
+    
+    // Initialize timezone data
+    tz_data.initializeTimeZones();
+    tz.setLocalLocation(tz.getLocation('America/New_York')); // Default to New York timezone, adjust as needed
     
     // Setup receive port for background notifications
     IsolateNameServer.registerPortWithName(_port.sendPort, 'cooking_timer_port');
@@ -201,15 +207,19 @@ class TimerService {
     
     final details = NotificationDetails(android: androidDetails, iOS: iosDetails);
     
+    // Convert DateTime to TZDateTime for notifications
+    final tzEndTime = tz.TZDateTime.from(timer.endTime, tz.local);
+    
     // Schedule notification for the timer end time
-    await _notifications.schedule(
+    await _notifications.zonedSchedule(
       timer.id.hashCode,
       'Timer Complete',
       '${timer.label} timer is complete!',
-      timer.endTime,
+      tzEndTime,
       details,
       payload: timer.id,
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
     );
   }
   
@@ -309,7 +319,7 @@ class TimerService {
       RegExp(r'let me set up a timer for (\d+) minute'),
       RegExp(r'alright let me set up a timer for (\d+) minute'),
       RegExp(r'ok let me set up a timer for (\d+) minute'),
-      RegExp(r'i\'ll set a timer for (\d+) minute')
+      RegExp(r"i'll set a timer for (\d+) minute")
     ];
     
     for (final pattern in patternVariations) {
