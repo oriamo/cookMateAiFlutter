@@ -233,6 +233,11 @@ class DeepgramAgentService {
       // Update state to indicate the agent is speaking
       _updateState(DeepgramAgentState.speaking);
       
+      // Make sure the forced audio timer is running to prevent connection timeouts
+      if (_forcedAudioTimer == null || !_forcedAudioTimer!.isActive) {
+        _startForcedAudioTimer();
+      }
+      
       // Send data to native audio player
       if (_isAudioStreamInitialized) {
         debugPrint('🔊 DEEPGRAM: Sending ${audioData.length} bytes to native audio player');
@@ -240,6 +245,10 @@ class DeepgramAgentService {
           await _audioChannel.invokeMethod<bool>('writeAudioData', {
             'data': audioData,
           });
+          
+          // Reset inactivity timer since we're actively receiving data
+          _resetInactivityTimer();
+          
         } catch (e) {
           debugPrint('🔴 DEEPGRAM: Error sending audio data to native player: $e');
           
@@ -784,6 +793,12 @@ class DeepgramAgentService {
         return;
       }
       
+      // Always start forced audio timer to ensure connection stays alive
+      _startForcedAudioTimer();
+      
+      // Start heartbeat timer
+      _startHeartbeatTimer();
+      
       // Configure audio recording for continuous listening if enabled
       final config = RecordConfig(
         encoder: AudioEncoder.pcm16bits,
@@ -844,6 +859,11 @@ class DeepgramAgentService {
               }
             } catch (e) {
               debugPrint('🔴 DEEPGRAM: Error sending audio data: $e');
+              
+              // Try to reconnect if we can't send data
+              if (_isConnected) {
+                _reconnect();
+              }
             }
           }
         },
@@ -853,6 +873,13 @@ class DeepgramAgentService {
         },
         onDone: () {
           debugPrint('🔵 DEEPGRAM: Audio stream done, packets sent: $packetCount');
+          
+          // If continuous listening is enabled and we're still connected, 
+          // but the stream ended, restart it
+          if (_continuousListeningEnabled && _isConnected) {
+            debugPrint('🔵 DEEPGRAM: Restarting audio stream for continuous listening');
+            _streamAudio();
+          }
         },
       );
       
@@ -862,6 +889,17 @@ class DeepgramAgentService {
     } catch (e) {
       debugPrint('🔴 DEEPGRAM: Failed to stream audio: $e');
       _errorController.add('Failed to stream audio: $e');
+      
+      // If we're using continuous listening and there was an error,
+      // try to restart the streaming after a short delay
+      if (_continuousListeningEnabled && _isConnected) {
+        debugPrint('🔵 DEEPGRAM: Will attempt to restart audio stream in 3 seconds');
+        Future.delayed(Duration(seconds: 3), () {
+          if (_isConnected && _continuousListeningEnabled) {
+            _streamAudio();
+          }
+        });
+      }
     }
   }
   
@@ -989,11 +1027,9 @@ class DeepgramAgentService {
         return;
       }
       
-      // Only send heartbeats if we're not actively streaming audio
-      if (_state != DeepgramAgentState.listening) {
-        debugPrint('🔵 DEEPGRAM: Sending heartbeat to keep connection alive');
-        _sendHeartbeat();
-      }
+      // Send heartbeats regardless of state to ensure connection stays alive
+      debugPrint('🔵 DEEPGRAM: Sending heartbeat to keep connection alive');
+      _sendHeartbeat();
     });
     
     debugPrint('🔵 DEEPGRAM: Heartbeat timer started (interval: $_heartbeatIntervalSeconds seconds)');
@@ -1024,7 +1060,10 @@ class DeepgramAgentService {
   void _startForcedAudioTimer() {
     _stopForcedAudioTimer();
     
-    _forcedAudioTimer = Timer.periodic(Duration(milliseconds: _forcedAudioIntervalMs), (_) {
+    // Use a shorter interval of 250ms for more frequent packets
+    final interval = 250; 
+    
+    _forcedAudioTimer = Timer.periodic(Duration(milliseconds: interval), (_) {
       if (!_isConnected || _channel == null) {
         _stopForcedAudioTimer();
         return;
@@ -1035,13 +1074,24 @@ class DeepgramAgentService {
       final forcedAudioData = _createForcedAudioPacket();
       try {
         _channel!.sink.add(forcedAudioData);
-        debugPrint('🔵 DEEPGRAM: Forced audio packet sent to keep connection alive');
+        // Only log occasionally to reduce spam
+        if (DateTime.now().millisecondsSinceEpoch % 2000 < 250) {
+          debugPrint('🔵 DEEPGRAM: Forced audio packet sent to keep connection alive');
+        }
+        
+        // Reset inactivity timer with each packet
+        _resetInactivityTimer();
       } catch (e) {
         debugPrint('🔴 DEEPGRAM: Error sending forced audio packet: $e');
+        
+        // Try to reconnect if we can't send data
+        if (_isConnected) {
+          _reconnect();
+        }
       }
     });
     
-    debugPrint('🟢 DEEPGRAM: Started forced audio timer (${_forcedAudioIntervalMs}ms intervals)');
+    debugPrint('🟢 DEEPGRAM: Started forced audio timer (${interval}ms intervals)');
   }
   
   /// Stop the forced audio timer
@@ -1052,18 +1102,26 @@ class DeepgramAgentService {
   
   /// Create a forced audio packet with minimal non-zero content
   Uint8List _createForcedAudioPacket() {
-    // Create a packet with 160 bytes (10ms of 16kHz audio)
-    final packet = Uint8List(160);
+    // Create a packet with 320 bytes (10ms of 16kHz audio, stereo)
+    // Using a larger packet for more stability
+    final packet = Uint8List(320);
     
     // Add very low level random noise so it's not completely silent
     // but won't be audible or affect speech recognition
     final random = math.Random();
     for (int i = 0; i < packet.length; i += 2) {
-      // Very low amplitude noise (values between -10 and 10)
-      final noise = (random.nextInt(21) - 10);
+      // Very low amplitude noise (values between -5 and 5)
+      final noise = (random.nextInt(11) - 5);
       packet[i] = noise & 0xFF;
       packet[i + 1] = 0; // Higher byte is zero for very low values
     }
+    
+    // Ensure the first few bytes have some non-zero values
+    // This helps some WebSocket implementations recognize it as valid data
+    packet[0] = 1;
+    packet[1] = 0;
+    packet[2] = 2;
+    packet[3] = 0;
     
     return packet;
   }
