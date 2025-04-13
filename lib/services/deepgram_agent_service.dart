@@ -12,6 +12,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:flutter_tts/flutter_tts.dart';
+import '../services/deepgram_agent_provider.dart';
 import 'dart:io';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
@@ -62,6 +63,9 @@ class DeepgramAgentService {
   // Audio buffer for Deepgram responses
   final List<Uint8List> _audioBuffer = [];
   bool _isPlayingAudio = false;
+  
+  // Track messages for context in the audio player
+  final List<DeepgramAgentMessage> _messages = [];
   
   /// Initialize the Deepgram Agent service
   Future<bool> initialize() async {
@@ -662,6 +666,9 @@ class DeepgramAgentService {
       // Add data to buffer
       _audioBuffer.add(audioData);
       
+      // Update state to indicate the agent is speaking
+      _updateState(DeepgramAgentState.speaking);
+      
       // Play buffered audio if not already playing
       _playBufferedAudio();
     } catch (e) {
@@ -703,7 +710,7 @@ class DeepgramAgentService {
       final player = AudioPlayer();
       debugPrint('🔵 DEEPGRAM: Created audio player, attempting to play WAV file');
       
-      // Set the volume to maximum
+      // Set the volume to maximum - try higher volume
       await player.setVolume(1.0);
       
       try {
@@ -711,18 +718,27 @@ class DeepgramAgentService {
         await player.setFilePath(tempFile.path);
         debugPrint('🟢 DEEPGRAM: Audio file loaded successfully');
         
-        // Play the file
+        // Play the file - make sure device volume is up
         await player.play();
         debugPrint('🟢 DEEPGRAM: Playing Deepgram audio response');
         
         // Wait for playback to complete
         await player.processingStateStream.firstWhere(
           (state) => state == ProcessingState.completed,
+          orElse: () => ProcessingState.idle, // Avoid hanging if completion never arrives
         );
         
         debugPrint('🟢 DEEPGRAM: Audio playback completed');
       } catch (e) {
         debugPrint('🔴 DEEPGRAM: Error playing audio with JustAudio: $e');
+        
+        // Fallback to TTS if JustAudio fails
+        if (_messages.isNotEmpty && _messages.last.type == DeepgramAgentMessageType.agent) {
+          await _tts.speak(_messages.last.content);
+        } else {
+          await _tts.speak('Audio playback failed');
+        }
+        
         throw e;
       } finally {
         // Clean up the player
@@ -747,7 +763,15 @@ class DeepgramAgentService {
       debugPrint('🔴 DEEPGRAM: Error playing buffered audio: $e');
       // Fallback to TTS if there's an error with audio playback
       try {
-        await _tts.speak('The assistant responded but audio playback failed');
+        if (_channel != null && _isConnected) {
+          // Try to speak the last conversation text if available
+          final lastAgentMessage = _messageController.stream
+              .where((msg) => msg.contains('assistant'))
+              .last;
+          await _tts.speak(lastAgentMessage);
+        } else {
+          await _tts.speak('The assistant responded but audio playback failed');
+        }
       } catch (ttsError) {
         debugPrint('🔴 DEEPGRAM: Fallback TTS also failed: $ttsError');
       }

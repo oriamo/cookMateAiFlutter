@@ -105,31 +105,40 @@ class DeepgramAgentProvider extends ChangeNotifier {
         return;
       }
       
-      // For ConversationText messages, we need to determine the role
-      if (message.startsWith("Hi Dara") || 
-          message.startsWith("I'm Alloy") || 
-          message.startsWith("How can I help")) {
-        // This is clearly an agent message
-        debugPrint('🟢 DEEPGRAM PROVIDER: Adding agent response: $message');
-        _addAgentMessage(message);
-      } 
-      else if (_deepgramAgentService.state == DeepgramAgentState.listening && 
-               message.contains("Hey there") || 
-               message.contains("My name is")) {
-        // This is likely a transcription of what the user said
-        debugPrint('🟢 DEEPGRAM PROVIDER: Adding user transcription: $message');
+      // For messages received while listening, they are most likely user transcriptions
+      if (_deepgramAgentService.state == DeepgramAgentState.listening) {
+        debugPrint('🟢 DEEPGRAM PROVIDER: Adding user transcription from listening state: $message');
         _addUserMessage(message);
+        return;
       }
-      else if (_messages.isNotEmpty && _messages.last.type == DeepgramAgentMessageType.user) {
-        // This is a response to the last user message
+      
+      // For messages received while the agent is speaking, they're from the agent
+      if (_deepgramAgentService.state == DeepgramAgentState.speaking) {
+        debugPrint('🟢 DEEPGRAM PROVIDER: Adding agent message from speaking state: $message');
+        _addAgentMessage(message);
+        return;
+      }
+      
+      // Check for obvious agent responses
+      if (message.startsWith("I can ") || 
+          message.startsWith("I'm Alloy") || 
+          message.startsWith("What cooking") || 
+          message.startsWith("How can I help")) {
+        debugPrint('🟢 DEEPGRAM PROVIDER: Adding clearly identified agent response: $message');
+        _addAgentMessage(message);
+        return;
+      }
+      
+      // If the last message was from the user, this is probably the agent's response
+      if (_messages.isNotEmpty && _messages.last.type == DeepgramAgentMessageType.user) {
         debugPrint('🟢 DEEPGRAM PROVIDER: Adding agent response based on last message: $message');
         _addAgentMessage(message);
+        return;
       } 
-      else {
-        // If we're not sure, default to agent message for safety
-        debugPrint('🟡 DEEPGRAM PROVIDER: Adding message with unknown role: $message');
-        _addAgentMessage(message);
-      }
+      
+      // If we're not sure, default to agent message for safety
+      debugPrint('🟡 DEEPGRAM PROVIDER: Adding message with unknown role: $message');
+      _addAgentMessage(message);
     });
     
     // Error listener

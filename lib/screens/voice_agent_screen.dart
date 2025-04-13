@@ -348,6 +348,11 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
     return Builder(
       builder: (context) {
         WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+        
+        // Debug print message counts by type
+        final userCount = messages.where((m) => m.type == DeepgramAgentMessageType.user).length;
+        final agentCount = messages.where((m) => m.type == DeepgramAgentMessageType.agent).length;
+        debugPrint('🔍 VOICE SCREEN: Displaying ${messages.length} messages (User: $userCount, Agent: $agentCount)');
 
         return ListView.builder(
           controller: _scrollController,
