@@ -62,6 +62,7 @@ class DeepgramAgentService {
   // Audio buffer for Deepgram responses
   final List<Uint8List> _audioBuffer = [];
   bool _isPlayingAudio = false;
+  AudioPlayer? _currentPlayer;
   
   // Message tracking for context
   final List<Map<String, dynamic>> _messages = [];
@@ -244,6 +245,12 @@ class DeepgramAgentService {
                 // User started speaking
                 debugPrint('🔵 DEEPGRAM: User started speaking event');
                 _updateState(DeepgramAgentState.listening);
+                
+                // Cancel any ongoing audio playback
+                if (_isPlayingAudio) {
+                  debugPrint('🔵 DEEPGRAM: Cancelling ongoing audio playback because user started speaking');
+                  _cancelAudioPlayback();
+                }
                 break;
                 
               case 'UserStoppedSpeaking':
@@ -672,11 +679,40 @@ class DeepgramAgentService {
       // Update state to indicate the agent is speaking
       _updateState(DeepgramAgentState.speaking);
       
-      // Play buffered audio if not already playing
-      _playBufferedAudio();
+      // Start a timer to collect more audio packets before playing
+      if (!_isPlayingAudio && _audioBuffer.length == 1) {
+        // Only start the timer for the first packet
+        debugPrint('🔵 DEEPGRAM: Starting buffer collection timer (500ms)');
+        Future.delayed(const Duration(milliseconds: 500), () {
+          // Play buffered audio after collecting for a short time
+          if (_audioBuffer.isNotEmpty && !_isPlayingAudio) {
+            debugPrint('🔵 DEEPGRAM: Buffer collection complete, playing audio');
+            _playBufferedAudio();
+          }
+        });
+      }
     } catch (e) {
       debugPrint('🔴 DEEPGRAM: Error handling audio data: $e');
     }
+  }
+  
+  /// Cancel any ongoing audio playback
+  Future<void> _cancelAudioPlayback() async {
+    if (_currentPlayer != null) {
+      try {
+        await _currentPlayer!.stop();
+        await _currentPlayer!.dispose();
+        debugPrint('🔵 DEEPGRAM: Successfully cancelled audio playback');
+      } catch (e) {
+        debugPrint('🔴 DEEPGRAM: Error cancelling audio playback: $e');
+      } finally {
+        _currentPlayer = null;
+        _isPlayingAudio = false;
+      }
+    }
+    
+    // Clear audio buffer
+    _audioBuffer.clear();
   }
   
   /// Play buffered audio data
@@ -710,7 +746,8 @@ class DeepgramAgentService {
       debugPrint('🟢 DEEPGRAM: Saved ${combinedBuffer.length} bytes of audio data to ${tempFile.path}');
       
       // Use JustAudio to play the audio file
-      final player = AudioPlayer();
+      _currentPlayer = AudioPlayer();
+      final player = _currentPlayer!;
       debugPrint('🔵 DEEPGRAM: Created audio player, attempting to play WAV file');
       
       // Set the volume to maximum - ensure it's high enough to hear
@@ -753,6 +790,7 @@ class DeepgramAgentService {
       } finally {
         // Clean up the player
         await player.dispose();
+        _currentPlayer = null;
         debugPrint('🔵 DEEPGRAM: Audio player disposed');
       }
       
