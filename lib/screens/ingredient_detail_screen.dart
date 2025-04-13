@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../models/ingredient.dart';
 import '../models/recipe.dart';
 import '../providers/ingredients_provider.dart';
@@ -269,70 +270,136 @@ class IngredientDetailScreen extends ConsumerWidget {
       BuildContext context, WidgetRef ref, Ingredient ingredient) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 24.0),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: ElevatedButton.icon(
-              icon: const Icon(Icons.edit),
-              label: const Text('Edit'),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Colors.white,
-                elevation: 2,
-              ),
-              onPressed: () {
-                // Navigate back and trigger edit dialog
-                Navigator.pop(context, {'action': 'edit', 'id': ingredient.id});
-              },
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: ElevatedButton.icon(
-              icon: Icon(
-                ingredient.isPurchased
-                    ? Icons.remove_shopping_cart
-                    : Icons.shopping_cart_checkout,
-              ),
-              label: Text(
-                ingredient.isPurchased ? 'Mark as To Buy' : 'Mark as Purchased',
-              ),
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor:
-                    ingredient.isPurchased ? Colors.orange : Colors.green,
-                foregroundColor: Colors.white,
-                elevation: 2,
-              ),
-              onPressed: () {
-                ref
-                    .read(ingredientsProvider.notifier)
-                    .togglePurchased(ingredient.id);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    behavior: SnackBarBehavior.floating,
-                    margin: const EdgeInsets.all(16),
-                    content: Text(
-                      ingredient.isPurchased
-                          ? '${ingredient.name} marked as to buy'
-                          : '${ingredient.name} marked as purchased',
-                    ),
-                    duration: const Duration(seconds: 2),
-                    action: SnackBarAction(
-                      label: 'UNDO',
-                      onPressed: () {
-                        ref
-                            .read(ingredientsProvider.notifier)
-                            .togglePurchased(ingredient.id);
-                      },
-                    ),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.edit),
+                  label: const Text('Edit'),
+                  style: ElevatedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    backgroundColor: Theme.of(context).colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    elevation: 2,
                   ),
-                );
-              },
-            ),
+                  onPressed: () {
+                    // Navigate back and trigger edit dialog
+                    Navigator.pop(
+                        context, {'action': 'edit', 'id': ingredient.id});
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildTogglePurchasedButton(context, ref, ingredient),
+              ),
+            ],
           ),
         ],
+      ),
+    );
+  }
+
+  // Enhanced toggle purchased button with better visual feedback
+  Widget _buildTogglePurchasedButton(
+      BuildContext context, WidgetRef ref, Ingredient ingredient) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        boxShadow: [
+          BoxShadow(
+            color: ingredient.isPurchased
+                ? Colors.green.withOpacity(0.3)
+                : Colors.blue.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: ingredient.isPurchased
+              ? [Colors.green, Colors.green.shade700]
+              : [Colors.blue, Colors.blue.shade700],
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            ref
+                .read(ingredientsProvider.notifier)
+                .togglePurchased(ingredient.id);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                behavior: SnackBarBehavior.floating,
+                margin: const EdgeInsets.all(16),
+                content: Text(
+                  ingredient.isPurchased
+                      ? '${ingredient.name} marked as to buy'
+                      : '${ingredient.name} marked as purchased',
+                ),
+                duration: const Duration(seconds: 2),
+                action: SnackBarAction(
+                  label: 'UNDO',
+                  onPressed: () {
+                    ref
+                        .read(ingredientsProvider.notifier)
+                        .togglePurchased(ingredient.id);
+                  },
+                ),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Animated checkbox
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 28,
+                  height: 28,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: ingredient.isPurchased
+                        ? Colors.white
+                        : Colors.white.withOpacity(0.3),
+                    border: Border.all(
+                      color: Colors.white,
+                      width: 2,
+                    ),
+                  ),
+                  child: ingredient.isPurchased
+                      ? const Icon(
+                          Icons.check,
+                          size: 20,
+                          color: Colors.green,
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  ingredient.isPurchased
+                      ? 'Mark as To Buy'
+                      : 'Mark as Purchased',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

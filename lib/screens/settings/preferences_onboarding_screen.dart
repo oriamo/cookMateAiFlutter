@@ -158,16 +158,21 @@ class _PreferencesOnboardingScreenState
                 onPressed: _previousStep,
               )
             : null,
-      ),
-      body: Column(
-        children: [
-          // Progress indicator
-          LinearProgressIndicator(
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(4.0),
+          child: LinearProgressIndicator(
             value: (_currentStep + 1) / _totalSteps,
             backgroundColor: Colors.grey[300],
             valueColor:
                 AlwaysStoppedAnimation<Color>(Theme.of(context).primaryColor),
+            minHeight: 6.0,
           ),
+        ),
+        elevation: 0, // Remove shadow to avoid visual gap
+      ),
+      body: Column(
+        children: [
+          // Progress percentage text
           Padding(
             padding:
                 const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),

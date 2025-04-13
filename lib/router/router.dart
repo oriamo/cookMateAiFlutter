@@ -13,6 +13,7 @@ import '../screens/ai_chat_screen.dart';
 import '../screens/ingredients_screen.dart';
 import '../screens/ingredient_detail_screen.dart';
 import '../screens/settings/preferences_onboarding_screen.dart';
+import '../screens/upload_meal_screen.dart';
 import '../widgets/app_scaffold.dart';
 
 final router = GoRouter(
@@ -126,6 +127,13 @@ final router = GoRouter(
             final ingredientId = state.pathParameters['id'] ?? '';
             return IngredientDetailScreen(ingredientId: ingredientId);
           },
+        ),
+
+        // Upload Meal route
+        GoRoute(
+          path: '/upload-meal',
+          name: 'upload-meal',
+          builder: (context, state) => const UploadMealScreen(),
         ),
       ],
     ),

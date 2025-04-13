@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../providers/ingredients_provider.dart';
 import '../models/ingredient.dart';
 import 'package:uuid/uuid.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class IngredientsScreen extends ConsumerStatefulWidget {
   const IngredientsScreen({super.key});
@@ -41,7 +43,7 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(() {
       if (!_tabController.indexIsChanging) {
         setState(() {
@@ -340,92 +342,551 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final ingredients = ref.watch(ingredientsProvider);
+  Widget _buildIngredientItem(Ingredient ingredient) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final categoryColor = _getCategoryColor(ingredient.category ?? 'Other');
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Ingredients'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'All'),
-            // Tab(text: 'Pantry'),
-            Tab(text: 'Grocery List'),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+      child: Slidable(
+        endActionPane: ActionPane(
+          motion: const ScrollMotion(),
+          children: [
+            SlidableAction(
+              onPressed: (context) => _deleteIngredient(ingredient),
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              icon: Icons.delete,
+              label: 'Delete',
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(12),
+                bottomLeft: Radius.circular(12),
+              ),
+            ),
+            SlidableAction(
+              onPressed: (context) =>
+                  context.push('/ingredient/${ingredient.id}'),
+              backgroundColor: Colors.blue,
+              foregroundColor: Colors.white,
+              icon: Icons.info,
+              label: 'Details',
+              borderRadius: const BorderRadius.only(
+                topRight: Radius.circular(12),
+                bottomRight: Radius.circular(12),
+              ),
+            ),
           ],
         ),
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search ingredients...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+        child: InkWell(
+          onTap: () => _togglePurchased(ingredient),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDarkMode ? Colors.grey[800] : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  offset: const Offset(0, 2),
+                  blurRadius: 5,
                 ),
-                filled: true,
-                fillColor: Colors.grey.shade50,
+              ],
+              border: Border.all(
+                color: ingredient.isPurchased
+                    ? Colors.green.withOpacity(0.5)
+                    : Colors.grey.withOpacity(0.2),
+                width: ingredient.isPurchased ? 2 : 1,
               ),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-              },
+            ),
+            child: Padding(
+              padding:
+                  const EdgeInsets.symmetric(vertical: 12.0, horizontal: 8.0),
+              child: Row(
+                children: [
+                  // Checkbox with custom styling
+                  Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => _togglePurchased(ingredient),
+                      customBorder: const CircleBorder(),
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          width: 28,
+                          height: 28,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: ingredient.isPurchased
+                                ? Colors.green
+                                : isDarkMode
+                                    ? Colors.grey[700]
+                                    : Colors.grey[200],
+                            border: Border.all(
+                              color: ingredient.isPurchased
+                                  ? Colors.green
+                                  : Colors.grey.withOpacity(0.5),
+                              width: 2,
+                            ),
+                          ),
+                          child: ingredient.isPurchased
+                              ? const Icon(
+                                  Icons.check,
+                                  size: 18,
+                                  color: Colors.white,
+                                )
+                              : null,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+
+                  // Category icon
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: categoryColor.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      _getCategoryIcon(ingredient.category ?? 'Other'),
+                      color: categoryColor,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+
+                  // Ingredient name and details
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                ingredient.name,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  decoration: ingredient.isPurchased
+                                      ? TextDecoration.lineThrough
+                                      : null,
+                                  color: ingredient.isPurchased
+                                      ? isDarkMode
+                                          ? Colors.grey[400]
+                                          : Colors.grey[600]
+                                      : isDarkMode
+                                          ? Colors.white
+                                          : Colors.black87,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (ingredient.quantity != null ||
+                            ingredient.unit != null)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 4),
+                            child: Text(
+                              [
+                                if (ingredient.quantity != null)
+                                  ingredient.quantity,
+                                if (ingredient.unit != null) ingredient.unit,
+                              ].join(' '),
+                              style: GoogleFonts.poppins(
+                                fontSize: 14,
+                                color: isDarkMode
+                                    ? Colors.grey[400]
+                                    : Colors.grey[600],
+                                decoration: ingredient.isPurchased
+                                    ? TextDecoration.lineThrough
+                                    : null,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+
+                  // Category badge
+                  if (ingredient.category != null)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: categoryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: categoryColor.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Text(
+                        ingredient.category!,
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                          color: categoryColor,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
-          Expanded(
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                // All ingredients tab
-                ListView.builder(
-                  itemCount: ingredients.length,
-                  itemBuilder: (context, index) {
-                    final ingredient = ingredients[index];
-                    return ListTile(
-                      title: Text(ingredient.name),
-                      subtitle: ingredient.category != null
-                          ? Text(ingredient.category!)
-                          : null,
-                      leading: Icon(
-                        ingredient.category != null
-                            ? _getCategoryIcon(ingredient.category!)
-                            : Icons.food_bank,
-                        color: ingredient.category != null
-                            ? _getCategoryColor(ingredient.category!)
-                            : null,
-                      ),
-                      trailing: Text(
-                        ingredient.quantity != null && ingredient.unit != null
-                            ? '${ingredient.quantity} ${ingredient.unit}'
-                            : ingredient.quantity != null
-                                ? ingredient.quantity!
-                                : '',
-                      ),
-                      onTap: () {
-                        // Navigate to ingredient detail
-                        context.push('/ingredient/${ingredient.id}');
-                      },
-                    );
-                  },
-                ),
-                // Pantry tab
-                // const Center(child: Text('Pantry items here')),
-                // Grocery list tab
-                const Center(child: Text('Grocery list here')),
-              ],
+        ),
+      ),
+    );
+  }
+
+  void _togglePurchased(Ingredient ingredient) {
+    ref.read(ingredientsProvider.notifier).togglePurchased(ingredient.id);
+
+    // Show snackbar feedback
+    final message = ingredient.isPurchased
+        ? '${ingredient.name} unmarked'
+        : '${ingredient.name} checked off';
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        duration: const Duration(seconds: 2),
+        action: SnackBarAction(
+          label: 'UNDO',
+          onPressed: () {
+            ref
+                .read(ingredientsProvider.notifier)
+                .togglePurchased(ingredient.id);
+          },
+        ),
+      ),
+    );
+  }
+
+  void _deleteIngredient(Ingredient ingredient) {
+    // Show confirmation dialog
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Delete ${ingredient.name}?'),
+        content: const Text('Are you sure you want to remove this item?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
             ),
+            onPressed: () {
+              ref
+                  .read(ingredientsProvider.notifier)
+                  .removeIngredient(ingredient.id);
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('${ingredient.name} removed'),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+            },
+            child: const Text('Delete'),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ingredients = ref.watch(ingredientsProvider);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    // Filter ingredients based on search and tab
+    final filteredIngredients = ingredients.where((ingredient) {
+      final matchesSearch = _searchQuery.isEmpty ||
+          ingredient.name.toLowerCase().contains(_searchQuery.toLowerCase());
+
+      if (_selectedTabIndex == 0) {
+        // All tab
+        return matchesSearch;
+      } else {
+        // Done tab
+        return matchesSearch && ingredient.isPurchased;
+      }
+    }).toList();
+
+    // Count of purchased items
+    final purchasedCount = ingredients.where((i) => i.isPurchased).length;
+    final totalCount = ingredients.length;
+
+    return Scaffold(
+      body: SafeArea(
+        child: NestedScrollView(
+          headerSliverBuilder: (context, innerBoxIsScrolled) {
+            return [
+              SliverAppBar(
+                pinned: true,
+                floating: true,
+                forceElevated: innerBoxIsScrolled,
+                elevation: 0,
+                backgroundColor: isDarkMode ? Colors.grey[900] : Colors.white,
+                title: Text(
+                  'Shopping List',
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                  ),
+                ),
+                bottom: PreferredSize(
+                  preferredSize: const Size.fromHeight(110),
+                  child: Column(
+                    children: [
+                      // Progress indicator
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Progress',
+                                    style: GoogleFonts.poppins(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                      color: isDarkMode
+                                          ? Colors.grey[400]
+                                          : Colors.grey[600],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(4),
+                                    child: LinearProgressIndicator(
+                                      value: totalCount > 0
+                                          ? purchasedCount / totalCount
+                                          : 0,
+                                      backgroundColor: isDarkMode
+                                          ? Colors.grey[800]
+                                          : Colors.grey[200],
+                                      color: Colors.green,
+                                      minHeight: 8,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.green.withOpacity(0.3),
+                                ),
+                              ),
+                              child: Text(
+                                '$purchasedCount/$totalCount',
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.green,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      // Search bar
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: TextField(
+                          controller: _searchController,
+                          decoration: InputDecoration(
+                            hintText: 'Search ingredients...',
+                            prefixIcon: const Icon(Icons.search),
+                            suffixIcon: _searchQuery.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear),
+                                    onPressed: () {
+                                      _searchController.clear();
+                                      setState(() {
+                                        _searchQuery = '';
+                                      });
+                                    },
+                                  )
+                                : null,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide.none,
+                            ),
+                            filled: true,
+                            fillColor: isDarkMode
+                                ? Colors.grey[800]
+                                : Colors.grey[100],
+                            contentPadding:
+                                const EdgeInsets.symmetric(vertical: 8),
+                          ),
+                          onChanged: (value) {
+                            setState(() {
+                              _searchQuery = value;
+                            });
+                          },
+                        ),
+                      ),
+
+                      // Tab bar
+                      TabBar(
+                        controller: _tabController,
+                        tabs: [
+                          Tab(
+                            icon: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.shopping_cart),
+                                const SizedBox(width: 8),
+                                const Text('All'),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '($totalCount)',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    color: isDarkMode
+                                        ? Colors.grey[400]
+                                        : Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Tab(
+                            icon: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.check_circle),
+                                const SizedBox(width: 8),
+                                const Text('Purchased'),
+                                const SizedBox(width: 4),
+                                Text(
+                                  '($purchasedCount)',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 12,
+                                    color: isDarkMode
+                                        ? Colors.grey[400]
+                                        : Colors.grey[600],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        indicatorWeight: 3,
+                        indicatorColor: Theme.of(context).colorScheme.primary,
+                        labelColor: Theme.of(context).colorScheme.primary,
+                        unselectedLabelColor:
+                            isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ];
+          },
+          body: filteredIngredients.isEmpty
+              ? _buildEmptyState()
+              : ListView.builder(
+                  itemCount: filteredIngredients.length,
+                  padding: const EdgeInsets.only(top: 8, bottom: 100),
+                  itemBuilder: (context, index) {
+                    final ingredient = filteredIngredients[index];
+                    return _buildIngredientItem(ingredient);
+                  },
+                ),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: _openAddIngredientDialog,
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text('Add Item'),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Colors.white,
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            _selectedTabIndex == 0 ? Icons.shopping_cart : Icons.check_circle,
+            size: 80,
+            color: isDarkMode ? Colors.grey[700] : Colors.grey[300],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _selectedTabIndex == 0
+                ? _searchQuery.isEmpty
+                    ? 'Your shopping list is empty'
+                    : 'No matching ingredients found'
+                : _searchQuery.isEmpty
+                    ? 'No purchased items yet'
+                    : 'No matching purchased items',
+            style: GoogleFonts.poppins(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40),
+            child: Text(
+              _selectedTabIndex == 0
+                  ? _searchQuery.isEmpty
+                      ? 'Add ingredients to your shopping list'
+                      : 'Try a different search term'
+                  : _searchQuery.isEmpty
+                      ? 'Items you check off will appear here'
+                      : 'Try a different search term',
+              style: GoogleFonts.poppins(
+                fontSize: 14,
+                color: isDarkMode ? Colors.grey[500] : Colors.grey[600],
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 24),
+          if (_searchQuery.isEmpty && _selectedTabIndex == 0)
+            ElevatedButton.icon(
+              onPressed: _openAddIngredientDialog,
+              icon: const Icon(Icons.add),
+              label: const Text('Add First Item'),
+              style: ElevatedButton.styleFrom(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                foregroundColor: Colors.white,
+              ),
+            ),
+        ],
       ),
     );
   }

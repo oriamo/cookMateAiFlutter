@@ -11,6 +11,7 @@ import '../widgets/recipe_card.dart';
 import '../widgets/shimmers/recipe_card_shimmer.dart';
 import '../widgets/shimmers/category_card_shimmer.dart';
 
+// Featured recipes provider - gets first 5 recipes
 // Define providers for home screen
 final featuredRecipesProvider = Provider<List<Recipe>>((ref) {
   final allRecipes = ref.watch(recipeProvider);
@@ -18,6 +19,7 @@ final featuredRecipesProvider = Provider<List<Recipe>>((ref) {
   return allRecipes.take(5).toList();
 });
 
+// Popular recipes provider - sorts by rating and takes top 6
 final popularRecipesProvider = Provider<List<Recipe>>((ref) {
   final allRecipes = ref.watch(recipeProvider);
   // Sort recipes by rating and return top ones
@@ -26,11 +28,13 @@ final popularRecipesProvider = Provider<List<Recipe>>((ref) {
   return sortedRecipes.take(6).toList();
 });
 
+// Categories provider - uses existing category provider
 // Use the existing categoriesProvider from category_provider.dart
 final categoriesProvider = Provider<List<Category>>((ref) {
   return ref.watch(categoryProvider);
 });
 
+// Main HomeScreen Widget - a stateful widget that uses Riverpod for state management
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -38,6 +42,7 @@ class HomeScreen extends ConsumerStatefulWidget {
   ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
+// State Class (_HomeScreenState) - Manages scroll behavior to show/hide search bar based on scroll position
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isSearchBarVisible = false;
@@ -64,6 +69,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+// Build Method - uses a CustomScrollView with the following slivers
+//    - SliverAppBar: Collapsible app bar with search functionality
+//    - SliverToBoxAdapter: For categories, featured recipes, and popular recipes sections
+//    - SliverPadding and SliverGrid: For the popular recipes grid
+
   @override
   Widget build(BuildContext context) {
     final featuredRecipes = ref.watch(featuredRecipesProvider);
@@ -76,7 +86,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         slivers: [
           // App Bar
           SliverAppBar(
-            expandedHeight: 200,
+            expandedHeight: 220, // Increased height to accommodate the content
             pinned: true,
             backgroundColor: _isSearchBarVisible
                 ? Theme.of(context).colorScheme.primary
@@ -128,25 +138,57 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 ),
                               ),
                             ),
-                            const Spacer(),
-                            IconButton(
-                              icon: const Icon(Icons.shopping_cart_outlined,
-                                  color: Colors.white),
-                              tooltip: 'Ingredients List',
-                              onPressed: () {
-                                context.go('/ingredients');
-                              },
+                            // Removing the Spacer and shopping cart icon to fix overflow
+                          ],
+                        ),
+                      ),
+                      // Add new meal and grocery list buttons
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () => context.go('/upload-meal'),
+                                icon: const Icon(Icons.add_circle_outline),
+                                label: const Text('Add New Meal'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor:
+                                      Theme.of(context).colorScheme.primary,
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 10),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.notifications_outlined,
-                                  color: Colors.white),
-                              onPressed: () {},
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                onPressed: () => context.go('/ingredients'),
+                                icon: const Icon(Icons.shopping_cart_outlined),
+                                label: const Text('Grocery List'),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor:
+                                      Colors.white.withOpacity(0.85),
+                                  foregroundColor:
+                                      Theme.of(context).colorScheme.primary,
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 10),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                              ),
                             ),
                           ],
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -157,7 +199,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 color: Colors.white.withOpacity(0.9),
                               ),
                             ),
-                            const SizedBox(height: 16),
+                            const SizedBox(height: 12),
                             GestureDetector(
                               onTap: () {
                                 context.go('/search');
@@ -198,16 +240,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
               collapseMode: CollapseMode.pin,
             ),
-            actions: _isSearchBarVisible
-                ? [
-                    IconButton(
-                      icon: const Icon(Icons.search),
-                      onPressed: () {
-                        context.go('/search');
-                      },
-                    ),
-                  ]
-                : null,
+            actions: [
+              // Shopping cart icon for collapsed app bar
+              IconButton(
+                icon: const Icon(Icons.shopping_cart_outlined),
+                onPressed: () => context.go('/ingredients'),
+                tooltip: 'Grocery List',
+              ),
+              // Add new meal button for collapsed app bar
+              IconButton(
+                icon: const Icon(Icons.add_circle_outline),
+                onPressed: () => context.go('/upload-meal'),
+                tooltip: 'Add New Meal',
+              ),
+            ],
           ),
 
           // Categories section
