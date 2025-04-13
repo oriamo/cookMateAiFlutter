@@ -7,7 +7,7 @@ import 'router/router.dart';
 import 'screens/permissions_screen.dart';
 import 'services/timer_service.dart';
 
-// Global flag for demo mode
+// Global flag for demo mode - mock UI data but real AI services
 const bool isDemoMode = true;
 
 void main() async {
@@ -15,16 +15,15 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    // Load environment variables from .env file if not in demo mode
-    if (!isDemoMode) {
-      await dotenv.load();
-      
-      // Initialize Gemini with API key from .env
-      final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
-      Gemini.init(apiKey: apiKey);
-    } else {
-      // In demo mode, we'll just provide a placeholder
-      print('Running in DEMO MODE - Using mock data instead of API services');
+    // Load environment variables from .env file - needed for AI services
+    await dotenv.load();
+    
+    // Initialize Gemini with API key from .env
+    final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
+    Gemini.init(apiKey: apiKey);
+    
+    if (isDemoMode) {
+      print('Running in PARTIAL DEMO MODE - Using mock data for UI, real services for AI features');
     }
 
     // Initialize TimerService

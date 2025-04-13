@@ -6,7 +6,7 @@ final azureFunctionServiceProvider = Provider<AzureFunctionService>((ref) {
   return AzureFunctionServiceMock();
 });
 
-// Mock implementation for demo purposes
+// Mock implementation for demo UI purposes
 class AzureFunctionServiceMock implements AzureFunctionService {
   @override
   Future<Map<String, dynamic>> getPaginatedMeals({

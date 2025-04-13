@@ -1,9 +1,33 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/category.dart';
-import '../dummy_data/dummy_categories.dart';
+import '../services/azure_function_service.dart';
+import '../services/azure_function_service_provider.dart';
 
 class CategoryNotifier extends StateNotifier<List<Category>> {
-  CategoryNotifier() : super(dummyCategories);
+  final AzureFunctionService _azureFunctionService;
+  
+  CategoryNotifier(this._azureFunctionService) : super([]) {
+    loadCategories();
+  }
+
+  Future<void> loadCategories() async {
+    try {
+      // Get categories from the backend
+      final data = await _azureFunctionService.getPaginatedMeals();
+      
+      // Extract category information
+      final categories = (data['categories'] as List<String>).map((category) => Category(
+        id: category,
+        name: category,
+        imageUrl: 'https://source.unsplash.com/400x300/?$category,food',
+        recipeCount: 0, // We don't have counts in this implementation
+      )).toList();
+      
+      state = categories;
+    } catch (e) {
+      print('Error loading categories: $e');
+    }
+  }
 
   Category? getCategoryById(String id) {
     try {
@@ -24,7 +48,8 @@ class CategoryNotifier extends StateNotifier<List<Category>> {
 // Main categories provider
 final categoryProvider =
     StateNotifierProvider<CategoryNotifier, List<Category>>((ref) {
-  return CategoryNotifier();
+  final azureFunctionService = ref.watch(azureFunctionServiceProvider);
+  return CategoryNotifier(azureFunctionService);
 });
 
 // Provider for a single category by ID
