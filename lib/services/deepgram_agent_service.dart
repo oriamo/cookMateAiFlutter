@@ -144,23 +144,96 @@ class DeepgramAgentService {
     }
   }
   
-  /// Initialize native audio streaming
+  /// Initialize native audio streaming with robust retry logic
   Future<bool> _initAudioStream() async {
-    try {
-      debugPrint('🔊 DEEPGRAM: Initializing native audio stream');
+    // If already initialized, return success
+    if (_isAudioStreamInitialized) {
+      debugPrint('🔊 DEEPGRAM: Audio stream already initialized, skipping initialization');
+      return true;
+    }
+    
+    // First try to stop any existing audio stream
+    await _stopAudioStream();
+    
+    // Add longer delay to ensure clean state - this is critical for reliable operation
+    await Future.delayed(Duration(milliseconds: 200));
+    
+    // Maximum number of retry attempts
+    const maxRetries = 3;
+    int retryCount = 0;
+    bool success = false;
+    
+    while (!success && retryCount < maxRetries) {
+      try {
+        if (retryCount > 0) {
+          debugPrint('🔊 DEEPGRAM: Retry #$retryCount initializing native audio stream');
+          // Add increasing delay between retries
+          await Future.delayed(Duration(milliseconds: 300 * retryCount));
+        } else {
+          debugPrint('🔊 DEEPGRAM: Initializing native audio stream with ultra-reliable settings');
+        }
+        
+        // Use configuration that prioritizes maximum reliability
+        final result = await _audioChannel.invokeMethod<bool>('initAudioStream', {
+          'sampleRate': 24000, // Deepgram's output sample rate
+          'enableCommunicationMode': false, // Disable communication mode for maximum compatibility
+        });
+        
+        if (result == true) {
+          _isAudioStreamInitialized = true;
+          debugPrint('🟢 DEEPGRAM: Native audio stream successfully initialized on attempt ${retryCount + 1}');
+          
+          // Add delay after successful initialization to let the system stabilize
+          await Future.delayed(Duration(milliseconds: 100));
+          success = true;
+        } else {
+          debugPrint('🔴 DEEPGRAM: Native audio stream initialization returned false on attempt ${retryCount + 1}');
+          
+          // If first attempt fails, try a slightly different approach on subsequent attempts
+          if (retryCount == 0) {
+            // Force garbage collection to help free resources
+            // ignore: empty_catches
+            try { 
+              debugPrint('🔵 DEEPGRAM: Requesting garbage collection to free resources');
+              // On Flutter, this isn't direct but can hint to the system
+              // A combination of awaits and delays can help trigger GC
+              await Future.delayed(Duration(milliseconds: 50));
+              Isolate.current.addOnExitListener(RawReceivePort().sendPort);
+              await Future.delayed(Duration(milliseconds: 50));
+            } catch (e) {}
+          }
+        }
+      } catch (e) {
+        debugPrint('🔴 DEEPGRAM: Error initializing native audio stream on attempt ${retryCount + 1}: $e');
+      }
       
-      // Enable communication mode for full-duplex audio (simultaneous recording and playback)
-      // This is critical for continuous audio streaming to Deepgram while playing back responses
-      final result = await _audioChannel.invokeMethod<bool>('initAudioStream', {
-        'sampleRate': 24000, // Deepgram's sample rate
-        'enableCommunicationMode': true, // Enable communication mode for simultaneous recording and playback
-      });
+      retryCount++;
       
-      _isAudioStreamInitialized = result ?? false;
-      debugPrint('🔊 DEEPGRAM: Native audio stream initialized: $_isAudioStreamInitialized');
-      return _isAudioStreamInitialized;
-    } catch (e) {
-      debugPrint('🔴 DEEPGRAM: Error initializing native audio stream: $e');
+      // If we failed but have more retries, stop any existing stream first
+      if (!success && retryCount < maxRetries) {
+        debugPrint('🔵 DEEPGRAM: Cleaning up before retry #$retryCount');
+        await _stopAudioStream();
+        await Future.delayed(Duration(milliseconds: 300));
+      }
+    }
+    
+    // Final status report
+    if (success) {
+      // Try to get audio stats to verify everything is working
+      try {
+        final stats = await _getAudioStats();
+        debugPrint('🟢 DEEPGRAM: Audio initialization complete, stats: $stats');
+      } catch (e) {
+        debugPrint('🟡 DEEPGRAM: Audio initialized but couldn\'t get stats: $e');
+      }
+      return true;
+    } else {
+      debugPrint('🔴 DEEPGRAM: All $maxRetries attempts to initialize audio failed, falling back to TTS');
+      // Ensure we're in a clean state
+      _isAudioStreamInitialized = false;
+      await _stopAudioStream();
+      
+      // Return false to indicate failure
       return false;
     }
   }
@@ -239,7 +312,15 @@ class DeepgramAgentService {
     debugPrint('🟢 DEEPGRAM: TTS engine initialized');
   }
   
-  /// Handle audio data from Deepgram with native streaming
+  // Keep track of audio playback metrics
+  int _totalAudioPacketsReceived = 0;
+  int _totalAudioBytesReceived = 0;
+  int _consecutiveAudioFailures = 0;
+  int _maxConsecutiveFailures = 3; // After this many failures, we'll reinitialize
+  DateTime _lastAudioReinitialization = DateTime.now();
+  
+  /// Handle audio data from Deepgram with robust error recovery
+  /// This implementation includes advanced buffering and failure recovery strategies
   void _handleAudioData(Uint8List audioData) async {
     try {
       // Update state to indicate the agent is speaking
@@ -250,43 +331,177 @@ class DeepgramAgentService {
         _startForcedAudioTimer();
       }
       
-      // Send data to native audio player
-      if (_isAudioStreamInitialized) {
-        debugPrint('🔊 DEEPGRAM: Sending ${audioData.length} bytes to native audio player');
-        try {
-          await _audioChannel.invokeMethod<bool>('writeAudioData', {
-            'data': audioData,
-          });
+      // Reset inactivity timer since we're actively receiving data
+      _resetInactivityTimer();
+      
+      // Track metrics for debugging and analytics
+      _totalAudioPacketsReceived++;
+      _totalAudioBytesReceived += audioData.length;
+      
+      // Skip very small packets which cause playback issues
+      if (audioData.length < 80) {
+        debugPrint('🔊 DEEPGRAM: Skipping very small audio packet (${audioData.length} bytes)');
+        return;
+      }
+      
+      // Periodic logging of audio stats
+      if (_totalAudioPacketsReceived % 10 == 0) {
+        debugPrint('🔊 DEEPGRAM: Audio stats: received $_totalAudioPacketsReceived packets, $_totalAudioBytesReceived bytes total');
+      }
+      
+      // INITIALIZATION LOGIC
+      // Try to use native audio playback with smart retry logic
+      if (!_isAudioStreamInitialized) {
+        // Check if we need to throttle reinitialization attempts
+        final now = DateTime.now();
+        final timeSinceLastInit = now.difference(_lastAudioReinitialization);
+        
+        if (timeSinceLastInit.inSeconds < 5) {
+          // If we've tried to initialize very recently, use TTS as fallback
+          debugPrint('🟡 DEEPGRAM: Too many recent audio init attempts (${timeSinceLastInit.inMilliseconds}ms ago), throttling');
           
-          // Reset inactivity timer since we're actively receiving data
-          _resetInactivityTimer();
+          // Only speak if we haven't spoken in last 2 seconds (avoid multiple messages)
+          final currentTime = DateTime.now().millisecondsSinceEpoch;
+          if (currentTime - _lastSpeakTime > 2000) {
+            _lastSpeakTime = currentTime;
+            await _tts.speak('Processing your request');
+          }
+          return;
+        }
+        
+        // Attempt to initialize audio
+        debugPrint('🔊 DEEPGRAM: Native audio not initialized - initializing now');
+        _lastAudioReinitialization = now; // Update timestamp before attempting
+        _isAudioStreamInitialized = await _initAudioStream();
+        
+        if (!_isAudioStreamInitialized) {
+          debugPrint('🔴 DEEPGRAM: Native audio initialization failed - will use TTS for speech instead');
           
-        } catch (e) {
-          debugPrint('🔴 DEEPGRAM: Error sending audio data to native player: $e');
+          // Only speak if we haven't spoken in last 2 seconds
+          final currentTime = DateTime.now().millisecondsSinceEpoch;
+          if (currentTime - _lastSpeakTime > 2000) {
+            _lastSpeakTime = currentTime;
+            await _tts.speak('The assistant is responding now');
+          }
+          return;
+        } else {
+          // Successfully initialized
+          _consecutiveAudioFailures = 0;
+          debugPrint('🟢 DEEPGRAM: Native audio successfully initialized, proceeding with playback');
+        }
+      }
+      
+      // AUDIO PLAYBACK LOGIC
+      // Send audio data to native player with comprehensive error handling
+      debugPrint('🔊 DEEPGRAM: Sending ${audioData.length} bytes to native audio player');
+      try {
+        // Add a small delay for larger packets to help with buffering
+        // This is a critical optimization to prevent buffer underruns and overruns
+        if (audioData.length > 800) {
+          await Future.delayed(Duration(milliseconds: 8)); // Slightly longer delay for larger packets
+        } else if (audioData.length > 400) {
+          await Future.delayed(Duration(milliseconds: 4)); // Small delay for medium packets
+        }
+        
+        // Send audio data to native layer
+        final result = await _audioChannel.invokeMethod<bool>('writeAudioData', {
+          'data': audioData,
+        });
+        
+        if (result == true) {
+          // Success - reset failure counter
+          if (_consecutiveAudioFailures > 0) {
+            _consecutiveAudioFailures = 0;
+            debugPrint('🟢 DEEPGRAM: Audio playback recovered after previous failures');
+          }
+        } else {
+          // The method returned false - not an exception but still a failure
+          _consecutiveAudioFailures++;
+          debugPrint('🟡 DEEPGRAM: Native audio write returned false (failure #$_consecutiveAudioFailures)');
           
-          // If native playback fails, initialize it again
-          if (!await _initAudioStream()) {
-            // If re-init fails, fall back to TTS
-            debugPrint('🔴 DEEPGRAM: Failed to reinitialize native audio - falling back to TTS');
-            await _tts.speak('Audio playback failed. Falling back to text-to-speech.');
+          // Consider reinitializing after too many failures
+          if (_shouldReinitializeAudio()) {
+            await _reinitializeAudio();
           }
         }
-      } else {
-        // If native audio isn't available, try to initialize it
-        debugPrint('🔊 DEEPGRAM: Native audio not initialized - attempting to initialize');
-        if (await _initAudioStream()) {
-          // Try again with the same data
-          _handleAudioData(audioData);
-        } else {
-          // Fall back to TTS
-          debugPrint('🔴 DEEPGRAM: Native audio initialization failed - falling back to TTS');
-          await _tts.speak('Audio playback not available. Using text-to-speech instead.');
+      } catch (e) {
+        // If sending data fails, log error and try to recover
+        _consecutiveAudioFailures++;
+        debugPrint('🔴 DEEPGRAM: Error sending audio data to native player: $e (failure #$_consecutiveAudioFailures)');
+        
+        // Check if we should reinitialize or fall back to TTS
+        if (_shouldReinitializeAudio()) {
+          await _reinitializeAudio();
+        } else if (_consecutiveAudioFailures > 1) {
+          // For multiple failures that don't trigger reinitialization,
+          // still provide audio feedback with TTS
+          final now = DateTime.now().millisecondsSinceEpoch;
+          if (now - _lastSpeakTime > 3000) { // Only every 3 seconds to avoid spam
+            _lastSpeakTime = now;
+            await _tts.speak('Still processing your request');
+          }
         }
       }
     } catch (e) {
       debugPrint('🔴 DEEPGRAM: Error handling audio data: $e');
+      
+      // Try to recover gracefully from any unhandled errors
+      try {
+        await Future.delayed(Duration(milliseconds: 100));
+        if (_isAudioStreamInitialized && _consecutiveAudioFailures > _maxConsecutiveFailures) {
+          _reinitializeAudio();
+        }
+      } catch (_) {}
     }
   }
+  
+  /// Determine if we should reinitialize the audio system
+  bool _shouldReinitializeAudio() {
+    // Check if we've had too many consecutive failures
+    if (_consecutiveAudioFailures >= _maxConsecutiveFailures) {
+      // Also check if we haven't reinitialized too recently
+      final timeSinceLastInit = DateTime.now().difference(_lastAudioReinitialization);
+      if (timeSinceLastInit.inSeconds >= 3) { // Throttle reinits to at most once every 3 seconds
+        return true;
+      }
+    }
+    return false;
+  }
+  
+  /// Reinitialize the audio system after failures
+  Future<void> _reinitializeAudio() async {
+    debugPrint('🔵 DEEPGRAM: Reinitializing audio after $_consecutiveAudioFailures consecutive failures');
+    
+    // Update reinitialization timestamp
+    _lastAudioReinitialization = DateTime.now();
+    
+    // Stop and reinitialize
+    _isAudioStreamInitialized = false;
+    await _stopAudioStream();
+    
+    // Add delay to ensure clean state
+    await Future.delayed(Duration(milliseconds: 300));
+    
+    // Try to reinitialize
+    _isAudioStreamInitialized = await _initAudioStream();
+    
+    // Log result
+    if (_isAudioStreamInitialized) {
+      debugPrint('🟢 DEEPGRAM: Audio reinitialization successful');
+      _consecutiveAudioFailures = 0;
+    } else {
+      debugPrint('🔴 DEEPGRAM: Audio reinitialization failed, will use TTS');
+      // Speak a notification
+      final now = DateTime.now().millisecondsSinceEpoch;
+      if (now - _lastSpeakTime > 2000) {
+        _lastSpeakTime = now;
+        await _tts.speak('Processing your request');
+      }
+    }
+  }
+  
+  // Track when we last spoke with TTS to avoid repeated messages
+  int _lastSpeakTime = 0;
   
   /// Connect to Deepgram Voice Agent API
   Future<bool> connect() async {
@@ -884,7 +1099,14 @@ class DeepgramAgentService {
   Future<void> _streamAudio() async {
     if (!_isConnected) {
       debugPrint('🔴 DEEPGRAM: Cannot stream audio - not connected');
-      return;
+      
+      // Try to reconnect if not connected
+      debugPrint('🔵 DEEPGRAM: Trying to reconnect before streaming audio');
+      final connected = await connect();
+      if (!connected) {
+        debugPrint('🔴 DEEPGRAM: Failed to connect, cannot stream audio');
+        return;
+      }
     }
     
     // Stop any existing recording first
@@ -927,8 +1149,23 @@ class DeepgramAgentService {
       
       debugPrint('🟢 DEEPGRAM: Starting continuous audio stream with PCM 16-bit, 16kHz, mono');
       
-      // Start recording to stream
-      final stream = await _recorder!.startStream(config);
+      // Start recording to stream with retry in case of failure
+      Stream<Uint8List>? stream;
+      int retryCount = 0;
+      
+      while (stream == null && retryCount < 3) {
+        try {
+          stream = await _recorder!.startStream(config);
+        } catch (e) {
+          retryCount++;
+          debugPrint('🔴 DEEPGRAM: Error starting stream, retry $retryCount: $e');
+          await Future.delayed(Duration(milliseconds: 200));
+        }
+      }
+      
+      if (stream == null) {
+        throw Exception('Failed to start audio stream after $retryCount retries');
+      }
       
       debugPrint('🟢 DEEPGRAM: Audio stream started successfully');
       

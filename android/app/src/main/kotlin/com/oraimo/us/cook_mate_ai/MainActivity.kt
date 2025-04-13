@@ -213,6 +213,9 @@ class MainActivity: FlutterActivity() {
         // Release any existing AudioTrack
         stopAudioTrack()
         
+        // Wait a bit longer to ensure clean state - prevents resource conflicts
+        Thread.sleep(100)
+        
         // Calculate optimal buffer size
         val minBufferSize = AudioTrack.getMinBufferSize(
             sampleRate,
@@ -220,24 +223,24 @@ class MainActivity: FlutterActivity() {
             AudioFormat.ENCODING_PCM_16BIT
         )
         
-        // Use a MUCH larger buffer for stability
-        // This is critical to prevent audio dropouts with streaming data
-        val bufferSize = minBufferSize * 8
+        // Use extremely large buffer for maximum stability
+        // This prevents audio dropouts with streaming data and handles bursty packets
+        val bufferSize = minBufferSize * 32 // Massive buffer for maximum stability
         
-        Log.d(TAG, "Creating AudioTrack with buffer size: $bufferSize bytes (min: $minBufferSize)")
+        Log.d(TAG, "Creating AudioTrack with massive buffer size: $bufferSize bytes (min: $minBufferSize)")
         
         try {
+            // Create and configure audio track based on API level
             audioTrack = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                Log.d(TAG, "Using modern AudioTrack API")
+                Log.d(TAG, "Using modern AudioTrack API with ultra-reliable config")
                 
-                // Create audio attributes optimized for voice playback
-                // For full-duplex mode, we need a balanced configuration
+                // Create audio attributes optimized for speech quality
                 val audioAttributes = AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_MEDIA)
+                    .setUsage(AudioAttributes.USAGE_MEDIA) // MEDIA gives better quality than VOICE_COMMUNICATION
                     .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                     .build()
                 
-                // Configure AudioTrack for optimal full-duplex performance
+                // Configure AudioTrack for maximum reliability over low latency
                 val track = AudioTrack.Builder()
                     .setAudioAttributes(audioAttributes)
                     .setAudioFormat(AudioFormat.Builder()
@@ -247,16 +250,24 @@ class MainActivity: FlutterActivity() {
                         .build())
                     .setBufferSizeInBytes(bufferSize)
                     .setTransferMode(AudioTrack.MODE_STREAM)
-                    // Balance between latency and stability
-                    .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
+                    // Use POWER_SAVING mode for maximum stability
+                    .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_POWER_SAVING)
                     .build()
                 
-                // Note: The deep buffer setting is not compatible with all devices
-                // Leaving it out for compatibility
+                // For newer API levels, set offload mode to NOT_SUPPORTED
+                // This prevents the system from trying to use audio offload, which can be unreliable
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    try {
+                        Log.d(TAG, "Setting offload mode to NOT_SUPPORTED for better reliability")
+                        track.setOffloadMode(AudioTrack.OFFLOAD_MODE_NOT_SUPPORTED)
+                    } catch (e: Exception) {
+                        Log.w(TAG, "Failed to set offload mode: ${e.message}")
+                    }
+                }
                 
                 track
             } else {
-                Log.d(TAG, "Using legacy AudioTrack API")
+                Log.d(TAG, "Using legacy AudioTrack API with basic config")
                 // Always use STREAM_MUSIC for consistent audio quality
                 val streamType = AudioManager.STREAM_MUSIC
                 
@@ -270,9 +281,50 @@ class MainActivity: FlutterActivity() {
                 )
             }
             
+            // Try to get high-quality audio output
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                try {
+                    // Higher preferred device helps with audio quality
+                    Log.d(TAG, "Setting preferred device to wired headset/speaker")
+                    val devices = audioManager?.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+                    var preferredDevice: AudioDeviceInfo? = null
+                    
+                    // Try to find a wired headset or speaker for better quality
+                    devices?.forEach { device ->
+                        if (device.type == AudioDeviceInfo.TYPE_WIRED_HEADSET || 
+                            device.type == AudioDeviceInfo.TYPE_WIRED_HEADPHONES ||
+                            device.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER) {
+                            preferredDevice = device
+                            return@forEach
+                        }
+                    }
+                    
+                    if (preferredDevice != null) {
+                        audioTrack?.preferredDevice = preferredDevice
+                        Log.d(TAG, "Set preferred audio device: ${preferredDevice?.productName}")
+                    }
+                } catch (e: Exception) {
+                    Log.w(TAG, "Failed to set preferred device: ${e.message}")
+                }
+            }
+            
             // Reset stats
             totalBytesPlayed = 0
             startTimeMs = System.currentTimeMillis()
+            
+            // Try to ensure optimal output volume
+            try {
+                val currentVolume = audioManager?.getStreamVolume(AudioManager.STREAM_MUSIC) ?: 0
+                val maxVolume = audioManager?.getStreamMaxVolume(AudioManager.STREAM_MUSIC) ?: 15
+                val targetVolume = (maxVolume * 0.8).toInt() // 80% of max
+                
+                if (currentVolume < targetVolume) {
+                    Log.d(TAG, "Increasing audio volume from $currentVolume to $targetVolume for better audibility")
+                    audioManager?.setStreamVolume(AudioManager.STREAM_MUSIC, targetVolume, 0)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to adjust volume: ${e.message}")
+            }
             
             // Start playback
             audioTrack?.play()
@@ -280,78 +332,132 @@ class MainActivity: FlutterActivity() {
             
             Log.i(TAG, "AudioTrack initialized and started successfully")
             
-            // Start audio processing thread
+            // Start audio processing thread with completely redesigned approach
+            // This implementation is much more resilient to different packet sizes and timing
             audioThread = Thread {
-                Log.d(TAG, "Audio processing thread started")
+                Log.d(TAG, "Audio processing thread started with resilient buffer management")
                 
-                // Create a buffer to collect small audio chunks
-                val accumulatedBuffer = ByteArray(24000) // 0.5 second buffer at 24kHz, 16-bit mono
-                var accumulatedSize = 0
-                val minWriteSize = 3200 // About 1/15th of a second, good compromise for responsiveness
-
+                // Internal packet aggregation buffer for better performance
+                // This combines small packets into larger ones for more efficient playback
+                var aggregateBuffer = ByteArray(0)
+                val optimalChunkSize = 4800 // 100ms of audio at 24kHz, 16-bit mono (2 bytes per sample)
+                var totalBytesProcessed = 0
+                var lastLogTimestamp = System.currentTimeMillis()
+                var consecutiveEmptyPolls = 0
+                var consecutiveErrors = 0
+                
                 while (isPlaying) {
                     try {
-                        // Take from queue with timeout to allow clean shutdown
+                        // Take from queue with short timeout to maintain responsiveness
                         val data = try {
-                            audioQueue.poll(500, java.util.concurrent.TimeUnit.MILLISECONDS) ?: continue
+                            audioQueue.poll(50, java.util.concurrent.TimeUnit.MILLISECONDS)
                         } catch (e: InterruptedException) {
                             Log.w(TAG, "Audio thread interrupted while waiting for data")
                             break
                         }
                         
+                        // If no data available, flush any remaining aggregated data
+                        if (data == null) {
+                            consecutiveEmptyPolls++
+                            
+                            // After several empty polls, flush any remaining data in the buffer
+                            if (consecutiveEmptyPolls >= 3 && aggregateBuffer.isNotEmpty()) {
+                                Log.d(TAG, "Flushing ${aggregateBuffer.size} bytes after ${consecutiveEmptyPolls} empty polls")
+                                internalWriteAudioData(aggregateBuffer, aggregateBuffer.size)
+                                totalBytesProcessed += aggregateBuffer.size
+                                aggregateBuffer = ByteArray(0)
+                            }
+                            
+                            continue
+                        }
+                        
+                        // Reset consecutive empty counter since we got data
+                        consecutiveEmptyPolls = 0
+                        
+                        // Empty buffer signals shutdown
                         if (data.isEmpty()) {
                             Log.d(TAG, "Received empty buffer - stopping thread")
                             break
                         }
                         
-                        // Process the data - we have two strategies:
-                        // 1. If we get a large chunk, write it directly
-                        // 2. For small chunks, collect them until we have enough to write
+                        // Skip extremely tiny packets that might cause playback issues
+                        if (data.size < 4) { // Less than 2 samples
+                            Log.d(TAG, "Skipping extremely tiny packet (${data.size} bytes)")
+                            continue
+                        }
                         
-                        if (data.size >= minWriteSize) {
-                            // Write any accumulated data first
-                            if (accumulatedSize > 0) {
-                                internalWriteAudioData(accumulatedBuffer, accumulatedSize)
-                                accumulatedSize = 0
-                            }
+                        // BUFFER AGGREGATION STRATEGY
+                        // Combine packets until we reach optimal size for better performance
+                        val newSize = aggregateBuffer.size + data.size
+                        val newBuffer = ByteArray(newSize)
+                        
+                        // Copy existing data
+                        if (aggregateBuffer.isNotEmpty()) {
+                            System.arraycopy(aggregateBuffer, 0, newBuffer, 0, aggregateBuffer.size)
+                        }
+                        
+                        // Append new data
+                        System.arraycopy(data, 0, newBuffer, aggregateBuffer.size, data.size)
+                        aggregateBuffer = newBuffer
+                        
+                        // If we've accumulated enough data OR the packet is already large enough
+                        // then write it to the audio track
+                        if (aggregateBuffer.size >= optimalChunkSize || data.size >= optimalChunkSize) {
+                            // Write the aggregated data
+                            internalWriteAudioData(aggregateBuffer, aggregateBuffer.size)
+                            totalBytesProcessed += aggregateBuffer.size
                             
-                            // Then write this larger chunk directly
-                            internalWriteAudioData(data, data.size)
+                            // Reset the buffer
+                            aggregateBuffer = ByteArray(0)
                             
-                        } else {
-                            // If adding this data would overflow our buffer, write what we have first
-                            if (accumulatedSize + data.size > accumulatedBuffer.size) {
-                                internalWriteAudioData(accumulatedBuffer, accumulatedSize)
-                                accumulatedSize = 0
-                            }
+                            // Reset error counter since we successfully wrote data
+                            consecutiveErrors = 0
                             
-                            // Copy this chunk into our accumulated buffer
-                            System.arraycopy(data, 0, accumulatedBuffer, accumulatedSize, data.size)
-                            accumulatedSize += data.size
+                            // Add a tiny sleep to give the audio system time to process
+                            // This helps prevent buffer overflows
+                            Thread.sleep(5)
+                        }
+                        
+                        // Periodically log progress
+                        val now = System.currentTimeMillis()
+                        if (now - lastLogTimestamp > 5000) { // Log every 5 seconds
+                            lastLogTimestamp = now
+                            val audioLengthMs = (totalBytesProcessed / (sampleRate * 2 / 1000))
+                            val elapsedMs = now - startTimeMs
                             
-                            // If we've collected enough data, write it now
-                            if (accumulatedSize >= minWriteSize) {
-                                internalWriteAudioData(accumulatedBuffer, accumulatedSize)
-                                accumulatedSize = 0
-                            }
+                            Log.d(TAG, "Audio stats: Processed ${totalBytesProcessed/1024} KB " +
+                                "in ${elapsedMs/1000} seconds (~${audioLengthMs/1000} sec of audio)")
                         }
                         
                     } catch (e: Exception) {
+                        consecutiveErrors++
                         Log.e(TAG, "Error in audio processing thread: ${e.message}")
-                        e.printStackTrace()
+                        
+                        // If we get too many consecutive errors, delay briefly to avoid tight error loops
+                        if (consecutiveErrors > 3) {
+                            Log.w(TAG, "Multiple consecutive errors (${consecutiveErrors}), adding delay")
+                            Thread.sleep(100)
+                            
+                            // After too many errors, reset the aggregation buffer to prevent corrupt audio
+                            if (consecutiveErrors > 5 && aggregateBuffer.size > 0) {
+                                Log.w(TAG, "Discarding ${aggregateBuffer.size} bytes due to persistent errors")
+                                aggregateBuffer = ByteArray(0)
+                            }
+                        }
                     }
                 }
                 
-                // Write any remaining accumulated data before exiting
-                if (accumulatedSize > 0) {
+                // Final flush of any remaining data
+                if (aggregateBuffer.isNotEmpty()) {
                     try {
-                        internalWriteAudioData(accumulatedBuffer, accumulatedSize)
+                        Log.d(TAG, "Final flush of ${aggregateBuffer.size} bytes")
+                        internalWriteAudioData(aggregateBuffer, aggregateBuffer.size)
                     } catch (e: Exception) {
-                        Log.e(TAG, "Error writing final audio buffer: ${e.message}")
+                        Log.e(TAG, "Error in final buffer flush: ${e.message}")
                     }
                 }
                 
-                Log.d(TAG, "Audio processing thread exiting")
+                Log.d(TAG, "Audio processing thread exiting, processed ${totalBytesProcessed/1024} KB total")
             }
             
             audioThread?.start()
@@ -422,63 +528,262 @@ class MainActivity: FlutterActivity() {
         return (elapsedMs - audioMs).toInt()
     }
     
-    // Helper method to write audio data to the AudioTrack
+    // Improved helper method to write audio data to the AudioTrack with retry logic
     private fun internalWriteAudioData(buffer: ByteArray, size: Int) {
         val track = audioTrack ?: return
         
+        // Skip if nothing to write
+        if (size <= 0 || buffer.isEmpty()) {
+            return
+        }
+        
+        // Try to normalize audio volume before writing
+        // This helps prevent very quiet playback
+        normalizeAudioIfNeeded(buffer, size)
+        
         try {
-            val bytesWritten = track.write(buffer, 0, size)
+            // Try writing with retry logic for better reliability
+            var bytesWritten = 0
+            var retriesLeft = 2 // Allow up to 2 retries
+            var totalBytesWritten = 0
             
-            if (bytesWritten > 0) {
-                totalBytesPlayed += bytesWritten
-                if (bytesWritten >= 1000) {
-                    Log.d(TAG, "Wrote $bytesWritten bytes to AudioTrack (total: $totalBytesPlayed)")
+            while (totalBytesWritten < size && retriesLeft > 0) {
+                // Calculate remaining data to write
+                val remainingSize = size - totalBytesWritten
+                
+                // Write the buffer, starting from where we left off
+                bytesWritten = track.write(buffer, totalBytesWritten, remainingSize)
+                
+                if (bytesWritten > 0) {
+                    // Track successful writes
+                    totalBytesWritten += bytesWritten
+                    totalBytesPlayed += bytesWritten
+                } else if (bytesWritten == 0) {
+                    // No progress but not an error - wait a tiny bit and try again
+                    Log.w(TAG, "AudioTrack write returned 0 bytes, waiting briefly before retry")
+                    Thread.sleep(5)
+                    retriesLeft--
+                } else if (bytesWritten == AudioTrack.ERROR_BAD_VALUE) {
+                    // Bad parameters were passed - log and exit
+                    Log.e(TAG, "Bad value error writing to AudioTrack, size=$size, offset=$totalBytesWritten")
+                    break
+                } else if (bytesWritten == AudioTrack.ERROR_INVALID_OPERATION) {
+                    // Track not properly initialized - major error
+                    Log.e(TAG, "Invalid operation error writing to AudioTrack - track may need reinitialization")
+                    
+                    // If this is the first write attempt, track may need to be reinitialized
+                    if (totalBytesWritten == 0) {
+                        Log.w(TAG, "First write failed - triggering audio track reinitialization")
+                        Thread {
+                            // On a separate thread to avoid blocking the current thread
+                            try {
+                                // Re-create audio track in a safe way
+                                val sampleRate = audioTrack?.sampleRate ?: 24000
+                                stopAudioTrack()
+                                Thread.sleep(200) // Wait for resources to be freed
+                                initAudioTrack(sampleRate)
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Failed to reinitialize AudioTrack: ${e.message}")
+                            }
+                        }.start()
+                    }
+                    
+                    break
+                } else if (bytesWritten == AudioTrack.ERROR_DEAD_OBJECT) {
+                    // AudioTrack is dead and needs recreation
+                    Log.e(TAG, "AudioTrack is dead, needs to be recreated")
+                    
+                    // Same reinitialization logic as above
+                    Thread {
+                        try {
+                            val sampleRate = audioTrack?.sampleRate ?: 24000
+                            stopAudioTrack()
+                            Thread.sleep(200)
+                            initAudioTrack(sampleRate)
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to reinitialize AudioTrack after DEAD_OBJECT: ${e.message}")
+                        }
+                    }.start()
+                    
+                    break
+                } else {
+                    // Other error
+                    Log.w(TAG, "Unknown error writing to AudioTrack: $bytesWritten")
+                    retriesLeft--
+                    Thread.sleep(10) // Short delay before retry
                 }
-            } else {
-                Log.w(TAG, "Failed to write data to AudioTrack: $bytesWritten")
+            }
+            
+            // Log write results if significant
+            if (totalBytesWritten >= 1000) {
+                Log.d(TAG, "Wrote $totalBytesWritten bytes to AudioTrack (total: $totalBytesPlayed)")
+            } else if (totalBytesWritten < size) {
+                // We couldn't write all the data
+                Log.w(TAG, "Could only write $totalBytesWritten of $size bytes to AudioTrack")
+            }
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Exception writing to AudioTrack: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+    
+    // Helper method to normalize audio volume if it's too quiet
+    private fun normalizeAudioIfNeeded(buffer: ByteArray, size: Int) {
+        // We only check/normalize larger buffers
+        if (size < 100) return
+        
+        try {
+            // Check if the audio is too quiet by sampling the buffer
+            var maxAmplitude = 0
+            var totalSamples = 0
+            
+            // Sample every 10th sample (for efficiency) to find the maximum amplitude
+            for (i in 0 until size - 1 step 10) {
+                if (i + 1 >= size) continue
+                
+                // Convert bytes to 16-bit samples
+                val sample = (buffer[i].toInt() and 0xFF) or ((buffer[i + 1].toInt() and 0xFF) shl 8)
+                // Convert from signed to absolute value
+                val absValue = if (sample > 32767) 65536 - sample else sample
+                
+                maxAmplitude = Math.max(maxAmplitude, absValue)
+                totalSamples++
+            }
+            
+            // If max amplitude is very low but not zero, boost the volume
+            if (maxAmplitude > 0 && maxAmplitude < 1000 && totalSamples > 0) {
+                val boostFactor = Math.min(5.0, 4000.0 / maxAmplitude) // Cap the boost at 5x
+                
+                Log.d(TAG, "Audio too quiet (max=$maxAmplitude), boosting by ${boostFactor}x")
+                
+                // Apply the boost to the entire buffer
+                for (i in 0 until size - 1 step 2) {
+                    if (i + 1 >= size) continue
+                    
+                    // Extract the 16-bit sample
+                    val sample = (buffer[i].toInt() and 0xFF) or ((buffer[i + 1].toInt() and 0xFF) shl 8)
+                    // Convert from 2's complement if needed
+                    val signedSample = if (sample > 32767) sample - 65536 else sample
+                    
+                    // Apply the boost factor
+                    var boostedSample = (signedSample * boostFactor).toInt()
+                    
+                    // Clamp to 16-bit range
+                    boostedSample = Math.max(-32768, Math.min(32767, boostedSample))
+                    
+                    // Convert back to bytes
+                    buffer[i] = boostedSample.toByte()
+                    buffer[i + 1] = (boostedSample shr 8).toByte()
+                }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Error writing to AudioTrack: ${e.message}")
+            // Just log and continue - this is just an enhancement, not critical
+            Log.w(TAG, "Error in audio normalization: ${e.message}")
         }
     }
     
     private fun stopAudioTrack() {
-        Log.d(TAG, "Stopping AudioTrack (played $totalBytesPlayed bytes)")
+        val audioLengthSeconds = totalBytesPlayed / 48000 // 16-bit samples, mono, 24kHz
+        Log.d(TAG, "Stopping AudioTrack (played $totalBytesPlayed bytes, ~$audioLengthSeconds seconds of audio)")
         
+        // Set flag first to stop processing thread
         isPlaying = false
         
-        // Add empty buffer to unblock the queue
-        try {
-            audioQueue.add(ByteArray(0))
-        } catch (e: Exception) {
-            Log.w(TAG, "Error adding stop signal to queue: ${e.message}")
+        // Add an empty buffer to unblock the queue - send multiple to ensure delivery
+        for (i in 0..2) {
+            try {
+                audioQueue.offer(ByteArray(0))
+            } catch (e: Exception) {
+                Log.w(TAG, "Error adding stop signal to queue (attempt ${i+1}): ${e.message}")
+            }
         }
         
+        // Wait for thread to exit gracefully
         try {
-            audioThread?.join(1000)
+            Log.d(TAG, "Waiting for audio thread to exit gracefully")
+            audioThread?.join(500) // Shorter timeout for faster recovery
+            
             if (audioThread?.isAlive == true) {
-                Log.w(TAG, "Audio thread did not exit cleanly - interrupting")
+                Log.w(TAG, "Audio thread still alive after 500ms - interrupting")
                 audioThread?.interrupt()
+                
+                // Wait again briefly
+                audioThread?.join(300)
+                
+                if (audioThread?.isAlive == true) {
+                    Log.w(TAG, "Audio thread still alive after interrupt - will be abandoned")
+                    // We'll abandon the thread at this point - the JVM will clean it up
+                    // when it detects it's not responsive
+                }
+            } else {
+                Log.d(TAG, "Audio thread exited gracefully")
             }
         } catch (e: InterruptedException) {
             Log.w(TAG, "Interrupted while waiting for audio thread: ${e.message}")
         }
         
-        try {
-            audioTrack?.pause()
-            audioTrack?.flush()
-            audioTrack?.stop()
-            audioTrack?.release()
-        } catch (e: Exception) {
-            Log.e(TAG, "Error releasing AudioTrack: ${e.message}")
+        // Null out thread reference regardless of whether it exited cleanly
+        audioThread = null
+        
+        // Release AudioTrack resources with better error handling and ordering
+        val track = audioTrack
+        audioTrack = null // Clear reference first to prevent other threads from using it
+        
+        if (track != null) {
+            try {
+                Log.d(TAG, "Releasing AudioTrack resources")
+                
+                // Try each operation in sequence with error handling
+                try {
+                    track.pause()
+                    Log.d(TAG, "AudioTrack paused")
+                } catch (e: Exception) {
+                    Log.w(TAG, "Error pausing AudioTrack: ${e.message}")
+                }
+                
+                try {
+                    track.flush()
+                    Log.d(TAG, "AudioTrack flushed")
+                } catch (e: Exception) {
+                    Log.w(TAG, "Error flushing AudioTrack: ${e.message}")
+                }
+                
+                try {
+                    track.stop()
+                    Log.d(TAG, "AudioTrack stopped")
+                } catch (e: Exception) {
+                    Log.w(TAG, "Error stopping AudioTrack: ${e.message}")
+                }
+                
+                try {
+                    track.release()
+                    Log.d(TAG, "AudioTrack released")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error releasing AudioTrack: ${e.message}")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error during AudioTrack cleanup: ${e.message}")
+                e.printStackTrace()
+            }
         }
         
-        audioTrack = null
+        // Clear queue and reset state
+        try {
+            audioQueue.clear()
+            Log.d(TAG, "Audio queue cleared")
+        } catch (e: Exception) {
+            Log.w(TAG, "Error clearing audio queue: ${e.message}")
+        }
         
-        // Clear queue
-        audioQueue.clear()
+        // Force garbage collection to help free resources
+        try {
+            System.gc()
+        } catch (e: Exception) {
+            // Ignore errors from GC request
+        }
         
-        Log.i(TAG, "AudioTrack stopped and resources released")
+        Log.i(TAG, "AudioTrack stopped and all resources released successfully")
     }
     
     override fun onDestroy() {
