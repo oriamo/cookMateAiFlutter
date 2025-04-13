@@ -21,7 +21,7 @@ class IngredientDetailScreen extends ConsumerWidget {
     final allIngredients = ref.watch(ingredientsProvider);
     final ingredient = allIngredients.firstWhere(
       (item) => item.id == ingredientId,
-      orElse: () => Ingredient(id: '', name: 'Ingredient not found'),
+      orElse: () => const Ingredient(id: '', name: 'Ingredient not found'),
     );
 
     // If ingredient not found, show error
@@ -306,8 +306,6 @@ class IngredientDetailScreen extends ConsumerWidget {
   // Enhanced toggle purchased button with better visual feedback
   Widget _buildTogglePurchasedButton(
       BuildContext context, WidgetRef ref, Ingredient ingredient) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(

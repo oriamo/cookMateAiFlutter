@@ -20,8 +20,10 @@ class AzureFunctionService {
   AzureFunctionService() {
     _dio = Dio(BaseOptions(
       baseUrl: _baseUrl,
-      connectTimeout: const Duration(seconds: 5),
-      receiveTimeout: const Duration(seconds: 10),
+      connectTimeout:
+          const Duration(seconds: 30), // Increased from 5 to 30 seconds
+      receiveTimeout:
+          const Duration(seconds: 30), // Increased from 10 to 30 seconds
       validateStatus: (status) => status! < 500,
     ))
       ..interceptors.add(LogInterceptor(

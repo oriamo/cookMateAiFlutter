@@ -67,105 +67,111 @@ class CookingSkillLevelScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Cooking Skill Level'),
-        automaticallyImplyLeading: !widget.isOnboarding,
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
-        actions: [
-          if (widget.isOnboarding && !widget.isInCoordinator)
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Colors.white),
-              ),
+    return widget.isInCoordinator
+        ? _buildContent()
+        : Scaffold(
+            appBar: AppBar(
+              title: const Text('Cooking Skill Level'),
+              automaticallyImplyLeading: !widget.isOnboarding,
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              actions: [
+                if (widget.isOnboarding && !widget.isInCoordinator)
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+              ],
             ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Progress Indicator
-          if (widget.isOnboarding)
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                children: [
-                  ...List.generate(
-                    5,
-                    (index) => Expanded(
-                      child: Container(
-                        height: 8,
-                        color: index < 5 ? Colors.green : Colors.grey.shade300,
-                      ),
+            body: _buildContent(),
+          );
+  }
+
+  Widget _buildContent() {
+    return Column(
+      children: [
+        // Progress Indicator
+        if (widget.isOnboarding && !widget.isInCoordinator)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                ...List.generate(
+                  5,
+                  (index) => Expanded(
+                    child: Container(
+                      height: 8,
+                      color: index < 5 ? Colors.green : Colors.grey.shade300,
                     ),
                   ),
-                ],
-              ),
-            ),
-
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'What\'s your cooking experience?',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'We\'ll adjust recipe recommendations based on your skill level.',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey,
-                    ),
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Skill level cards
-                  ...buildSkillLevelCards(),
-
-                  const SizedBox(height: 24),
-
-                  // Tips based on selected skill level
-                  if (_selectedSkillLevel.isNotEmpty) buildSkillTips(),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
 
-          // Continue button - only show when not in coordinator
-          if (!widget.isInCoordinator)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              child: ElevatedButton(
-                onPressed: _saveSkillLevel,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: Text(
-                  widget.isOnboarding ? 'Finish' : 'Save Preference',
-                  style: const TextStyle(
-                    fontSize: 18,
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'What\'s your cooking experience?',
+                  style: TextStyle(
+                    fontSize: 28,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                const SizedBox(height: 16),
+                const Text(
+                  'We\'ll adjust recipe recommendations based on your skill level.',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Skill level cards
+                ...buildSkillLevelCards(),
+
+                const SizedBox(height: 24),
+
+                // Tips based on selected skill level
+                if (_selectedSkillLevel.isNotEmpty) buildSkillTips(),
+              ],
+            ),
+          ),
+        ),
+
+        // Continue button - only show when not in coordinator
+        if (!widget.isInCoordinator)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            child: ElevatedButton(
+              onPressed: _saveSkillLevel,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                widget.isOnboarding ? 'Finish' : 'Save Preference',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 

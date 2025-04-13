@@ -96,8 +96,7 @@ class DietaryRestrictionsScreenState
     if (widget.isAllergiesScreen) {
       _selectedRestrictions = List<String>.from(userProfile.allergies);
     } else {
-      _selectedRestrictions =
-          List<String>.from(userProfile.dietaryPreferences ?? []);
+      _selectedRestrictions = List<String>.from(userProfile.dietaryPreferences);
     }
 
     // Default to 'No Restrictions' if nothing is selected
@@ -116,129 +115,135 @@ class DietaryRestrictionsScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.isAllergiesScreen
-            ? 'Food Allergies'
-            : 'Dietary Restrictions'),
-        automaticallyImplyLeading: !widget.isOnboarding,
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
-        actions: [
-          if (widget.isOnboarding && !widget.isInCoordinator)
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Colors.white),
-              ),
+    return widget.isInCoordinator
+        ? _buildContent()
+        : Scaffold(
+            appBar: AppBar(
+              title: Text(widget.isAllergiesScreen
+                  ? 'Food Allergies'
+                  : 'Dietary Restrictions'),
+              automaticallyImplyLeading: !widget.isOnboarding,
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              actions: [
+                if (widget.isOnboarding && !widget.isInCoordinator)
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+              ],
             ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Progress Indicator - only show this when NOT in coordinator
-          if (widget.isOnboarding && !widget.isInCoordinator)
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      height: 8,
-                      color: Colors.green,
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      height: 8,
-                      color: Colors.green,
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      height: 8,
-                      color: Colors.green,
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      height: 8,
-                      color: Colors.green,
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      height: 8,
-                      color: Colors.grey.shade300,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            body: _buildContent(),
+          );
+  }
 
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.isAllergiesScreen
-                        ? 'Any food allergies?'
-                        : 'Any dietary restrictions?',
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
+  Widget _buildContent() {
+    return Column(
+      children: [
+        // Progress Indicator - only show this when NOT in coordinator
+        if (widget.isOnboarding && !widget.isInCoordinator)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 8,
+                    color: Colors.green,
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    widget.isAllergiesScreen
-                        ? 'Select any food allergies you have. We\'ll make sure to exclude these ingredients from your recipes.'
-                        : 'Select any dietary restrictions you follow. We\'ll tailor your meal options accordingly.',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey,
-                    ),
+                ),
+                Expanded(
+                  child: Container(
+                    height: 8,
+                    color: Colors.green,
                   ),
-                  const SizedBox(height: 32),
-
-                  // Dietary restrictions list
-                  ...buildDietaryRestrictionCards(),
-
-                  const SizedBox(height: 24),
-                ],
-              ),
+                ),
+                Expanded(
+                  child: Container(
+                    height: 8,
+                    color: Colors.green,
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    height: 8,
+                    color: Colors.green,
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    height: 8,
+                    color: Colors.grey.shade300,
+                  ),
+                ),
+              ],
             ),
           ),
 
-          // Continue button - only show when not in coordinator
-          if (!widget.isInCoordinator)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              child: ElevatedButton(
-                onPressed: _saveDietaryRestrictions,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: Text(
-                  widget.isOnboarding ? 'Continue' : 'Save Preferences',
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.isAllergiesScreen
+                      ? 'Any food allergies?'
+                      : 'Any dietary restrictions?',
                   style: const TextStyle(
-                    fontSize: 18,
+                    fontSize: 28,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                const SizedBox(height: 16),
+                Text(
+                  widget.isAllergiesScreen
+                      ? 'Select any food allergies you have. We\'ll make sure to exclude these ingredients from your recipes.'
+                      : 'Select any dietary restrictions you follow. We\'ll tailor your meal options accordingly.',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Dietary restrictions list
+                ...buildDietaryRestrictionCards(),
+
+                const SizedBox(height: 24),
+              ],
+            ),
+          ),
+        ),
+
+        // Continue button - only show when not in coordinator
+        if (!widget.isInCoordinator)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            child: ElevatedButton(
+              onPressed: _saveDietaryRestrictions,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                widget.isOnboarding ? 'Continue' : 'Save Preferences',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 

@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/user_provider.dart';
-import '../models/user_profile.dart';
 import 'settings/edit_profile_screen.dart';
 import 'settings/dietary_preferences_screen.dart';
 import 'settings/cooking_skill_level_screen.dart';
 import 'settings/measurement_units_screen.dart';
 import 'settings/app_settings_screen.dart';
-import 'settings/user_preferences_screen.dart';
+import 'settings/health_goals_screen.dart';
+import 'settings/prep_time_preferences_screen.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -17,6 +17,7 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final userProfile = ref.watch(userProfileProvider);
     final userNotifier = ref.read(userProfileProvider.notifier);
+    final theme = Theme.of(context);
 
     return Scaffold(
       body: CustomScrollView(
@@ -128,7 +129,7 @@ class ProfileScreen extends ConsumerWidget {
             ),
           ),
 
-          // Settings options
+          // Settings Grid
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.all(16),
@@ -142,92 +143,122 @@ class ProfileScreen extends ConsumerWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  _buildSettingTile(
-                    context,
-                    'Edit Profile',
-                    Icons.person_outline,
-                    () {
-                      Navigator.push(
+                  const SizedBox(height: 12),
+
+                  // Grid of preference cards
+                  GridView.count(
+                    crossAxisCount: 2, // Changed back to 2 cards per row
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                    childAspectRatio:
+                        0.9, // Adjusted aspect ratio for better proportions
+                    children: [
+                      _buildPreferenceCard(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => const EditProfileScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildSettingTile(
-                    context,
-                    'User Preferences',
-                    Icons.tune_outlined,
-                    () {
-                      Navigator.push(
+                        'Edit Profile',
+                        Icons.person_outline,
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const EditProfileScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      _buildPreferenceCard(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => const UserPreferencesScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildSettingTile(
-                    context,
-                    'Dietary Preferences',
-                    Icons.food_bank_outlined,
-                    () {
-                      Navigator.push(
+                        'Dietary Preferences',
+                        Icons.food_bank_rounded,
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const DietaryPreferenceScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      _buildPreferenceCard(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => const DietaryPreferenceScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildSettingTile(
-                    context,
-                    'Favorite Recipes',
-                    Icons.favorite_outline,
-                    () {
-                      context.push('/favorites');
-                    },
-                  ),
-                  _buildSettingTile(
-                    context,
-                    'Cooking Skill Level',
-                    Icons.sports_score_outlined,
-                    () {
-                      Navigator.push(
+                        'Cooking Skill',
+                        Icons.restaurant_rounded,
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const CookingSkillLevelScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      _buildPreferenceCard(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => const CookingSkillLevelScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildSettingTile(
-                    context,
-                    'Measurement Units',
-                    Icons.scale_outlined,
-                    () {
-                      Navigator.push(
+                        'Measurement Units',
+                        Icons.straighten_rounded,
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const MeasurementUnitsScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      _buildPreferenceCard(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => const MeasurementUnitsScreen(),
-                        ),
-                      );
-                    },
-                  ),
-                  _buildSettingTile(
-                    context,
-                    'App Settings',
-                    Icons.settings_outlined,
-                    () {
-                      Navigator.push(
+                        'Health Goals',
+                        Icons.fitness_center_rounded,
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const HealthGoalsScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      _buildPreferenceCard(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => const AppSettingsScreen(),
-                        ),
-                      );
-                    },
+                        'Prep Time',
+                        Icons.timer_rounded,
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const PrepTimePreferencesScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                      _buildPreferenceCard(
+                        context,
+                        'Favorite Recipes',
+                        Icons.favorite_outline,
+                        () {
+                          context.push('/favorites');
+                        },
+                      ),
+                      _buildPreferenceCard(
+                        context,
+                        'App Settings',
+                        Icons.settings_rounded,
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const AppSettingsScreen(),
+                            ),
+                          );
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -343,24 +374,54 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildSettingTile(
+  Widget _buildPreferenceCard(
     BuildContext context,
     String title,
     IconData icon,
     VoidCallback onTap,
   ) {
-    return ListTile(
-      leading: Icon(icon, color: Theme.of(context).colorScheme.primary),
-      title: Text(title),
-      trailing: const Icon(Icons.chevron_right),
-      contentPadding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
-      shape: Border(
-        bottom: BorderSide(
-          color: Colors.grey.shade200,
-          width: 1,
+    final theme = Theme.of(context);
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.all(14.0), // Increased padding
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(14), // Increased padding
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  icon,
+                  size: 28, // Increased icon size
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 12), // Increased spacing
+              Text(
+                title,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  // Larger text
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
         ),
       ),
-      onTap: onTap,
     );
   }
 

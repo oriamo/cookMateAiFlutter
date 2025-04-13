@@ -126,6 +126,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 ),
                               ),
                             ),
+                            // Removing the Spacer and shopping cart icon to fix overflow
                           ],
                         ),
                       ),
@@ -263,12 +264,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
 
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: 120,
-              child: categories.isEmpty
-                  ? _buildCategoryShimmers()
-                  : _buildCategories(categories),
+          // SliverToBoxAdapter(
+          //   child: SizedBox(
+          //     height: 120,
+          //     child: categories.isEmpty
+          //         ? _buildCategoryShimmers()
+          //         : _buildCategories(categories),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverGrid(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  if (categories.isEmpty) {
+                    return const CategoryCardShimmer();
+                  }
+                  return FadeInUp(
+                    duration: Duration(milliseconds: 300 + (index * 50)),
+                    child: CategoryCard(
+                      category: categories[index],
+                    ),
+                  );
+                },
+                childCount: categories.isEmpty ? 4 : categories.length,
+              ),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 1.5,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+              ),
             ),
           ),
 
@@ -530,8 +554,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       scrollDirection: Axis.horizontal,
       itemCount: 3,
       itemBuilder: (context, index) {
-        return Padding(
-          padding: const EdgeInsets.only(right: 16),
+        return const Padding(
+          padding: EdgeInsets.only(right: 16),
           child: SizedBox(
             width: 220,
             child: RecipeCardShimmer(),
