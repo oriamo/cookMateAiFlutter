@@ -3,12 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## Build and Test Commands
-- Run app: `flutter run`
-- Format code: `flutter format lib/`
-- Analyze code: `flutter analyze`
-- Run all tests: `flutter test`
-- Run single test: `flutter test test/path_to_test.dart`
-- Generate code: `flutter pub run build_runner build --delete-conflicting-outputs`
+- you cant run tests on the terminal because flutter insint on this terminal
 
 ## Code Style Guidelines
 - **Imports**: Group imports by Flutter, third-party, and project files with blank lines between

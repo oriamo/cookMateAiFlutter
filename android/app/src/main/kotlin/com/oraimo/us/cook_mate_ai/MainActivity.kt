@@ -343,8 +343,8 @@ class MainActivity: FlutterActivity() {
             )
             .build()
         
-        // Note: Not using audio offload as it can increase latency
-        // Offload APIs require Android 10+ and are not critical for our use case
+        // Note: Audio offload settings are not used as they would increase latency
+        // and are only available on Android 10+ (API 29+)
         
         return track
     }
@@ -757,7 +757,7 @@ class MainActivity: FlutterActivity() {
     private fun notifyVadStateChange(isSpeaking: Boolean) {
         try {
             // Post to main thread since we're in a worker thread
-            handler?.post {
+            handler.post {
                 try {
                     // Call event method on Flutter channel
                     val eventData = mapOf(
