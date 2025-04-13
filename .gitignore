@@ -81,3 +81,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+.venv
+# Python virtual environment
+venv
