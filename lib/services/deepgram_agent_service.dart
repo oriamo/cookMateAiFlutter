@@ -363,7 +363,7 @@ class DeepgramAgentService {
                 _updateState(DeepgramAgentState.listening);
                 
                 // Cancel any ongoing audio playback
-                await _stopAudioStream();
+                _stopAudioStream();
                 break;
                 
               case 'UserStoppedSpeaking':
@@ -410,8 +410,9 @@ class DeepgramAgentService {
                 // Mark the transition from processing to speaking
                 debugPrint('🔊 DEEPGRAM: Received EndOfThought - AI finished processing');
                 // Make sure we're ready for new audio
-                await _stopAudioStream();
-                await _initAudioStream();
+                _stopAudioStream().then((_) {
+                  _initAudioStream();
+                });
                 break;
                 
               case 'AgentAudioDone':
