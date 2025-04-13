@@ -186,8 +186,8 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with SingleTick
         : 'assets/animations/listen.json'; // Main listening animation
     
     final String fallbackJsonFile = widget.state == VisualizationState.aiSpeaking
-        ? 'assets/animations/talking.json' // Fallback talking animation
-        : 'assets/animations/listening.json'; // Fallback listening animation
+        ? 'talking' // Fallback talking animation
+        : 'listening'; // Fallback listening animation
     
     final String dotLottieFile = widget.state == VisualizationState.aiSpeaking
         ? 'assets/animations/talking.lottie' // DotLottie talking animation
@@ -198,6 +198,7 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with SingleTick
     
     // Check if file exists first to avoid unnecessary error
     if (_debugChecked && _fileExists[preferredFile] == true) {
+      print('Using preferred animation file: $preferredFile');
       return Lottie.asset(
         preferredFile,
         controller: _animationController,
@@ -211,46 +212,21 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with SingleTick
         },
       );
     } else if (_debugChecked && _fileExists[fallbackJsonFile] == true) {
+      print('Using fallback animation file: $fallbackJsonFile');
       return _buildFallbackJsonAnimation(fallbackJsonFile);
-    } else if (_debugChecked && _fileExists[dotLottieFile] == true) {
-      return _buildDotLottieAnimation(dotLottieFile);
-    } else {
-      // If we haven't checked files yet or no files exist
+    }  else {
+      print('Using DotLottie animation file: $dotLottieFile');
       return _buildPlaceholderAnimation();
     }
   }
   
   Widget _buildFallbackJsonAnimation(String file) {
     developer.log('Using fallback animation file: $file', name: 'VoiceVisualization');
-    return Lottie.asset(
-      file,
-      controller: _animationController,
-      animate: widget.state != VisualizationState.idle,
-      fit: BoxFit.contain,
-      alignment: Alignment.center,
-      errorBuilder: (context, error, stackTrace) {
-        developer.log('Error loading fallback animation $file: $error', name: 'VoiceVisualization');
-        _useDotLottieFallback = true;
-        return _buildDotLottieAnimation(widget.state == VisualizationState.aiSpeaking
-            ? 'assets/animations/talking.lottie'
-            : 'assets/animations/listening.lottie');
-      },
-    );
+
+    return Lottie.network(file == 'talking' ? 'https://lottie.host/edfade16-32fd-4dc9-aaf0-b8f2bd6b8bf9/iD9qt9mSda.lottie' : 'https://lottie.host/0ad86d10-cbb8-4d67-ae96-fc8eaa326da5/MCW7EskFfD.lottie');
+
   }
-  
-  Widget _buildDotLottieAnimation(String file) {
-    developer.log('Using DotLottie animation file: $file', name: 'VoiceVisualization');
-    return DotLottieLoader.fromAsset(
-      file,
-      controller: _animationController,
-      animate: widget.state != VisualizationState.idle,
-      fit: BoxFit.contain,
-      errorBuilder: (context, error, stackTrace) {
-        developer.log('Error loading DotLottie animation $file: $error', name: 'VoiceVisualization');
-        return _buildPlaceholderAnimation();
-      },
-    );
-  }
+
   
   Widget _buildPlaceholderAnimation() {
     // Ultimate fallback if all animations fail
