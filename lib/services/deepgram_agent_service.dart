@@ -59,10 +59,13 @@ class DeepgramAgentService {
   // Create a TTS engine for audio playback
   final FlutterTts _tts = FlutterTts();
   
-  // Audio buffer for Deepgram responses
-  final List<Uint8List> _audioBuffer = [];
+  // Stream-based audio processing
+  final List<Uint8List> _audioQueue = [];
+  bool _isProcessingAudio = false;
   bool _isPlayingAudio = false;
   AudioPlayer? _currentPlayer;
+  final StreamController<Uint8List> _audioStreamController = StreamController<Uint8List>.broadcast();
+  Stream<Uint8List> get audioStream => _audioStreamController.stream;
   
   // Message tracking for context
   final List<Map<String, dynamic>> _messages = [];
@@ -633,6 +636,10 @@ class DeepgramAgentService {
   Future<void> dispose() async {
     await _disconnect();
     
+    // Clean up audio resources
+    _cancelAudioPlayback();
+    _audioStreamController.close();
+    
     // Dispose of camera controller
     await _cameraController?.dispose();
     
@@ -673,26 +680,58 @@ class DeepgramAgentService {
   /// Handle audio data from Deepgram
   void _handleAudioData(Uint8List audioData) {
     try {
-      // Add data to buffer
-      _audioBuffer.add(audioData);
-      
       // Update state to indicate the agent is speaking
       _updateState(DeepgramAgentState.speaking);
       
-      // Start a timer to collect more audio packets before playing
-      if (!_isPlayingAudio && _audioBuffer.length == 1) {
-        // Only start the timer for the first packet
-        debugPrint('🔵 DEEPGRAM: Starting buffer collection timer (500ms)');
-        Future.delayed(const Duration(milliseconds: 500), () {
-          // Play buffered audio after collecting for a short time
-          if (_audioBuffer.isNotEmpty && !_isPlayingAudio) {
-            debugPrint('🔵 DEEPGRAM: Buffer collection complete, playing audio');
-            _playBufferedAudio();
-          }
-        });
+      // Add data to the queue and stream
+      _audioQueue.add(audioData);
+      _audioStreamController.add(audioData);
+      
+      // Start processing if not already in progress
+      if (!_isProcessingAudio) {
+        _processAudioQueue();
       }
     } catch (e) {
       debugPrint('🔴 DEEPGRAM: Error handling audio data: $e');
+    }
+  }
+  
+  /// Process the audio queue in a streaming fashion
+  Future<void> _processAudioQueue() async {
+    if (_isProcessingAudio || _audioQueue.isEmpty) return;
+    
+    _isProcessingAudio = true;
+    debugPrint('🟢 DEEPGRAM: Starting audio stream processing');
+    
+    try {
+      // Create a player if needed
+      if (_currentPlayer == null) {
+        await _setupStreamPlayer();
+      }
+      
+      // Process chunks as they arrive
+      while (_audioQueue.isNotEmpty) {
+        // Get the next chunk
+        final chunk = _audioQueue.removeAt(0);
+        
+        // Process this chunk - write to temp file and play
+        await _processAudioChunk(chunk);
+        
+        // Small delay to allow UI updates and new data to arrive
+        await Future.delayed(const Duration(milliseconds: 10));
+      }
+    } catch (e) {
+      debugPrint('🔴 DEEPGRAM: Error processing audio queue: $e');
+    } finally {
+      _isProcessingAudio = false;
+      
+      // If more audio arrived during processing, start again
+      if (_audioQueue.isNotEmpty) {
+        _processAudioQueue();
+      } else if (_isPlayingAudio) {
+        // No more audio to process, wait for playback to complete
+        debugPrint('🔵 DEEPGRAM: Audio queue empty, waiting for playback to complete');
+      }
     }
   }
   
@@ -708,116 +747,101 @@ class DeepgramAgentService {
       } finally {
         _currentPlayer = null;
         _isPlayingAudio = false;
+        _isProcessingAudio = false;
       }
     }
     
-    // Clear audio buffer
-    _audioBuffer.clear();
+    // Clear audio queue
+    _audioQueue.clear();
   }
   
-  /// Play buffered audio data
-  Future<void> _playBufferedAudio() async {
-    if (_isPlayingAudio || _audioBuffer.isEmpty) return;
+  /// Set up a player for streaming audio
+  Future<void> _setupStreamPlayer() async {
+    if (_currentPlayer != null) {
+      await _currentPlayer!.dispose();
+    }
+    
+    _currentPlayer = AudioPlayer();
+    debugPrint('🔵 DEEPGRAM: Created new audio player for streaming');
+    
+    // Set volume to maximum
+    await _currentPlayer!.setVolume(1.0);
+    
+    // Listen for player state changes
+    _currentPlayer!.playerStateStream.listen((state) {
+      debugPrint('🔵 DEEPGRAM: Player state: ${state.processingState}, playing: ${state.playing}');
+      
+      if (state.processingState == ProcessingState.completed) {
+        _isPlayingAudio = false;
+        debugPrint('🟢 DEEPGRAM: Chunk playback completed');
+      }
+    });
+    
+    return;
+  }
+  
+  /// Process a single audio chunk
+  Future<void> _processAudioChunk(Uint8List chunk) async {
+    if (chunk.isEmpty) return;
     
     try {
-      _isPlayingAudio = true;
-      
-      // Create a temporary file to play the audio
+      // Create a temporary file for this chunk
       final tempDir = await getTemporaryDirectory();
-      final tempFile = File('${tempDir.path}/deepgram_audio_${DateTime.now().millisecondsSinceEpoch}.wav');
+      final tempFile = File('${tempDir.path}/deepgram_chunk_${DateTime.now().millisecondsSinceEpoch}.wav');
       
-      debugPrint('🔵 DEEPGRAM: Creating temporary audio file: ${tempFile.path}');
-      
-      // Combine all audio data into a single buffer
-      final combinedBuffer = BytesBuilder();
-      for (final chunk in _audioBuffer) {
-        combinedBuffer.add(chunk);
-      }
-      
-      // Create WAV header (PCM 16-bit, mono, 24000 Hz)
-      final wavHeader = _createWavHeader(combinedBuffer.length, 1, 24000, 16);
+      // Create WAV header for this chunk
+      final wavHeader = _createWavHeader(chunk.length, 1, 24000, 16);
       
       // Write WAV header and audio data to file
       final fileWriter = tempFile.openSync(mode: FileMode.write);
       fileWriter.writeFromSync(wavHeader);
-      fileWriter.writeFromSync(combinedBuffer.toBytes());
+      fileWriter.writeFromSync(chunk);
       fileWriter.closeSync();
       
-      debugPrint('🟢 DEEPGRAM: Saved ${combinedBuffer.length} bytes of audio data to ${tempFile.path}');
+      debugPrint('🔵 DEEPGRAM: Created audio chunk file: ${tempFile.path} (${chunk.length} bytes)');
       
-      // Use JustAudio to play the audio file
-      _currentPlayer = AudioPlayer();
-      final player = _currentPlayer!;
-      debugPrint('🔵 DEEPGRAM: Created audio player, attempting to play WAV file');
-      
-      // Set the volume to maximum - ensure it's high enough to hear
-      await player.setVolume(1.0);
-      
-      // Log the device volume for debugging
-      debugPrint('🔵 DEEPGRAM: Setting player volume to maximum (1.0)');
-      
-      try {
-        // Load the file
-        await player.setFilePath(tempFile.path);
-        debugPrint('🟢 DEEPGRAM: Audio file loaded successfully');
-        
-        // Play the file - make sure device volume is up
-        await player.play();
-        debugPrint('🟢 DEEPGRAM: Playing Deepgram audio response');
-        
-        // Add more detailed logging about the audio being played
-        debugPrint('🔵 DEEPGRAM: Audio details - Duration: ${await player.duration?.inMilliseconds ?? "unknown"} ms');
-        
-        // Monitor playback state
-        player.playerStateStream.listen((state) {
-          debugPrint('🔵 DEEPGRAM: Player state changed to ${state.processingState}, playing: ${state.playing}');
-        });
-        
-        // Wait for playback to complete
-        await player.processingStateStream.firstWhere(
-          (state) => state == ProcessingState.completed,
-          orElse: () => ProcessingState.idle, // Avoid hanging if completion never arrives
-        );
-        
-        debugPrint('🟢 DEEPGRAM: Audio playback completed');
-      } catch (e) {
-        debugPrint('🔴 DEEPGRAM: Error playing audio with JustAudio: $e');
-        
-        // Fallback to TTS if JustAudio fails
-        await _tts.speak('Audio playback failed');
-        
-        throw e;
-      } finally {
-        // Clean up the player
-        await player.dispose();
-        _currentPlayer = null;
-        debugPrint('🔵 DEEPGRAM: Audio player disposed');
-      }
+      // Play this chunk
+      await _playAudioChunk(tempFile);
       
       // Clean up
-      _audioBuffer.clear();
       try {
         await tempFile.delete();
-        debugPrint('🔵 DEEPGRAM: Deleted temporary audio file');
       } catch (e) {
-        debugPrint('🟡 DEEPGRAM: Failed to delete temporary audio file: $e');
-      }
-      
-      // Update state back to idle when done speaking
-      if (_state == DeepgramAgentState.speaking) {
-        _updateState(DeepgramAgentState.idle);
+        debugPrint('🟡 DEEPGRAM: Failed to delete temporary chunk file: $e');
       }
     } catch (e) {
-      debugPrint('🔴 DEEPGRAM: Error playing buffered audio: $e');
-      // Fallback to TTS if there's an error with audio playback
-      try {
-        // Just use a simple message instead of attempting to access stream
-        await _tts.speak('The assistant responded but audio playback failed');
-      } catch (ttsError) {
-        debugPrint('🔴 DEEPGRAM: Fallback TTS also failed: $ttsError');
-      }
-    } finally {
-      _isPlayingAudio = false;
+      debugPrint('🔴 DEEPGRAM: Error processing audio chunk: $e');
+    }
+  }
+  
+  /// Play a single audio chunk
+  Future<void> _playAudioChunk(File chunkFile) async {
+    if (_currentPlayer == null) return;
+    
+    try {
+      _isPlayingAudio = true;
+      
+      // Load and play the chunk
+      await _currentPlayer!.setFilePath(chunkFile.path);
+      await _currentPlayer!.play();
+      
+      // Wait for this chunk to complete playing
+      await _currentPlayer!.processingStateStream.firstWhere(
+        (state) => state == ProcessingState.completed,
+        orElse: () => ProcessingState.idle,
+      );
+      
+    } catch (e) {
+      debugPrint('🔴 DEEPGRAM: Error playing audio chunk: $e');
+    }
+  }
+  
+  // This method is no longer used - we use streaming audio playback instead
+  // Keeping this as a reference in case we need to go back to buffered playback
+  Future<void> _playBufferedAudio() async {
+    // Just redirect to the streaming processor if needed
+    if (!_audioQueue.isEmpty && !_isProcessingAudio) {
+      _processAudioQueue();
     }
   }
   
