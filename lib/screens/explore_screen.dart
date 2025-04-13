@@ -4,6 +4,7 @@ import '../models/recipe.dart';
 import '../providers/recipe_provider.dart';
 import '../widgets/recipe_card.dart';
 import 'package:animate_do/animate_do.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 // Helper function to capitalize first letter
 String capitalizeFirstLetter(String text) {
@@ -78,13 +79,16 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen>
   }
 
   void _selectCategory(String category) {
-    setState(() {
-      _selectedCategory = category;
-    });
-    ref.read(recipeProvider.notifier).changeCategory(category);
+    // First animate to the All Meals tab
+    _tabController.animateTo(1, duration: const Duration(milliseconds: 300));
 
-    // Switch to the All Meals tab to show filtered results
-    _tabController.animateTo(1);
+    // Then after the tab animation, update the category
+    Future.delayed(const Duration(milliseconds: 300), () {
+      setState(() {
+        _selectedCategory = category;
+      });
+      ref.read(recipeProvider.notifier).changeCategory(category);
+    });
   }
 
   void _clearFilter() {
@@ -92,11 +96,12 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen>
       _selectedCategory = null;
     });
     ref.read(recipeProvider.notifier).changeCategory('All Recipes');
-    // Scroll back to top
+
+    // Scroll back to top with animation
     _scrollController.animateTo(
       0,
-      duration: const Duration(milliseconds: 300),
-      curve: Curves.easeOut,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOutCubic,
     );
   }
 
@@ -127,19 +132,28 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen>
   }
 
   Widget _buildCategoryCard(String category) {
-    final isSelected = category == _selectedCategory;
     return InkWell(
       onTap: () => _selectCategory(category),
-      child: Card(
-        elevation: isSelected ? 8 : 4,
-        color: isSelected ? Theme.of(context).primaryColor : null,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        child: Container(
-          decoration: BoxDecoration(
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Background image
+          ClipRRect(
             borderRadius: BorderRadius.circular(12),
-            gradient: isSelected
-                ? null
-                : LinearGradient(
+            child: CachedNetworkImage(
+              imageUrl: _getCategoryImage(category),
+              fit: BoxFit.cover,
+              memCacheWidth: 800,
+              fadeInDuration: const Duration(milliseconds: 300),
+              placeholder: (context, url) => Container(
+                color: Colors.grey.shade100,
+                child: const Center(
+                  child: CircularProgressIndicator(),
+                ),
+              ),
+              errorWidget: (context, url, error) => Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                     colors: [
@@ -147,24 +161,75 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen>
                       Theme.of(context).primaryColor,
                     ],
                   ),
+                ),
+              ),
+            ),
           ),
-          child: Center(
+          // Gradient overlay
+          Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.black.withOpacity(0.2),
+                  Colors.black.withOpacity(0.7),
+                ],
+              ),
+            ),
+          ),
+          // Category name
+          Center(
             child: Padding(
               padding: const EdgeInsets.all(8.0),
               child: Text(
                 capitalizeFirstLetter(category),
                 textAlign: TextAlign.center,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 18,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  fontWeight: FontWeight.bold,
+                  shadows: [
+                    Shadow(
+                      offset: Offset(0, 1),
+                      blurRadius: 3.0,
+                      color: Colors.black,
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
+  }
+
+  String _getCategoryImage(String category) {
+    // Map categories to curated Unsplash food images with consistent style and overhead shots
+    final categoryImages = {
+      'Breakfast':
+          'https://images.unsplash.com/photo-1484723091739-30a097e8f929?auto=format&fit=crop&w=800&q=80',
+      'Lunch':
+          'https://images.unsplash.com/photo-1543352634-a1c51d9f1fa7?auto=format&fit=crop&w=800&q=80',
+      'Dinner':
+          'https://images.unsplash.com/photo-1535473895227-bdecb20fb157?auto=format&fit=crop&w=800&q=80',
+      'Side Dish':
+          'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80',
+      'Snacks':
+          'https://images.unsplash.com/photo-1599490659213-e2b9527bd087?auto=format&fit=crop&w=800&q=80',
+      'Condiment':
+          'https://images.unsplash.com/photo-1472476443507-c7a5948772fc?auto=format&fit=crop&w=800&q=80',
+      'Desserts':
+          'https://images.unsplash.com/photo-1488477181946-6428a0291777?auto=format&fit=crop&w=800&q=80',
+      'Grilling':
+          'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=800&q=80',
+    };
+
+    // Return the matching image URL or a default food image
+    return categoryImages[category] ??
+        'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80';
   }
 
   Widget _buildLoadingIndicator() {
@@ -183,32 +248,30 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen>
 
   Widget _buildRecipesList(List<Recipe> recipes) {
     if (recipes.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              'No recipes found',
-              style: TextStyle(fontSize: 18),
-            ),
-            if (_selectedCategory != null)
-              TextButton(
-                onPressed: () {
-                  setState(() {
-                    _selectedCategory = null;
-                  });
-                  ref
-                      .read(recipeProvider.notifier)
-                      .changeCategory('All Recipes');
-                },
-                child: const Text('Show all recipes'),
+      return FadeInUp(
+        duration: const Duration(milliseconds: 300),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'No recipes found',
+                style: TextStyle(fontSize: 18),
               ),
-          ],
+              if (_selectedCategory != null)
+                TextButton(
+                  onPressed: _clearFilter,
+                  child: const Text('Show all recipes'),
+                ),
+            ],
+          ),
         ),
       );
     }
 
     return ListView.builder(
+      key: ValueKey(
+          _selectedCategory), // Add key to force rebuild on filter change
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
       itemCount: recipes.length + 1,
@@ -219,8 +282,13 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen>
         return Padding(
           padding: const EdgeInsets.only(bottom: 16),
           child: FadeInUp(
-            duration: Duration(milliseconds: 300 + (index * 50)),
-            child: RecipeCard(recipe: recipes[index]),
+            duration: Duration(milliseconds: 200 + (index * 50)),
+            from: 50,
+            child: SlideInLeft(
+              duration: Duration(milliseconds: 200 + (index * 50)),
+              from: 50,
+              child: RecipeCard(recipe: recipes[index]),
+            ),
           ),
         );
       },
@@ -231,23 +299,26 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen>
     return Column(
       children: [
         if (_selectedCategory != null)
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                Text(
-                  'Showing ${capitalizeFirstLetter(_selectedCategory!)} recipes',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
+          FadeInDown(
+            duration: const Duration(milliseconds: 300),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Row(
+                children: [
+                  Text(
+                    'Showing ${capitalizeFirstLetter(_selectedCategory!)} recipes',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-                const Spacer(),
-                TextButton(
-                  onPressed: _clearFilter,
-                  child: const Text('Clear filter'),
-                ),
-              ],
+                  const Spacer(),
+                  TextButton(
+                    onPressed: _clearFilter,
+                    child: const Text('Clear filter'),
+                  ),
+                ],
+              ),
             ),
           ),
         Expanded(
@@ -255,9 +326,29 @@ class _ExploreScreenState extends ConsumerState<ExploreScreen>
             data: (data) {
               final recipesList =
                   (data['recipes'] as List<dynamic>).cast<Recipe>();
-              return _buildRecipesList(recipesList);
+              return AnimatedSwitcher(
+                duration: const Duration(milliseconds: 300),
+                child: _buildRecipesList(recipesList),
+              );
             },
-            loading: () => const Center(child: CircularProgressIndicator()),
+            loading: () => Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  Text(
+                    _selectedCategory != null
+                        ? 'Loading ${_selectedCategory!.toLowerCase()} recipes...'
+                        : 'Loading all recipes...',
+                    style: TextStyle(
+                      color: Colors.grey.shade600,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
             error: (error, stack) => Center(
               child: Text('Error: $error'),
             ),

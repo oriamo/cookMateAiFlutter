@@ -21,10 +21,13 @@ final featuredRecipesProvider = Provider<AsyncValue<List<Recipe>>>((ref) {
 
 final popularRecipesProvider = Provider<AsyncValue<List<Recipe>>>((ref) {
   return ref.watch(recipeProvider).whenData((data) {
-    final recipes = (data['recipes'] as List<dynamic>).cast<Recipe>();
-    return recipes.toList()
-      ..sort((a, b) => b.rating.compareTo(a.rating))
-      ..take(10); // Limit to top 10 recipes
+    final recipes = (data['recipes'] as List<dynamic>).cast<Recipe>().toList();
+    recipes.sort((a, b) => b.rating.compareTo(a.rating));
+    return recipes.sublist(
+        0,
+        recipes.length > 6
+            ? 6
+            : recipes.length); // Take exactly 6 items or all if less than 6
   });
 });
 
@@ -52,34 +55,16 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   void dispose() {
-    _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
   }
 
   void _onScroll() {
-    final isVisible = _scrollController.position.pixels > 140;
-    if (isVisible != _isSearchBarVisible) {
-      setState(() {
-        _isSearchBarVisible = isVisible;
-      });
+    if (_scrollController.offset > 180 && !_isSearchBarVisible) {
+      setState(() => _isSearchBarVisible = true);
+    } else if (_scrollController.offset <= 180 && _isSearchBarVisible) {
+      setState(() => _isSearchBarVisible = false);
     }
-  }
-
-  List<Recipe> _getRecentRecipes(AsyncValue<Map<String, dynamic>> allRecipes) {
-    return allRecipes.whenData((data) {
-          final recipes = (data['recipes'] as List<dynamic>).cast<Recipe>();
-          return recipes.take(5).toList();
-        }).value ??
-        [];
-  }
-
-  List<Recipe> _getSortedRecipes(AsyncValue<Map<String, dynamic>> allRecipes) {
-    return allRecipes.whenData((data) {
-          final recipes = (data['recipes'] as List<dynamic>).cast<Recipe>();
-          return recipes.toList()..sort((a, b) => b.rating.compareTo(a.rating));
-        }).value ??
-        [];
   }
 
   @override
@@ -96,20 +81,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           SliverAppBar(
             expandedHeight: 200,
             pinned: true,
-            backgroundColor: _isSearchBarVisible
-                ? Theme.of(context).colorScheme.primary
-                : Colors.transparent,
+            backgroundColor:
+                _isSearchBarVisible ? Colors.green : Colors.transparent,
             foregroundColor: Colors.white,
             elevation: _isSearchBarVisible ? 4 : 0,
             flexibleSpace: FlexibleSpaceBar(
               background: Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
                     colors: [
-                      Theme.of(context).colorScheme.primary,
-                      Theme.of(context).colorScheme.primary.withOpacity(0.8),
+                      Colors.green.shade400,
+                      Colors.green.shade700,
                     ],
                   ),
                 ),
@@ -245,12 +229,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
 
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: 120,
-              child: categories.isEmpty
-                  ? _buildCategoryShimmers()
-                  : _buildCategories(categories),
+          SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverGrid(
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
+                  if (categories.isEmpty) {
+                    return const CategoryCardShimmer();
+                  }
+                  return FadeInUp(
+                    duration: Duration(milliseconds: 300 + (index * 50)),
+                    child: CategoryCard(
+                      category: categories[index],
+                    ),
+                  );
+                },
+                childCount: categories.isEmpty ? 4 : categories.length,
+              ),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                childAspectRatio: 1.5,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+              ),
             ),
           ),
 
@@ -289,7 +290,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ],
                   ),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () => context.push('/explore'),
                     child: const Text('View All'),
                   ),
                 ],
@@ -324,7 +325,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                   ),
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () => context.push('/explore'),
                     child: const Text('View All'),
                   ),
                 ],

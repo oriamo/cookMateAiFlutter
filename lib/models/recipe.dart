@@ -83,8 +83,24 @@ class Recipe {
 
       final rating = (json['rating'] as num?)?.toDouble() ?? 0.0;
 
-      // Extract cooking time from description
-      final description = json['description']?.toString() ?? '';
+      // Get and clean up description
+      String description = json['description']?.toString() ?? '';
+
+      // Remove unwanted HTML tags but preserve bold text
+      description = description.replaceAllMapped(
+          RegExp(r'<b>(.*?)</b>', caseSensitive: false),
+          (match) => '**${match.group(1)}**');
+
+      // Remove all other HTML tags
+      description = description.replaceAll(RegExp(r'<[^>]*>'), '');
+
+      // Convert markdown-style bold back to actual bold text
+      description = description.replaceAllMapped(RegExp(r'\*\*(.*?)\*\*'),
+          (match) => match.group(1)?.toUpperCase() ?? '');
+
+      // Clean up any extra whitespace
+      description = description.replaceAll(RegExp(r'\s+'), ' ').trim();
+
       print('\nParsing cooking time...');
 
       // First try to get time directly from totalTimeMinutes
@@ -121,23 +137,11 @@ class Recipe {
       String? imageUrl = json['imageUrl']?.toString();
       print('Original imageUrl: $imageUrl');
 
-      if (imageUrl == null ||
-          imageUrl.isEmpty ||
-          imageUrl.contains('stfunc602d62e0.blob.core.windows.net')) {
-        // Pixabay direct image URLs that are guaranteed to work
-        final foodImages = [
-          'https://pixabay.com/get/g85c90ebbae0f5e54124dbcffefbe119bf77d4c57e6211caa6f78e624e8257d181ee02b976077b5348f01c861bd5f395b_1280.jpg', // colorful dish
-          'https://pixabay.com/get/gfb3c3d14d6c252e00d1ad21823370aa67d16bcfa434c435246dd13c8518d2a3d7fd9208d59aa4e0fada66942e743b6c7_1280.jpg', // pasta
-          'https://pixabay.com/get/g89f82e52aa5bca071982c57dd42c3c137a18f4613f0471064183c162cb36d8e4cf4c18e8ec746fd103e8757525d11f21_1280.jpg', // salad
-          'https://pixabay.com/get/g13fc011c08c44fc254fefc95cb84469e7bed741ddcfa9547293cdf46508c0eefcc80e6b43b03457534ecbb32b61efb8d_1280.jpg', // dessert
-          'https://pixabay.com/get/g491258c6a40de488f2e00c6a4ffbef586e00de565ba961a265a0a542209b6639b48f4e699422bc40d51d19456f50bb2d_1280.jpg', // breakfast
-        ];
-
-        // Use recipe name hash to consistently pick same image for same recipe
-        final recipeNameHash =
-            json['name'].toString().codeUnits.reduce((a, b) => a + b);
-        imageUrl = foodImages[recipeNameHash % foodImages.length];
-        print('Selected fallback imageUrl: $imageUrl');
+      if (imageUrl == null || imageUrl.isEmpty) {
+        // Only use fallback image if no image URL is provided
+        imageUrl =
+            'https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=800&q=80';
+        print('Using fallback imageUrl: $imageUrl');
       }
 
       final recipe = Recipe(

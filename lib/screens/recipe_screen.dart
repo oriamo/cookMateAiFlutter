@@ -122,6 +122,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
                                 style: TextStyle(
                                   fontSize: 16,
                                   color: Colors.grey.shade700,
+                                  height: 1.5,
                                 ),
                               ),
                             ),
@@ -311,19 +312,50 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
           children: [
             // Recipe image
             CachedNetworkImage(
-              imageUrl: recipe.imageUrl ?? 'https://via.placeholder.com/400',
+              imageUrl: recipe.imageUrl ??
+                  'https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=800&q=80',
               fit: BoxFit.cover,
+              maxWidthDiskCache: 1200, // Larger cache for detail view
+              memCacheWidth: 1200,
+              fadeInDuration: const Duration(milliseconds: 300),
+              httpHeaders: recipe.imageUrl
+                          ?.contains('stfunc602d62e0.blob.core.windows.net') ==
+                      true
+                  ? {'Cache-Control': 'max-age=31536000'} // Cache for 1 year
+                  : null,
               placeholder: (context, url) => Container(
-                color: Colors.grey.shade300,
-                child: const Center(
-                  child: CircularProgressIndicator(),
+                color: Colors.grey.shade100,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                        Theme.of(context).colorScheme.primary),
+                  ),
                 ),
               ),
-              errorWidget: (context, url, error) => Container(
-                color: Colors.grey.shade300,
-                child:
-                    const Icon(Icons.restaurant, color: Colors.white, size: 50),
-              ),
+              errorWidget: (context, url, error) {
+                print('Image load error for $url: $error');
+                return Container(
+                  color: Colors.grey.shade100,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.restaurant,
+                        color: Colors.grey.shade400,
+                        size: 48,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Image not available',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
             // Gradient overlay
             Container(
@@ -529,6 +561,11 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
             physics: const NeverScrollableScrollPhysics(),
             itemCount: recipe.ingredients.length,
             itemBuilder: (context, index) {
+              final ingredient = recipe.ingredients[index];
+              final name = ingredient['name'] as String? ?? '';
+              final amount = ingredient['amount'] as String? ?? '';
+              final unit = ingredient['unit'] as String? ?? '';
+
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Row(
@@ -546,11 +583,20 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: ListTile(
-                        leading: Icon(Icons.local_dining),
+                        contentPadding: EdgeInsets.zero,
                         title: Text(
-                          recipe.ingredients[index]
-                              .toString(), // Convert to string
-                          style: Theme.of(context).textTheme.bodyLarge,
+                          name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        trailing: Text(
+                          [amount, unit].where((e) => e.isNotEmpty).join(' '),
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 14,
+                          ),
                         ),
                       ),
                     ),
