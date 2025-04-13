@@ -17,7 +17,7 @@ class CookingTimer {
   final String label;
   final Duration duration;
   final DateTime startTime;
-  final DateTime endTime;
+  late final DateTime endTime;
   bool isActive;
   bool isPaused;
   Duration? remainingTime;
