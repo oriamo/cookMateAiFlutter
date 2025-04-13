@@ -728,8 +728,12 @@ class DeepgramAgentService {
       
       // Create WAV data with header
       final wavHeader = _createWavHeader(builder.length, 1, 24000, 16);
-      builder.insert(0, wavHeader);
-      final wavData = builder.toBytes();
+      
+      // Create a new buffer with header first, then audio data
+      final finalBuilder = BytesBuilder();
+      finalBuilder.add(wavHeader);
+      finalBuilder.add(builder.toBytes());
+      final wavData = finalBuilder.toBytes();
       
       // Write to temporary file
       final tempDir = await getTemporaryDirectory();
