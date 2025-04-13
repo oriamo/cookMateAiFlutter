@@ -12,7 +12,6 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:record/record.dart';
 import 'package:web_socket_channel/io.dart';
 import 'package:flutter_tts/flutter_tts.dart';
-import '../services/deepgram_agent_provider.dart';
 import 'dart:io';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
@@ -64,8 +63,8 @@ class DeepgramAgentService {
   final List<Uint8List> _audioBuffer = [];
   bool _isPlayingAudio = false;
   
-  // Track messages for context in the audio player
-  final List<DeepgramAgentMessage> _messages = [];
+  // Message tracking for context
+  final List<Map<String, dynamic>> _messages = [];
   
   /// Initialize the Deepgram Agent service
   Future<bool> initialize() async {
@@ -224,14 +223,18 @@ class DeepgramAgentService {
               case 'ConversationText':
                 // Transcribed user speech
                 debugPrint('🔵 DEEPGRAM: Received conversation text');
-                if (data.containsKey('text')) {
-                  final transcript = data['text'] as String;
+                if (data.containsKey('content')) {
+                  final transcript = data['content'] as String;
                   if (transcript.isNotEmpty) {
                     debugPrint('🟢 DEEPGRAM: Transcript: $transcript, role: ${data['role'] ?? 'unknown'}');
                     
-                    // Only add user messages to our UI
+                    // Handle both user and assistant messages
                     if (data['role'] == 'user') {
+                      // User's transcribed speech
                       _handleSpeechRecognition(transcript, true);
+                    } else if (data['role'] == 'assistant') {
+                      // Assistant's response
+                      _messageController.add(transcript);
                     }
                   }
                 }
@@ -710,8 +713,11 @@ class DeepgramAgentService {
       final player = AudioPlayer();
       debugPrint('🔵 DEEPGRAM: Created audio player, attempting to play WAV file');
       
-      // Set the volume to maximum - try higher volume
+      // Set the volume to maximum - ensure it's high enough to hear
       await player.setVolume(1.0);
+      
+      // Log the device volume for debugging
+      debugPrint('🔵 DEEPGRAM: Setting player volume to maximum (1.0)');
       
       try {
         // Load the file
@@ -721,6 +727,14 @@ class DeepgramAgentService {
         // Play the file - make sure device volume is up
         await player.play();
         debugPrint('🟢 DEEPGRAM: Playing Deepgram audio response');
+        
+        // Add more detailed logging about the audio being played
+        debugPrint('🔵 DEEPGRAM: Audio details - Duration: ${await player.duration?.inMilliseconds ?? "unknown"} ms');
+        
+        // Monitor playback state
+        player.playerStateStream.listen((state) {
+          debugPrint('🔵 DEEPGRAM: Player state changed to ${state.processingState}, playing: ${state.playing}');
+        });
         
         // Wait for playback to complete
         await player.processingStateStream.firstWhere(
@@ -733,11 +747,7 @@ class DeepgramAgentService {
         debugPrint('🔴 DEEPGRAM: Error playing audio with JustAudio: $e');
         
         // Fallback to TTS if JustAudio fails
-        if (_messages.isNotEmpty && _messages.last.type == DeepgramAgentMessageType.agent) {
-          await _tts.speak(_messages.last.content);
-        } else {
-          await _tts.speak('Audio playback failed');
-        }
+        await _tts.speak('Audio playback failed');
         
         throw e;
       } finally {
@@ -763,15 +773,8 @@ class DeepgramAgentService {
       debugPrint('🔴 DEEPGRAM: Error playing buffered audio: $e');
       // Fallback to TTS if there's an error with audio playback
       try {
-        if (_channel != null && _isConnected) {
-          // Try to speak the last conversation text if available
-          final lastAgentMessage = _messageController.stream
-              .where((msg) => msg.contains('assistant'))
-              .last;
-          await _tts.speak(lastAgentMessage);
-        } else {
-          await _tts.speak('The assistant responded but audio playback failed');
-        }
+        // Just use a simple message instead of attempting to access stream
+        await _tts.speak('The assistant responded but audio playback failed');
       } catch (ttsError) {
         debugPrint('🔴 DEEPGRAM: Fallback TTS also failed: $ttsError');
       }
