@@ -9,7 +9,7 @@ class RecipeCard extends ConsumerWidget {
   final Recipe recipe;
   final bool isHorizontal;
   final bool isExploreView;
-  
+
   const RecipeCard({
     super.key,
     required this.recipe,
@@ -39,11 +39,13 @@ class RecipeCard extends ConsumerWidget {
           ],
         ),
         clipBehavior: Clip.antiAlias,
-        child: isHorizontal ? _buildHorizontalCard(context) : _buildVerticalCard(context),
+        child: isHorizontal
+            ? _buildHorizontalCard(context)
+            : _buildVerticalCard(context),
       ),
     );
   }
-  
+
   Widget _buildVerticalCard(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -56,33 +58,41 @@ class RecipeCard extends ConsumerWidget {
               child: Hero(
                 tag: 'recipe-image-${recipe.id}',
                 child: CachedNetworkImage(
-                  imageUrl: recipe.imageUrl ?? 'https://via.placeholder.com/300',
+                  imageUrl: recipe.imageUrl ??
+                      'https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=800&q=80',
                   fit: BoxFit.cover,
+                  maxWidthDiskCache: 800,
+                  memCacheWidth: 800,
+                  fadeInDuration: const Duration(milliseconds: 300),
+                  httpHeaders: recipe.imageUrl?.contains(
+                              'stfunc602d62e0.blob.core.windows.net') ==
+                          true
+                      ? {'Cache-Control': 'max-age=31536000'}
+                      : null,
                   placeholder: (context, url) => Container(
-                    color: Colors.grey.shade300,
-                    child: const Center(
-                      child: CircularProgressIndicator(),
+                    color: Colors.grey.shade100,
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                            Theme.of(context).colorScheme.primary),
+                      ),
                     ),
                   ),
                   errorWidget: (context, url, error) => Container(
-                    color: Colors.grey.shade300,
-                    child: const Icon(
-                      Icons.restaurant,
-                      color: Colors.white,
-                      size: 40,
-                    ),
+                    color: Colors.grey.shade100,
+                    child: const Icon(Icons.broken_image),
                   ),
                 ),
               ),
             ),
-            
+
             // Favorite button
             Positioned(
               top: 8,
               right: 8,
               child: _buildFavoriteButton(context),
             ),
-            
+
             // Time indicator
             Positioned(
               bottom: 8,
@@ -113,9 +123,43 @@ class RecipeCard extends ConsumerWidget {
                 ),
               ),
             ),
+
+            // Calories badge
+            if (recipe.calories != null)
+              Positioned(
+                bottom: 8,
+                right: 8,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.local_fire_department,
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${recipe.calories} cal',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
-        
+
         // Recipe info
         Padding(
           padding: const EdgeInsets.all(12),
@@ -134,7 +178,7 @@ class RecipeCard extends ConsumerWidget {
                 ),
               ),
               const SizedBox(height: 6),
-              
+
               // Chef and rating
               Row(
                 children: [
@@ -183,37 +227,99 @@ class RecipeCard extends ConsumerWidget {
       ],
     );
   }
-  
+
   Widget _buildHorizontalCard(BuildContext context) {
     return Row(
       children: [
-        // Recipe image
-        SizedBox(
-          width: 120,
-          height: 120,
-          child: Hero(
-            tag: 'recipe-image-${recipe.id}',
-            child: CachedNetworkImage(
-              imageUrl: recipe.imageUrl ?? 'https://via.placeholder.com/300',
-              fit: BoxFit.cover,
-              placeholder: (context, url) => Container(
-                color: Colors.grey.shade300,
-                child: const Center(
-                  child: CircularProgressIndicator(),
-                ),
-              ),
-              errorWidget: (context, url, error) => Container(
-                color: Colors.grey.shade300,
-                child: const Icon(
-                  Icons.restaurant,
-                  color: Colors.white,
-                  size: 40,
+        // Recipe image with calories overlay
+        Stack(
+          children: [
+            SizedBox(
+              width: 120,
+              height: 120,
+              child: Hero(
+                tag: 'recipe-image-${recipe.id}',
+                child: CachedNetworkImage(
+                  imageUrl: recipe.imageUrl ??
+                      'https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=800&q=80',
+                  fit: BoxFit.cover,
+                  maxWidthDiskCache: 800,
+                  memCacheWidth: 800,
+                  fadeInDuration: const Duration(milliseconds: 300),
+                  httpHeaders: recipe.imageUrl?.contains(
+                              'stfunc602d62e0.blob.core.windows.net') ==
+                          true
+                      ? {'Cache-Control': 'max-age=31536000'}
+                      : null,
+                  placeholder: (context, url) => Container(
+                    color: Colors.grey.shade100,
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                            Theme.of(context).colorScheme.primary),
+                      ),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    color: Colors.grey.shade100,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.restaurant,
+                          color: Colors.grey.shade400,
+                          size: 32,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Image not available',
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
+            // Calories badge
+            if (recipe.calories != null)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.7),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.local_fire_department,
+                        color: Colors.white,
+                        size: 14,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${recipe.calories} cal',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
         ),
-        
+
         // Recipe info
         Expanded(
           child: Padding(
@@ -234,7 +340,7 @@ class RecipeCard extends ConsumerWidget {
                   ),
                 ),
                 const SizedBox(height: 6),
-                
+
                 // Chef and time
                 Row(
                   children: [
@@ -263,7 +369,7 @@ class RecipeCard extends ConsumerWidget {
                   ],
                 ),
                 const SizedBox(height: 8),
-                
+
                 // Rating and difficulty
                 Row(
                   children: [
@@ -287,7 +393,8 @@ class RecipeCard extends ConsumerWidget {
                     ),
                     const SizedBox(width: 16),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
                         color: Colors.grey.shade200,
                         borderRadius: BorderRadius.circular(4),
@@ -312,7 +419,7 @@ class RecipeCard extends ConsumerWidget {
       ],
     );
   }
-  
+
   Widget _buildFavoriteButton(BuildContext context) {
     return Consumer(
       builder: (context, ref, _) {

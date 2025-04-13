@@ -10,6 +10,7 @@
 .svn/
 migrate_working_dir/
 .vscode/
+
 # IntelliJ related
 *.iml
 *.ipr
@@ -46,8 +47,6 @@ migrate_working_dir/
 **/android/**/.cxx
 .cxx/
 .cxx
-
-
 
 # iOS specific
 **/ios/**/*.mode1v3
@@ -92,4 +91,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
+# Python virtual environment
 .venv
+venv

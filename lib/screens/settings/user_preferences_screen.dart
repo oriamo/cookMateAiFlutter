@@ -1,4 +1,3 @@
-import 'package:cook_mate_ai/screens/settings/app_settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../providers/user_provider.dart';
@@ -9,6 +8,7 @@ import 'measurement_units_screen.dart';
 import 'edit_profile_screen.dart';
 import 'health_goals_screen.dart';
 import 'prep_time_preferences_screen.dart';
+import 'app_settings_screen.dart'; // Fixed import path
 
 class UserPreferencesScreen extends ConsumerWidget {
   const UserPreferencesScreen({super.key});

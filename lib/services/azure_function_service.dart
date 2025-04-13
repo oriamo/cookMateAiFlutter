@@ -95,6 +95,51 @@ class AzureFunctionService {
     }
   }
 
+  Future<Map<String, dynamic>> getPaginatedMeals({
+    String? category,
+    String? continuationToken,
+    int pageSize = 15,
+  }) async {
+    try {
+      final response = await _dio.get(
+        '$_baseUrl/GetPaginatedMeals',
+        queryParameters: {
+          if (category != null) 'category': category,
+          if (continuationToken != null) 'continuationToken': continuationToken,
+          'pageSize': pageSize,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        return {
+          'items': List<Map<String, dynamic>>.from(response.data['items']),
+          'categories': List<String>.from(response.data['categories']),
+          'continuationToken': response.data['continuationToken'],
+        };
+      }
+      throw Exception('Failed to load meals');
+    } catch (e) {
+      throw Exception('Error fetching meals: $e');
+    }
+  }
+
+  Future<List<String>> getCategories() async {
+    try {
+      final response = await _dio.get('$_baseUrl/GetCategories');
+      return List<String>.from(response.data as List);
+    } catch (e) {
+      throw Exception('Failed to fetch categories: $e');
+    }
+  }
+
+  Future<void> toggleFavorite(String recipeId) async {
+    try {
+      await _dio.post('$_baseUrl/ToggleFavorite?recipeId=$recipeId');
+    } catch (e) {
+      throw Exception('Failed to toggle favorite: $e');
+    }
+  }
+
   void _handleDioError(DioException e) {
     switch (e.type) {
       case DioExceptionType.connectionTimeout:
