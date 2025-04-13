@@ -1,11 +1,7 @@
 // lib/widgets/voice_visualization.dart
 import 'package:flutter/material.dart';
-import 'package:lottie/lottie.dart';
-import 'package:dotlottie_loader/dotlottie_loader.dart';
-import 'dart:io' as io;
+import 'package:video_player/video_player.dart';
 import 'dart:developer' as developer;
-import 'package:flutter/services.dart' show rootBundle;
-
 import 'dart:math' as math;
 
 enum VisualizationState {
@@ -27,109 +23,99 @@ class VoiceVisualization extends StatefulWidget {
 }
 
 class _VoiceVisualizationState extends State<VoiceVisualization> with SingleTickerProviderStateMixin {
-  late final AnimationController _animationController;
-  bool _debugChecked = false;
-  String _debugMessage = '';
-  bool _useJsonFallback = false;
-  bool _useDotLottieFallback = false;
-  
-  // Animation files to try in order of preference
-  final List<String> _animationFiles = [
-    'assets/animations/listen.json',
-    'assets/animations/talk.json',
-    'assets/animations/listening.json',
-    'assets/animations/talking.json',
-    'assets/animations/listen.lottie',
-    'assets/animations/talk.lottie',
-    'assets/animations/listening.lottie',
-    'assets/animations/talking.lottie',
-  ];
-  
-  // Store which animation files actually exist
-  final Map<String, bool> _fileExists = {};
+  late AnimationController _animationController;
+  VideoPlayerController? _videoController;
+  bool _isVideoInitialized = false;
   
   @override
   void initState() {
     super.initState();
     
-    // Animation controller for Lottie
+    // Animation controller for any fallback animations
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2000),
     );
     
-    // Start animation based on initial state
-    if (widget.state == VisualizationState.aiSpeaking) {
-      _animationController.repeat();
-    } else {
-      _animationController.value = 0.5; // Middle frame for idle/listening
-    }
-    
-    // Check which animation files exist
-    _checkAnimationFiles();
+    // Initialize video based on initial state
+    _initializeVideo();
   }
   
   @override
   void dispose() {
     _animationController.dispose();
+    _videoController?.dispose();
     super.dispose();
-  }
-  
-  // Check which animation files actually exist
-  Future<void> _checkAnimationFiles() async {
-    if (_debugChecked) return;
-    
-    try {
-      StringBuffer debug = StringBuffer('Animation file status:\n');
-      
-      for (final file in _animationFiles) {
-        try {
-          await rootBundle.load(file);
-          _fileExists[file] = true;
-          debug.write('✅ $file exists\n');
-        } catch (e) {
-          _fileExists[file] = false;
-          debug.write('❌ $file does not exist: $e\n');
-        }
-      }
-      
-      _debugMessage = debug.toString();
-      developer.log(_debugMessage, name: 'VoiceVisualization');
-      _debugChecked = true;
-      
-      // Make sure to update the UI after we've checked the files
-      if (mounted) {
-        setState(() {});
-      }
-    } catch (e) {
-      developer.log('Error checking animation files: $e', name: 'VoiceVisualization');
-    }
   }
   
   @override
   void didUpdateWidget(VoiceVisualization oldWidget) {
     super.didUpdateWidget(oldWidget);
     
-    // Update animation state when visualization state changes
+    // Update video when visualization state changes
     if (widget.state != oldWidget.state) {
-      _updateAnimationState();
+      _updateVideoState();
     }
   }
   
-  void _updateAnimationState() {
+  Future<void> _initializeVideo() async {
+    // Select appropriate video based on state
+    final String videoAsset = widget.state == VisualizationState.aiSpeaking
+        ? 'assets/mov/talking.mov'
+        : 'assets/mov/listening.mov';
+    
+    developer.log('Initializing video: $videoAsset', name: 'VoiceVisualization');
+    
+    try {
+      // Dispose of old controller if it exists
+      await _videoController?.dispose();
+      
+      // Create and initialize new controller
+      _videoController = VideoPlayerController.asset(videoAsset);
+      await _videoController!.initialize();
+      
+      // Set to loop and update state
+      _videoController!.setLooping(true);
+      _isVideoInitialized = true;
+      
+      // Start/stop video based on current state
+      _updateVideoState();
+      
+      // Force UI update
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      developer.log('Error initializing video: $e', name: 'VoiceVisualization');
+      _isVideoInitialized = false;
+      if (mounted) {
+        setState(() {});
+      }
+    }
+  }
+  
+  void _updateVideoState() {
+    if (_videoController == null || !_isVideoInitialized) {
+      _initializeVideo();
+      return;
+    }
+    
+    // Check if we need to switch videos
+    if ((_videoController!.dataSource.contains('talking.mov') && widget.state != VisualizationState.aiSpeaking) ||
+        (_videoController!.dataSource.contains('listening.mov') && widget.state == VisualizationState.aiSpeaking)) {
+      _initializeVideo();
+      return;
+    }
+    
+    // Otherwise just play/pause current video
     switch (widget.state) {
       case VisualizationState.idle:
-        _animationController.stop();
-        _animationController.value = 0.5; // Middle frame for idle
+        _videoController!.pause();
         break;
       case VisualizationState.userSpeaking:
-        if (!_animationController.isAnimating) {
-          _animationController.repeat(period: const Duration(milliseconds: 1500));
-        }
-        break;
       case VisualizationState.aiSpeaking:
-        if (!_animationController.isAnimating) {
-          _animationController.repeat(period: const Duration(milliseconds: 1000));
+        if (!_videoController!.value.isPlaying) {
+          _videoController!.play();
         }
         break;
     }
@@ -149,29 +135,8 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with SingleTick
               shape: BoxShape.circle,
               color: Colors.transparent,
             ),
-            child: Stack(
-              children: [
-                _buildAnimation(),
-                
-                // Show debug overlay in debug mode
-                if (_debugMessage.isNotEmpty && false) // Set to true to see debug info
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      color: Colors.black.withOpacity(0.7),
-                      child: Text(
-                        _debugMessage,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
+            child: ClipOval(
+              child: _buildVideoPlayer(),
             ),
           ),
         );
@@ -179,57 +144,21 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with SingleTick
     );
   }
   
-  Widget _buildAnimation() {
-    // Select the appropriate animation file based on state
-    final String preferredFile = widget.state == VisualizationState.aiSpeaking
-        ? 'assets/animations/talk.json'  // Main talking animation
-        : 'assets/animations/listen.json'; // Main listening animation
-    
-    final String fallbackJsonFile = widget.state == VisualizationState.aiSpeaking
-        ? 'talking' // Fallback talking animation
-        : 'listening'; // Fallback listening animation
-    
-    final String dotLottieFile = widget.state == VisualizationState.aiSpeaking
-        ? 'assets/animations/talking.lottie' // DotLottie talking animation
-        : 'assets/animations/listening.lottie'; // DotLottie listening animation
-    
-    // Log which file we're trying to use
-    developer.log('Trying to use animation file: $preferredFile', name: 'VoiceVisualization');
-    
-    // Check if file exists first to avoid unnecessary error
-    if (_debugChecked && _fileExists[preferredFile] == true) {
-      print('Using preferred animation file: $preferredFile');
-      return Lottie.asset(
-        preferredFile,
-        controller: _animationController,
-        animate: widget.state != VisualizationState.idle,
-        fit: BoxFit.contain,
-        alignment: Alignment.center,
-        errorBuilder: (context, error, stackTrace) {
-          developer.log('Error loading preferred animation $preferredFile: $error', name: 'VoiceVisualization');
-          _useJsonFallback = true;
-          return _buildFallbackJsonAnimation(fallbackJsonFile);
-        },
+  Widget _buildVideoPlayer() {
+    if (_videoController != null && _isVideoInitialized) {
+      // Return the video player when initialized
+      return AspectRatio(
+        aspectRatio: _videoController!.value.aspectRatio,
+        child: VideoPlayer(_videoController!),
       );
-    } else if (_debugChecked && _fileExists[fallbackJsonFile] == true) {
-      print('Using fallback animation file: $fallbackJsonFile');
-      return _buildFallbackJsonAnimation(fallbackJsonFile);
-    }  else {
-      print('Using DotLottie animation file: $dotLottieFile');
+    } else {
+      // Return a placeholder while video is loading
       return _buildPlaceholderAnimation();
     }
   }
   
-  Widget _buildFallbackJsonAnimation(String file) {
-    developer.log('Using fallback animation file: $file', name: 'VoiceVisualization');
-
-    return Lottie.network(file == 'talking' ? 'https://lottie.host/edfade16-32fd-4dc9-aaf0-b8f2bd6b8bf9/iD9qt9mSda.lottie' : 'https://lottie.host/0ad86d10-cbb8-4d67-ae96-fc8eaa326da5/MCW7EskFfD.lottie');
-
-  }
-
-  
   Widget _buildPlaceholderAnimation() {
-    // Ultimate fallback if all animations fail
+    // Ultimate fallback if video fails to load
     developer.log('Using placeholder animation', name: 'VoiceVisualization');
     return Center(
       child: Container(
