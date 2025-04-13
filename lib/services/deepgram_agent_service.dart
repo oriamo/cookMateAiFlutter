@@ -148,9 +148,12 @@ class DeepgramAgentService {
   Future<bool> _initAudioStream() async {
     try {
       debugPrint('🔊 DEEPGRAM: Initializing native audio stream');
+      
+      // Enable communication mode for full-duplex audio (simultaneous recording and playback)
+      // This is critical for continuous audio streaming to Deepgram while playing back responses
       final result = await _audioChannel.invokeMethod<bool>('initAudioStream', {
         'sampleRate': 24000, // Deepgram's sample rate
-        'enableCommunicationMode': _continuousListeningEnabled, // Enable phone call mode for continuous listening
+        'enableCommunicationMode': true, // Enable communication mode for simultaneous recording and playback
       });
       
       _isAudioStreamInitialized = result ?? false;
@@ -424,14 +427,17 @@ class DeepgramAgentService {
                 // Reset inactivity timer since user is active
                 _resetInactivityTimer();
                 
-                // In continuous listening mode, we should cancel any ongoing playback
-                // so the user can interrupt the AI
+                // In continuous listening mode, allow the user to interrupt the AI
+                // but we'll keep audio streaming in both directions
                 if (_continuousListeningEnabled) {
-                  debugPrint('🔊 DEEPGRAM: User interrupted AI, stopping audio playback');
-                  _stopAudioStream();
+                  // Only log that we detected speech but don't stop audio playback
+                  // This ensures continuous audio streaming while allowing barge-in
+                  debugPrint('🔊 DEEPGRAM: User speaking while AI is talking (barge-in)');
+                  
+                  // Optional: lower the volume of the playback to make it easier to hear the user
+                  // But don't stop it entirely to maintain continuous streaming
                 } else {
-                  // In regular mode, just make sure we're in listening state
-                  // but don't interrupt ongoing audio
+                  // In regular mode, stop any audio playback if we're not already speaking
                   if (_state != DeepgramAgentState.speaking) {
                     _stopAudioStream();
                   }
@@ -874,6 +880,7 @@ class DeepgramAgentService {
   }
   
   /// Stream audio data from microphone to Deepgram
+  /// This function ensures we maintain continuous audio streaming to Deepgram
   Future<void> _streamAudio() async {
     if (!_isConnected) {
       debugPrint('🔴 DEEPGRAM: Cannot stream audio - not connected');
@@ -884,7 +891,7 @@ class DeepgramAgentService {
     await _stopRecording();
     
     try {
-      debugPrint('🔵 DEEPGRAM: Initializing audio recorder for streaming');
+      debugPrint('🔵 DEEPGRAM: Initializing audio recorder for continuous streaming');
       
       // Make sure heartbeat and forced audio timers are running before starting recording
       _startHeartbeatTimer();
@@ -903,18 +910,22 @@ class DeepgramAgentService {
         return;
       }
       
-      // Configure audio recording for continuous listening if enabled
+      // Always enable continuous listening features
+      // This is critical for maintaining uninterrupted audio streaming
+      _continuousListeningEnabled = true;
+      
+      // Configure audio recording for continuous listening
+      // These settings are optimized for full-duplex operation (recording while playing)
       final config = RecordConfig(
-        encoder: AudioEncoder.pcm16bits,
-        sampleRate: 16000,
-        numChannels: 1,
-        // Use different parameters based on continuous mode
-        autoGain: _continuousListeningEnabled ? true : false, // Auto gain helps with distant speech
-        echoCancel: _continuousListeningEnabled, // Echo cancellation for continuous mode
-        noiseSuppress: true, // Always use noise suppression
+        encoder: AudioEncoder.pcm16bits,  // 16-bit PCM for Deepgram
+        sampleRate: 16000,                // 16kHz as required by Deepgram
+        numChannels: 1,                   // Mono audio
+        autoGain: true,                   // Enable auto gain for better speech detection
+        echoCancel: true,                 // Enable echo cancellation for full-duplex operation
+        noiseSuppress: true,              // Enable noise suppression
       );
       
-      debugPrint('🟢 DEEPGRAM: Starting audio stream with PCM 16-bit, 16kHz, mono, continuous mode: $_continuousListeningEnabled');
+      debugPrint('🟢 DEEPGRAM: Starting continuous audio stream with PCM 16-bit, 16kHz, mono');
       
       // Start recording to stream
       final stream = await _recorder!.startStream(config);
