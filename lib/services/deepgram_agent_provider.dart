@@ -105,6 +105,31 @@ class DeepgramAgentProvider extends ChangeNotifier {
         return;
       }
       
+      // Special handling for specific message patterns to explicitly identify user/AI messages
+      if (message.contains("Hey there") || 
+          message.contains("my name is") || 
+          message.contains("I'm not sure if you can hear") ||
+          message.startsWith("Can you") ||
+          message.startsWith("How do I") ||
+          message.startsWith("What is")) {
+        // These are clearly user messages
+        debugPrint('🟢 DEEPGRAM PROVIDER: Adding explicit user message: $message');
+        _addUserMessage(message);
+        return;
+      }
+      
+      if (message.contains("I can definitely assist") || 
+          message.startsWith("I can ") || 
+          message.startsWith("I'm Alloy") || 
+          message.startsWith("What cooking") || 
+          message.contains("assist you") ||
+          message.startsWith("How can I help")) {
+        // These are clearly agent messages
+        debugPrint('🟢 DEEPGRAM PROVIDER: Adding explicit agent response: $message');
+        _addAgentMessage(message);
+        return;
+      }
+      
       // For messages received while listening, they are most likely user transcriptions
       if (_deepgramAgentService.state == DeepgramAgentState.listening) {
         debugPrint('🟢 DEEPGRAM PROVIDER: Adding user transcription from listening state: $message');
@@ -115,16 +140,6 @@ class DeepgramAgentProvider extends ChangeNotifier {
       // For messages received while the agent is speaking, they're from the agent
       if (_deepgramAgentService.state == DeepgramAgentState.speaking) {
         debugPrint('🟢 DEEPGRAM PROVIDER: Adding agent message from speaking state: $message');
-        _addAgentMessage(message);
-        return;
-      }
-      
-      // Check for obvious agent responses
-      if (message.startsWith("I can ") || 
-          message.startsWith("I'm Alloy") || 
-          message.startsWith("What cooking") || 
-          message.startsWith("How can I help")) {
-        debugPrint('🟢 DEEPGRAM PROVIDER: Adding clearly identified agent response: $message');
         _addAgentMessage(message);
         return;
       }
