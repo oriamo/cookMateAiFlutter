@@ -170,48 +170,45 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
             ),
           ),
 
-          // Control buttons 
+          // Control buttons
           Container(
             padding: const EdgeInsets.all(20),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (_isConversationActive) ...[
-                  // Pause button 
-                  IconButton(
-                    icon: const Icon(Icons.pause_circle_outline),
-                    onPressed: () {
-                      provider.pauseConversation();
-                    },
-                    tooltip: 'Pause conversation',
-                    iconSize: 40,
-                    color: Colors.deepPurple,
-                  ),
-                  const SizedBox(width: 20),
-                  
-                  // Stop button
-                  IconButton(
-                    icon: const Icon(Icons.cancel_outlined),
-                    onPressed: () {
-                      provider.stopConversation();
-                    },
-                    tooltip: 'End conversation',
-                    iconSize: 40,
-                    color: Colors.redAccent,
-                  ),
-                ] else [
-                  // Animated start button
-                  AnimatedMicButton(
-                    onPressed: () {
-                      provider.setContinuousListening(true);
-                      provider.startConversation();
-                    },
-                    isActive: false,
-                    baseColor: Colors.deepPurple,
-                  ),
-                ],
-              ],
-            ),
+            child: _isConversationActive 
+              ? Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Pause button 
+                    IconButton(
+                      icon: const Icon(Icons.pause_circle_outline),
+                      onPressed: () {
+                        provider.pauseConversation();
+                      },
+                      tooltip: 'Pause conversation',
+                      iconSize: 40,
+                      color: Colors.deepPurple,
+                    ),
+                    const SizedBox(width: 20),
+                    
+                    // Stop button
+                    IconButton(
+                      icon: const Icon(Icons.cancel_outlined),
+                      onPressed: () {
+                        provider.stopConversation();
+                      },
+                      tooltip: 'End conversation',
+                      iconSize: 40,
+                      color: Colors.redAccent,
+                    ),
+                  ],
+                )
+              : AnimatedMicButton(
+                  onPressed: () {
+                    provider.setContinuousListening(true);
+                    provider.startConversation();
+                  },
+                  isActive: false,
+                  baseColor: Colors.deepPurple,
+                ),
           ),
           
           // Safe area padding
