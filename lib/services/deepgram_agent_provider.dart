@@ -190,14 +190,31 @@ class DeepgramAgentProvider extends ChangeNotifier {
     notifyListeners();
   }
   
-  // Stop the live voice conversation
-  Future<void> stopConversation() async {
+  // Pause the live voice conversation (keeps connection open)
+  Future<void> pauseConversation() async {
     if (!_isInitialized) return;
     
     try {
       await _deepgramAgentService.stopListening();
+      _addSystemMessage('Conversation paused. Tap the mic to continue.');
     } catch (e) {
-      _addErrorMessage('Failed to stop conversation: $e');
+      _addErrorMessage('Failed to pause conversation: $e');
+    }
+    
+    notifyListeners();
+  }
+  
+  // Completely end the live voice conversation (closes connection)
+  Future<void> stopConversation() async {
+    if (!_isInitialized) return;
+    
+    try {
+      final success = await _deepgramAgentService.endConversation();
+      if (success) {
+        _addSystemMessage('Voice conversation ended.');
+      }
+    } catch (e) {
+      _addErrorMessage('Failed to end conversation: $e');
     }
     
     notifyListeners();

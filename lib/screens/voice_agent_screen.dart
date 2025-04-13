@@ -23,6 +23,26 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
     _scrollController.dispose();
     super.dispose();
   }
+  
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    
+    // Check if we should auto-start the conversation
+    // Use a microtask to ensure this runs after the build is complete
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = ref.read(deepgramAgentProvider);
+      // Only auto-start if navigated to and not already running
+      if (!_isConversationActive && provider.state == DeepgramAgentState.idle) {
+        // Enable continuous listening by default for the best experience
+        provider.setContinuousListening(true);
+        provider.startConversation();
+        setState(() {
+          _isConversationActive = true;
+        });
+      }
+    });
+  }
 
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
