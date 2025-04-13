@@ -2,9 +2,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'dart:typed_data';
+import 'dart:math' as Math;
 
 import 'deepgram_agent_service.dart';
 import 'llm_service.dart';
+import 'message_processor.dart';
+import 'timer_service.dart';
 
 /// Message model for Deepgram Agent chat interactions
 class DeepgramAgentMessage {
@@ -32,7 +35,8 @@ enum DeepgramAgentMessageType {
 final deepgramAgentProvider = ChangeNotifierProvider<DeepgramAgentProvider>((ref) {
   // Get the LLM service for Gemini integration
   final llmService = LlmService();
-  return DeepgramAgentProvider(llmService);
+  final timerService = TimerService();
+  return DeepgramAgentProvider(llmService, timerService);
 });
 
 /// ChangeNotifier that wraps the Deepgram Agent service
@@ -49,8 +53,12 @@ class DeepgramAgentProvider extends ChangeNotifier {
   final List<DeepgramAgentMessage> _messages = [];
   
   // Constructor
-  DeepgramAgentProvider(LlmService llmService) {
+  final TimerService _timerService;
+  late MessageProcessor _messageProcessor;
+  
+  DeepgramAgentProvider(LlmService llmService, this._timerService) {
     _deepgramAgentService = DeepgramAgentService(llmService);
+    _messageProcessor = MessageProcessor(_timerService);
     _initialize();
   }
   
@@ -268,6 +276,36 @@ class DeepgramAgentProvider extends ChangeNotifier {
     
     _messages.add(message);
     notifyListeners();
+    
+    // Process the message for timer requests
+    _processMessageForTimers(content);
+  }
+  
+  // Process agent message for timer detection
+  Future<void> _processMessageForTimers(String content) async {
+    try {
+      // First, check if the message matches the expected timer format
+      if (content.toLowerCase().contains('set up a timer for') || 
+          content.toLowerCase().contains('timer for') ||
+          content.toLowerCase().contains('minutes')) {
+        
+        debugPrint('🕒 DEEPGRAM PROVIDER: Potential timer request detected: "${content.substring(0, Math.min(50, content.length))}..."');
+        
+        // Use MessageProcessor to detect timer requests and create timer
+        final timerDetected = await _messageProcessor.processAIMessage(content);
+        
+        if (timerDetected) {
+          debugPrint('🕒 DEEPGRAM PROVIDER: Timer successfully created from message');
+          
+          // Add a confirmation system message
+          _addSystemMessage('Timer created successfully! You can see active timers below.');
+        } else {
+          debugPrint('🕒 DEEPGRAM PROVIDER: Timer format detected but timer creation failed');
+        }
+      }
+    } catch (e) {
+      debugPrint('🔴 DEEPGRAM PROVIDER: Error processing message for timers: $e');
+    }
   }
   
   // Add a system message

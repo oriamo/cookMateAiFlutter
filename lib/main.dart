@@ -5,6 +5,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_gemini/flutter_gemini.dart';
 import 'router/router.dart';
 import 'screens/permissions_screen.dart';
+import 'services/timer_service.dart';
 
 void main() async {
   // Ensure Flutter is initialized
@@ -16,6 +17,9 @@ void main() async {
   // Initialize Gemini with API key from .env
   final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
   Gemini.init(apiKey: apiKey);
+  
+  // Initialize TimerService
+  await TimerService().init();
   
   runApp(
     const ProviderScope(

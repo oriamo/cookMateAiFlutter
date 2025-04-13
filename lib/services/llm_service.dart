@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_gemini/flutter_gemini.dart';
 import 'package:google_generative_ai/google_generative_ai.dart' as genai;
+import 'timer_instruction_prompt.dart';
 
 /// Service that handles interactions with the Gemini AI model
 class LlmService {
@@ -16,9 +17,12 @@ class LlmService {
 
   // System prompt that defines the assistant's behavior
   final String _systemPrompt = '''
-You are Alloy, a helpful, witty, and concise AI assistant. 
+You are Alloy, a helpful, witty, and concise AI cooking assistant. 
 Your responses should be informative but brief.
 You have both voice and vision capabilities, allowing you to see images and respond to voice commands.
+You specialize in cooking instructions, recipes, and helping users prepare meals.
+
+$timerInstructionPrompt
 ''';
 
   // Controllers for streams

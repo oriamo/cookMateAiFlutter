@@ -6,6 +6,9 @@ import '../services/deepgram_agent_types.dart';
 import '../widgets/voice_visualization.dart';
 import '../widgets/animated_mic_button.dart';
 import '../widgets/message_bubble.dart';
+import '../widgets/cooking_timer_widget.dart';
+import '../providers/timer_provider.dart';
+import '../services/message_processor.dart';
 
 class VoiceAgentScreen extends ConsumerStatefulWidget {
   const VoiceAgentScreen({Key? key}) : super(key: key);
@@ -171,6 +174,17 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
               : const Center(child: Text('Start speaking to begin a conversation')),
           ),
 
+          // Active Timers display (shows only when timers are active)
+          Consumer(
+            builder: (context, ref, child) {
+              // Watch for active timers
+              final hasTimers = ref.watch(hasActiveTimersProvider);
+              if (!hasTimers) return const SizedBox.shrink();
+              
+              return ActiveTimersPanel();
+            },
+          ),
+          
           // Voice visualization (main component)
           Expanded(
             child: VoiceVisualization(
