@@ -67,7 +67,9 @@ class RecipeCard extends ConsumerWidget {
                   httpHeaders: recipe.imageUrl?.contains(
                               'stfunc602d62e0.blob.core.windows.net') ==
                           true
-                      ? {'Cache-Control': 'max-age=31536000'}
+                      ? {
+                          'Cache-Control': 'max-age=31536000'
+                        } // Cache for 1 year
                       : null,
                   placeholder: (context, url) => Container(
                     color: Colors.grey.shade100,
@@ -78,10 +80,30 @@ class RecipeCard extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  errorWidget: (context, url, error) => Container(
-                    color: Colors.grey.shade100,
-                    child: const Icon(Icons.broken_image),
-                  ),
+                  errorWidget: (context, url, error) {
+                    print('Image load error for $url: $error');
+                    return Container(
+                      color: Colors.grey.shade100,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.restaurant,
+                            color: Colors.grey.shade400,
+                            size: 32,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Image not available',
+                            style: TextStyle(
+                              color: Colors.grey.shade600,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
               ),
             ),
@@ -123,40 +145,6 @@ class RecipeCard extends ConsumerWidget {
                 ),
               ),
             ),
-
-            // Calories badge
-            if (recipe.calories != null)
-              Positioned(
-                bottom: 8,
-                right: 8,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.local_fire_department,
-                        color: Colors.white,
-                        size: 14,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${recipe.calories} cal',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
           ],
         ),
 
@@ -231,93 +219,59 @@ class RecipeCard extends ConsumerWidget {
   Widget _buildHorizontalCard(BuildContext context) {
     return Row(
       children: [
-        // Recipe image with calories overlay
-        Stack(
-          children: [
-            SizedBox(
-              width: 120,
-              height: 120,
-              child: Hero(
-                tag: 'recipe-image-${recipe.id}',
-                child: CachedNetworkImage(
-                  imageUrl: recipe.imageUrl ??
-                      'https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=800&q=80',
-                  fit: BoxFit.cover,
-                  maxWidthDiskCache: 800,
-                  memCacheWidth: 800,
-                  fadeInDuration: const Duration(milliseconds: 300),
-                  httpHeaders: recipe.imageUrl?.contains(
-                              'stfunc602d62e0.blob.core.windows.net') ==
-                          true
-                      ? {'Cache-Control': 'max-age=31536000'}
-                      : null,
-                  placeholder: (context, url) => Container(
-                    color: Colors.grey.shade100,
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(
-                            Theme.of(context).colorScheme.primary),
-                      ),
-                    ),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    color: Colors.grey.shade100,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.restaurant,
-                          color: Colors.grey.shade400,
-                          size: 32,
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Image not available',
-                          style: TextStyle(
-                            color: Colors.grey.shade600,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
+        // Recipe image
+        SizedBox(
+          width: 120,
+          height: 120,
+          child: Hero(
+            tag: 'recipe-image-${recipe.id}',
+            child: CachedNetworkImage(
+              imageUrl: recipe.imageUrl ??
+                  'https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=800&q=80',
+              fit: BoxFit.cover,
+              maxWidthDiskCache: 800,
+              memCacheWidth: 800,
+              fadeInDuration: const Duration(milliseconds: 300),
+              httpHeaders: recipe.imageUrl
+                          ?.contains('stfunc602d62e0.blob.core.windows.net') ==
+                      true
+                  ? {'Cache-Control': 'max-age=31536000'} // Cache for 1 year
+                  : null,
+              placeholder: (context, url) => Container(
+                color: Colors.grey.shade100,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                        Theme.of(context).colorScheme.primary),
                   ),
                 ),
               ),
-            ),
-            // Calories badge
-            if (recipe.calories != null)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.7),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+              errorWidget: (context, url, error) {
+                print('Image load error for $url: $error');
+                return Container(
+                  color: Colors.grey.shade100,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(
-                        Icons.local_fire_department,
-                        color: Colors.white,
-                        size: 14,
+                      Icon(
+                        Icons.restaurant,
+                        color: Colors.grey.shade400,
+                        size: 32,
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(height: 4),
                       Text(
-                        '${recipe.calories} cal',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
+                        'Image not available',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 12,
                         ),
                       ),
                     ],
                   ),
-                ),
-              ),
-          ],
+                );
+              },
+            ),
+          ),
         ),
 
         // Recipe info
