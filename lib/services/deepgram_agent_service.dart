@@ -29,6 +29,10 @@ class DeepgramAgentService {
   bool _isInitialized = false;
   bool _isListening = false;
   
+  // Keep alive mechanism
+  Timer? _keepAliveTimer;
+  final int _keepAliveIntervalSeconds = 30;
+  
   // Stream controllers
   final _messageController = StreamController<String>.broadcast();
   final _stateController = StreamController<DeepgramAgentState>.broadcast();
@@ -287,6 +291,10 @@ class DeepgramAgentService {
         
         _isConnected = true;
         _updateState(DeepgramAgentState.connected);
+        
+        // Start keep-alive timer
+        _resetKeepAliveTimer();
+        
         debugPrint('🟢 DEEPGRAM: Connection completed successfully, state updated to connected');
         return true;
       } catch (socketError) {
@@ -315,6 +323,9 @@ class DeepgramAgentService {
     _channel!.stream.listen(
       (dynamic message) {
         try {
+          // Reset auto-reconnect timer since we got a message
+          _resetKeepAliveTimer();
+          
           // Check if this is a binary message (audio from the server)
           if (message is List<int>) {
             // Handle binary audio response from the agent
@@ -392,7 +403,7 @@ class DeepgramAgentService {
                   
                   // Only update state if we're still in speaking mode
                   if (_state == DeepgramAgentState.speaking) {
-                    _updateState(DeepgramAgentState.idle);
+                    _updateState(DeepgramAgentState.connected); // Change to connected instead of idle to keep the connection active
                   }
                 });
                 break;
@@ -469,6 +480,15 @@ class DeepgramAgentService {
       debugPrint('🟢 DEEPGRAM: Adding final transcript to message stream: "$transcript"');
       _messageController.add(transcript);
       _updateState(DeepgramAgentState.processing);
+      
+      // Make sure we restart listening after processing to maintain the connection
+      Future.delayed(Duration(milliseconds: 500), () {
+        // Only if we're not already in another state (like speaking)
+        if (_state == DeepgramAgentState.processing) {
+          debugPrint('🔵 DEEPGRAM: Auto-transitioning back to listening state to maintain connection');
+          _updateState(DeepgramAgentState.listening);
+        }
+      });
     } else {
       // Interim result - just update state
       debugPrint('🔵 DEEPGRAM: Received interim transcript: "$transcript"');
@@ -542,6 +562,9 @@ class DeepgramAgentService {
       _isListening = true;
       _updateState(DeepgramAgentState.listening);
       
+      // Reset keep-alive timer since we're actively using the connection
+      _resetKeepAliveTimer();
+      
       // Start streaming audio
       await _streamAudio();
       
@@ -560,6 +583,13 @@ class DeepgramAgentService {
       // Update state
       _isListening = false;
       _updateState(DeepgramAgentState.connected);
+      
+      // Reset keep-alive timer when transitioning to connected state
+      _resetKeepAliveTimer();
+      
+      // Send a small ping to ensure the connection is still active
+      _sendPing();
+      
       return true;
     } catch (e) {
       _errorController.add('Failed to stop listening: $e');
@@ -727,10 +757,69 @@ class DeepgramAgentService {
     }
   }
   
+  /// Resets the keep-alive timer
+  void _resetKeepAliveTimer() {
+    _keepAliveTimer?.cancel();
+    _keepAliveTimer = Timer(Duration(seconds: _keepAliveIntervalSeconds), () {
+      debugPrint('🔵 DEEPGRAM: Keep-alive timer triggered, reconnecting...');
+      
+      // Only try to reconnect if we're currently connected
+      if (_isConnected) {
+        // Send a ping or reconnect
+        _sendPing();
+      }
+    });
+  }
+  
+  /// Sends a ping to keep the connection alive
+  void _sendPing() {
+    if (_channel == null || !_isConnected) {
+      debugPrint('🔴 DEEPGRAM: Cannot send ping - not connected');
+      return;
+    }
+    
+    try {
+      debugPrint('🔵 DEEPGRAM: Sending ping to keep connection alive');
+      // Deepgram doesn't have a formal ping, so we'll send an empty audio chunk
+      // This should keep the connection alive without causing any problems
+      final emptyAudio = Uint8List(2); // Minimal valid PCM data (silence)
+      _channel!.sink.add(emptyAudio);
+    } catch (e) {
+      debugPrint('🔴 DEEPGRAM: Error sending ping: $e');
+      // Try to reconnect if ping fails
+      _reconnect();
+    }
+  }
+  
+  /// Attempts to reconnect if the connection was dropped
+  Future<void> _reconnect() async {
+    debugPrint('🔵 DEEPGRAM: Attempting to reconnect...');
+    
+    // Clean up old connection
+    await _disconnect(keepState: true);
+    
+    // Try to reconnect
+    final connected = await connect();
+    
+    if (connected) {
+      debugPrint('🟢 DEEPGRAM: Successfully reconnected');
+      // If we were listening before, start listening again
+      if (_state == DeepgramAgentState.listening) {
+        await startListening();
+      }
+    } else {
+      debugPrint('🔴 DEEPGRAM: Failed to reconnect');
+    }
+  }
+  
   /// Disconnect from Deepgram
-  Future<void> _disconnect() async {
+  Future<void> _disconnect({bool keepState = false}) async {
     _isConnected = false;
     _isListening = false;
+    
+    // Cancel keep-alive timer
+    _keepAliveTimer?.cancel();
+    _keepAliveTimer = null;
     
     try {
       _channel?.sink.close();
@@ -739,7 +828,10 @@ class DeepgramAgentService {
     }
     
     _channel = null;
-    _updateState(DeepgramAgentState.idle);
+    
+    if (!keepState) {
+      _updateState(DeepgramAgentState.idle);
+    }
   }
   
   /// Disconnect and clean up resources
