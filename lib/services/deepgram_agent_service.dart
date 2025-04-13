@@ -59,6 +59,11 @@ class DeepgramAgentService {
   // Debug flags
   bool _verboseLogging = true; // Set to true to see all logs
   
+  // Interruption and noise tolerance settings
+  bool _disableInterruptions = false; // When true, user speech doesn't interrupt AI
+  double _noiseTolerance = 20.0; // Default threshold for detecting speech
+  double _interruptionThreshold = 35.0; // Higher threshold for interrupting during AI speech
+  
   // LLM service for integration
   final LlmService _llmService;
   
@@ -76,6 +81,9 @@ class DeepgramAgentService {
   bool get isConnected => _isConnected;
   bool get isListening => _isListening;
   CameraController? get cameraController => _cameraController;
+  bool get disableInterruptions => _disableInterruptions;
+  double get noiseTolerance => _noiseTolerance;
+  double get interruptionThreshold => _interruptionThreshold;
   
   // Constructor - reuses the existing LLM service for integration
   DeepgramAgentService(this._llmService);
@@ -425,8 +433,8 @@ class DeepgramAgentService {
                 _resetInactivityTimer();
                 
                 // In continuous listening mode, we should cancel any ongoing playback
-                // so the user can interrupt the AI
-                if (_continuousListeningEnabled) {
+                // so the user can interrupt the AI, but only if interruptions aren't disabled
+                if (_continuousListeningEnabled && !_disableInterruptions) {
                   debugPrint('🔊 DEEPGRAM: User interrupted AI, stopping audio playback');
                   _stopAudioStream();
                 } else {
@@ -973,7 +981,8 @@ class DeepgramAgentService {
                 _resetInactivityTimer();
                 
                 // In continuous mode, analyze audio for interruptions during speaking
-                if (_continuousListeningEnabled && _state == DeepgramAgentState.speaking) {
+                // Only allow interruptions if they're not explicitly disabled
+                if (_continuousListeningEnabled && _state == DeepgramAgentState.speaking && !_disableInterruptions) {
                   final hasSignificantAudio = _detectSignificantAudio(data);
                   if (hasSignificantAudio) {
                     debugPrint('🔊 DEEPGRAM: Detected user speech during AI response - possible interruption');
@@ -1093,13 +1102,15 @@ class DeepgramAgentService {
         }
         
         // IMPORTANT: Handle amplitude-based state transitions
-        if (_continuousListeningEnabled && amplitude.current > 20) {
+        if (_continuousListeningEnabled && amplitude.current > _noiseTolerance) {
           if (_state == DeepgramAgentState.connected || _state == DeepgramAgentState.idle) {
             // Wake from idle/connected state if we detect speech
             debugPrint('🔊 DEEPGRAM: Detected speech in continuous mode (${amplitude.current.toStringAsFixed(1)}), activating listening');
             _updateState(DeepgramAgentState.listening);
             _resetInactivityTimer();
-          } else if (_state == DeepgramAgentState.speaking && amplitude.current > 35) {
+          } else if (_state == DeepgramAgentState.speaking && 
+                    !_disableInterruptions && // Only allow interruptions if they're not disabled
+                    amplitude.current > _interruptionThreshold) {
             // Higher threshold for interrupting during speech to avoid false triggers
             debugPrint('🔊 DEEPGRAM: Detected user interruption during AI speech (${amplitude.current.toStringAsFixed(1)}), stopping playback');
             _stopAudioStream();
@@ -1118,7 +1129,9 @@ class DeepgramAgentService {
   bool _detectSignificantAudio(Uint8List audioData) {
     // This is a very basic detector that looks at the 16-bit PCM values
     // and calculates an average energy level
-    if (audioData.length < 32) return false;
+    
+    // If interruptions are disabled or we don't have enough data, return false
+    if (_disableInterruptions || audioData.length < 32) return false;
     
     int sum = 0;
     int count = 0;
@@ -1137,11 +1150,11 @@ class DeepgramAgentService {
     // Calculate average energy level
     double averageEnergy = count > 0 ? sum / count : 0;
     
-    // Energy threshold for speech - this needs to be calibrated
-    // through testing on actual device
-    const double SPEECH_THRESHOLD = 1000.0;
+    // Use a dynamic threshold based on our noise tolerance setting
+    // Map noise tolerance (0-100) to an energy threshold (500-2000)
+    double speechThreshold = 500.0 + (_noiseTolerance * 15.0);
     
-    return averageEnergy > SPEECH_THRESHOLD;
+    return averageEnergy > speechThreshold;
   }
   
   /// Process an image with the LLM
@@ -1438,6 +1451,27 @@ class DeepgramAgentService {
         _startHeartbeatTimer();
       }
     }
+  }
+  
+  /// Enables or disables AI interruptions by the user
+  void setDisableInterruptions(bool disable) {
+    _disableInterruptions = disable;
+    debugPrint('🔵 DEEPGRAM: AI interruptions ${disable ? 'disabled' : 'enabled'}');
+  }
+  
+  /// Sets the noise tolerance level for detecting speech
+  /// Higher values require louder speech to trigger detection
+  void setNoiseTolerance(double tolerance) {
+    if (tolerance < 0) tolerance = 0;
+    if (tolerance > 100) tolerance = 100;
+    
+    _noiseTolerance = tolerance;
+    debugPrint('🔵 DEEPGRAM: Noise tolerance set to $_noiseTolerance');
+    
+    // Automatically adjust interruption threshold to be higher
+    _interruptionThreshold = _noiseTolerance + 15.0;
+    if (_interruptionThreshold > 100) _interruptionThreshold = 100;
+    debugPrint('🔵 DEEPGRAM: Interruption threshold set to $_interruptionThreshold');
   }
   
   // Flag to prevent multiple simultaneous reconnections

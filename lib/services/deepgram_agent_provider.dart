@@ -64,6 +64,8 @@ class DeepgramAgentProvider extends ChangeNotifier {
   
   // State - enable continuous listening by default for more reliable connections
   bool _continuousListeningEnabled = true;
+  bool _disableInterruptionsEnabled = false;
+  double _noiseTolerance = 25.0; // Default to slightly higher than service default
   
   // Getters
   bool get isInitializing => _isInitializing;
@@ -73,6 +75,8 @@ class DeepgramAgentProvider extends ChangeNotifier {
   DeepgramAgentState get state => _deepgramAgentService.state;
   DeepgramAgentService get deepgramAgentService => _deepgramAgentService;
   bool get continuousListeningEnabled => _continuousListeningEnabled;
+  bool get disableInterruptionsEnabled => _disableInterruptionsEnabled;
+  double get noiseTolerance => _noiseTolerance;
   
   // Initialize the Deepgram Agent service
   Future<void> _initialize() async {
@@ -94,9 +98,12 @@ class DeepgramAgentProvider extends ChangeNotifier {
         // Enable continuous listening mode by default for better connection reliability
         _deepgramAgentService.setContinuousListening(_continuousListeningEnabled);
         
+        // Set a slightly higher noise tolerance by default for noisy environments
+        _deepgramAgentService.setNoiseTolerance(_noiseTolerance);
+        
         // Add welcome message
         _addSystemMessage('Welcome to live voice conversation mode powered by Deepgram. You can speak or type to interact with the AI.');
-        _addSystemMessage('Continuous listening mode is enabled for more stable connections.');
+        _addSystemMessage('Use the settings menu to adjust noise tolerance for your environment.');
       } else {
         _error = 'Failed to initialize Deepgram Agent';
       }
@@ -340,6 +347,33 @@ class DeepgramAgentProvider extends ChangeNotifier {
     } else {
       _addSystemMessage('Continuous listening mode disabled. Tap the mic to start each new query.');
     }
+    
+    notifyListeners();
+  }
+  
+  // Toggle disable interruptions mode
+  void setDisableInterruptions(bool disable) {
+    _disableInterruptionsEnabled = disable;
+    _deepgramAgentService.setDisableInterruptions(disable);
+    
+    if (disable) {
+      _addSystemMessage('Interruptions disabled. You cannot interrupt the AI while it is speaking.');
+    } else {
+      _addSystemMessage('Interruptions enabled. You can speak to interrupt the AI while it is speaking.');
+    }
+    
+    notifyListeners();
+  }
+  
+  // Set noise tolerance level
+  void setNoiseTolerance(double tolerance) {
+    if (tolerance < 0) tolerance = 0;
+    if (tolerance > 100) tolerance = 100;
+    
+    _noiseTolerance = tolerance;
+    _deepgramAgentService.setNoiseTolerance(tolerance);
+    
+    _addSystemMessage('Noise tolerance set to ${tolerance.toStringAsFixed(1)}. Higher values ignore more background noise.');
     
     notifyListeners();
   }

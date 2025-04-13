@@ -154,6 +154,115 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
           ],
         ),
         actions: [
+          // Noise & Interruption settings
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Voice settings',
+            onSelected: (String value) {
+              switch (value) {
+                case 'toggleInterruptions':
+                  // Toggle interruptions
+                  provider.setDisableInterruptions(!provider.disableInterruptionsEnabled);
+                  break;
+                case 'lowNoise':
+                  // Set low noise tolerance for quiet environments
+                  provider.setNoiseTolerance(15.0);
+                  break;
+                case 'mediumNoise':
+                  // Set medium noise tolerance
+                  provider.setNoiseTolerance(25.0);
+                  break;
+                case 'highNoise':
+                  // Set high noise tolerance for noisy environments
+                  provider.setNoiseTolerance(40.0);
+                  break;
+                case 'veryHighNoise':
+                  // Set very high noise tolerance for extremely noisy environments
+                  provider.setNoiseTolerance(55.0);
+                  break;
+              }
+            },
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              PopupMenuItem<String>(
+                value: 'toggleInterruptions',
+                child: Row(
+                  children: [
+                    Icon(
+                      provider.disableInterruptionsEnabled
+                          ? Icons.volume_up
+                          : Icons.mic,
+                      color: provider.disableInterruptionsEnabled
+                          ? Colors.green
+                          : Colors.grey,
+                    ),
+                    const SizedBox(width: 10),
+                    Text(provider.disableInterruptionsEnabled
+                        ? 'Enable Interruptions'
+                        : 'Disable Interruptions'),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem<String>(
+                value: '',
+                enabled: false,
+                child: Text('Noise Tolerance:',
+                    style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+              PopupMenuItem<String>(
+                value: 'lowNoise',
+                child: Row(
+                  children: [
+                    Icon(Icons.volume_down,
+                        color: provider.noiseTolerance <= 15 ? Colors.green : Colors.grey),
+                    const SizedBox(width: 10),
+                    const Text('Quiet Environment'),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'mediumNoise',
+                child: Row(
+                  children: [
+                    Icon(Icons.volume_down,
+                        color: provider.noiseTolerance > 15 &&
+                                provider.noiseTolerance <= 25
+                            ? Colors.green
+                            : Colors.grey),
+                    const SizedBox(width: 10),
+                    const Text('Normal Environment'),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'highNoise',
+                child: Row(
+                  children: [
+                    Icon(Icons.volume_up,
+                        color: provider.noiseTolerance > 25 &&
+                                provider.noiseTolerance <= 40
+                            ? Colors.green
+                            : Colors.grey),
+                    const SizedBox(width: 10),
+                    const Text('Noisy Environment'),
+                  ],
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'veryHighNoise',
+                child: Row(
+                  children: [
+                    Icon(Icons.volume_up,
+                        color: provider.noiseTolerance > 40
+                            ? Colors.green
+                            : Colors.grey),
+                    const SizedBox(width: 10),
+                    const Text('Very Noisy Environment'),
+                  ],
+                ),
+              ),
+            ],
+          ),
           // Clear chat history
           IconButton(
             icon: const Icon(Icons.delete_outline),
