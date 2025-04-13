@@ -3,9 +3,26 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/ingredients_provider.dart';
 import '../models/ingredient.dart';
+import '../dummy_data/dummy_ingredients.dart'; // Import dummy data directly
 // import 'package:uuid/uuid.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:google_fonts/google_fonts.dart';
+
+// DEMO MODE: Direct access to dummy ingredients
+final dummyIngredientsProvider = Provider<List<Ingredient>>((ref) {
+  return dummyIngredients;
+});
+
+// DEMO MODE: Filtered ingredients providers
+final unpurchasedDummyIngredientsProvider = Provider<List<Ingredient>>((ref) {
+  final ingredients = ref.watch(dummyIngredientsProvider);
+  return ingredients.where((ingredient) => !ingredient.isPurchased).toList();
+});
+
+final purchasedDummyIngredientsProvider = Provider<List<Ingredient>>((ref) {
+  final ingredients = ref.watch(dummyIngredientsProvider);
+  return ingredients.where((ingredient) => ingredient.isPurchased).toList();
+});
 
 class IngredientsScreen extends ConsumerStatefulWidget {
   const IngredientsScreen({super.key});
@@ -291,42 +308,45 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
                     label: const Text('Add Ingredient'),
                     onPressed: () {
                       if (_formKey.currentState!.validate()) {
-                        ref.read(ingredientsProvider.notifier).addIngredient(
-                              name: _nameController.text,
-                              quantity: _quantityController.text.isEmpty
-                                  ? null
-                                  : _quantityController.text,
-                              unit: _unitController.text.isEmpty
-                                  ? null
-                                  : _unitController.text,
-                              category: _selectedCategory,
-                            );
+                        // DEMO MODE: Don't actually add ingredient
+                        // ref.read(ingredientsProvider.notifier).addIngredient(
+                        //       name: _nameController.text,
+                        //       quantity: _quantityController.text.isEmpty
+                        //           ? null
+                        //           : _quantityController.text,
+                        //       unit: _unitController.text.isEmpty
+                        //           ? null
+                        //           : _unitController.text,
+                        //       category: _selectedCategory,
+                        //     );
                         Navigator.pop(context);
 
-                        // Show success snackbar
+                        // Show demo mode snackbar
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                                '${_nameController.text} added to grocery list'),
+                                '[DEMO] ${_nameController.text} would be added to grocery list'),
                             behavior: SnackBarBehavior.floating,
                             margin: const EdgeInsets.all(16),
                             duration: const Duration(seconds: 2),
                             action: SnackBarAction(
-                              label: 'VIEW',
+                              label: 'DEMO INFO',
                               onPressed: () {
-                                // Find the newly added ingredient and navigate to its detail
-                                final ingredients =
-                                    ref.read(ingredientsProvider);
-                                final newIngredient = ingredients.firstWhere(
-                                  (ingredient) =>
-                                      ingredient.name == _nameController.text,
-                                  orElse: () =>
-                                      const Ingredient(id: '', name: ''),
+                                // Show demo mode dialog
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text('Demo Mode'),
+                                    content: const Text(
+                                        'This is a demo. In a real app, your new ingredient would be added permanently.'),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Text('OK'),
+                                      ),
+                                    ],
+                                  ),
                                 );
-                                if (newIngredient.id.isNotEmpty) {
-                                  context
-                                      .push('/ingredient/${newIngredient.id}');
-                                }
                               },
                             ),
                           ),
@@ -544,12 +564,13 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
   }
 
   void _togglePurchased(Ingredient ingredient) {
-    ref.read(ingredientsProvider.notifier).togglePurchased(ingredient.id);
+    // DEMO MODE: Don't actually toggle the purchase status
+    // ref.read(ingredientsProvider.notifier).togglePurchased(ingredient.id);
 
-    // Show snackbar feedback
+    // Show demo mode snackbar feedback
     final message = ingredient.isPurchased
-        ? '${ingredient.name} unmarked'
-        : '${ingredient.name} checked off';
+        ? '[DEMO] ${ingredient.name} would be unmarked'
+        : '[DEMO] ${ingredient.name} would be checked off';
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -558,11 +579,23 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
         margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
         duration: const Duration(seconds: 2),
         action: SnackBarAction(
-          label: 'UNDO',
+          label: 'DEMO INFO',
           onPressed: () {
-            ref
-                .read(ingredientsProvider.notifier)
-                .togglePurchased(ingredient.id);
+            // Show demo mode dialog
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Demo Mode'),
+                content: const Text(
+                    'This is a demo. In a real app, your changes would be saved.'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('OK'),
+                  ),
+                ],
+              ),
+            );
           },
         ),
       ),
@@ -587,14 +620,34 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
               foregroundColor: Colors.white,
             ),
             onPressed: () {
-              ref
-                  .read(ingredientsProvider.notifier)
-                  .removeIngredient(ingredient.id);
+              // DEMO MODE: Don't actually delete the ingredient
+              // ref
+              //     .read(ingredientsProvider.notifier)
+              //     .removeIngredient(ingredient.id);
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text('${ingredient.name} removed'),
+                  content: Text('[DEMO] ${ingredient.name} would be removed'),
                   duration: const Duration(seconds: 2),
+                  action: SnackBarAction(
+                    label: 'DEMO INFO',
+                    onPressed: () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          title: const Text('Demo Mode'),
+                          content: const Text(
+                              'This is a demo. In a real app, this ingredient would be permanently removed.'),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text('OK'),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
                 ),
               );
             },
@@ -607,11 +660,12 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final ingredients = ref.watch(ingredientsProvider);
+    // DEMO MODE: Use dummy data providers directly
+    final dummyIngredients = ref.watch(dummyIngredientsProvider);
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     // Filter ingredients based on search and tab
-    final filteredIngredients = ingredients.where((ingredient) {
+    final filteredIngredients = dummyIngredients.where((ingredient) {
       final matchesSearch = _searchQuery.isEmpty ||
           ingredient.name.toLowerCase().contains(_searchQuery.toLowerCase());
 
@@ -625,8 +679,8 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
     }).toList();
 
     // Count of purchased items
-    final purchasedCount = ingredients.where((i) => i.isPurchased).length;
-    final totalCount = ingredients.length;
+    final purchasedCount = dummyIngredients.where((i) => i.isPurchased).length;
+    final totalCount = dummyIngredients.length;
 
     return Scaffold(
       body: SafeArea(

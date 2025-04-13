@@ -13,6 +13,7 @@ class AzureFunctionServiceMock implements AzureFunctionService {
     String? category,
     String? searchTerm,
     String? continuationToken,
+    int pageSize = 15,
   }) async {
     // Return an empty response to force the app to use our dummy data
     return {
@@ -27,5 +28,38 @@ class AzureFunctionServiceMock implements AzureFunctionService {
       {bool? returnRawResponse}) async {
     // Mock implementation - returns an empty response
     return {};
+  }
+  
+  @override
+  Future<Map<String, dynamic>> createMeal({
+    required String name,
+    required List<Map<String, dynamic>> ingredients,
+    required List<String> instructions,
+    required int cookingTime,
+    required int servings,
+    required String category,
+    required String difficulty,
+    int? calories,
+  }) async {
+    // Mock implementation for demo mode
+    return {'id': 'mock-id-${DateTime.now().millisecondsSinceEpoch}'};
+  }
+  
+  @override
+  Future<List<String>> getCategories() async {
+    // Mock implementation for demo mode
+    return [];
+  }
+  
+  @override
+  Future<dynamic> getMeal(String id) async {
+    // Mock implementation for demo mode
+    return {};
+  }
+  
+  @override
+  Future<void> toggleFavorite(String recipeId) async {
+    // Mock implementation for demo mode
+    return;
   }
 }

@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/recipe.dart';
+import '../dummy_data/dummy_recipes.dart';
+import '../dummy_data/dummy_categories.dart';
 import '../services/azure_function_service.dart';
 import '../services/azure_function_service_provider.dart';
 
@@ -13,20 +15,28 @@ class RecipeNotifier extends StateNotifier<AsyncValue<Map<String, dynamic>>> {
   Future<void> loadInitialRecipes() async {
     try {
       state = const AsyncValue.loading();
-      // Fetch paginated meals data from Azure Functions
-      final data = await _azureFunctionService.getPaginatedMeals();
       
-      // Extract recipes and categories
-      final recipes = (data['items'] as List).map((item) => 
-        Recipe.fromJson(item as Map<String, dynamic>)).toList();
+      // Use dummy data for demonstration
+      final recipes = List<Recipe>.from(dummyRecipes);
       
-      final categories = ['All Recipes', ...data['categories'] as List<String>];
+      // Extract categories from dummy categories
+      final categoryNames = dummyCategories.map((cat) => cat.name).toList();
+      final categories = ['All Recipes', ...categoryNames];
       
       state = AsyncValue.data({
         'recipes': recipes,
         'categories': categories,
-        'continuationToken': data['continuationToken'],
+        'continuationToken': null, // No pagination in demo mode
       });
+      
+      // Also try the real API in the background
+      try {
+        final data = await _azureFunctionService.getPaginatedMeals();
+        // If we get data back, we would update here but for demo we'll ignore
+      } catch (apiError) {
+        // Silently fail - we already have dummy data
+        print('API error (expected in demo mode): $apiError');
+      }
     } catch (e, st) {
       print('Error in loadInitialRecipes: $e');
       state = AsyncValue.error(e, st);
@@ -36,20 +46,20 @@ class RecipeNotifier extends StateNotifier<AsyncValue<Map<String, dynamic>>> {
   Future<void> changeCategory(String category) async {
     try {
       state = const AsyncValue.loading();
-      // Fetch filtered meals by category
-      final data = await _azureFunctionService.getPaginatedMeals(
-        category: category == 'All Recipes' ? null : category
-      );
+      
+      // Use dummy data filtered by category
+      final allRecipes = List<Recipe>.from(dummyRecipes);
+      final filteredRecipes = category == 'All Recipes' 
+          ? allRecipes 
+          : allRecipes.where((recipe) => 
+              recipe.category.toLowerCase() == category.toLowerCase()).toList();
       
       // Create new state with filtered recipes but keep categories
       state.whenData((currentData) {
-        final recipes = (data['items'] as List).map((item) => 
-          Recipe.fromJson(item as Map<String, dynamic>)).toList();
-          
         state = AsyncValue.data({
-          'recipes': recipes,
+          'recipes': filteredRecipes,
           'categories': currentData['categories'],
-          'continuationToken': data['continuationToken'],
+          'continuationToken': null, // No pagination in demo mode
         });
       });
     } catch (e, st) {
@@ -60,10 +70,7 @@ class RecipeNotifier extends StateNotifier<AsyncValue<Map<String, dynamic>>> {
 
   Future<void> toggleFavorite(String recipeId) async {
     try {
-      // Call API to toggle favorite status
-      await _azureFunctionService.toggleFavorite(recipeId);
-      
-      // Update local state
+      // In demo mode, we just update local state
       state.whenData((currentData) {
         final recipes = List<Recipe>.from(currentData['recipes'] as List<Recipe>);
         final index = recipes.indexWhere((recipe) => recipe.id == recipeId);
@@ -78,53 +85,26 @@ class RecipeNotifier extends StateNotifier<AsyncValue<Map<String, dynamic>>> {
           });
         }
       });
+      
+      // Try API call in background (will be mocked in demo mode)
+      try {
+        await _azureFunctionService.toggleFavorite(recipeId);
+      } catch (e) {
+        // Silently ignore API errors in demo mode
+      }
     } catch (e) {
       print('Error toggling favorite: $e');
     }
   }
 
   Future<void> loadMoreRecipes() async {
-    try {
-      final currentState = state.valueOrNull;
-      if (currentState == null) return;
-      
-      final continuationToken = currentState['continuationToken'];
-      if (continuationToken == null) return; // No more recipes to load
-      
-      // Get current category
-      String? category;
-      state.whenData((data) {
-        final recipes = data['recipes'] as List<Recipe>;
-        if (recipes.isNotEmpty) {
-          category = recipes.first.category;
-        }
-      });
-      
-      // Fetch next page
-      final data = await _azureFunctionService.getPaginatedMeals(
-        continuationToken: continuationToken,
-        category: category == 'All Recipes' ? null : category
-      );
-      
-      // Update state with new recipes
-      state.whenData((currentData) {
-        final currentRecipes = currentData['recipes'] as List<Recipe>;
-        final newRecipes = (data['items'] as List).map((item) => 
-          Recipe.fromJson(item as Map<String, dynamic>)).toList();
-          
-        state = AsyncValue.data({
-          'recipes': [...currentRecipes, ...newRecipes],
-          'categories': currentData['categories'],
-          'continuationToken': data['continuationToken'],
-        });
-      });
-    } catch (e) {
-      print('Error loading more recipes: $e');
-    }
+    // In demo mode, we don't have pagination - all recipes are already loaded
+    // This is a no-op function for demo mode
+    return;
   }
 
-  bool get hasMore => 
-    state.valueOrNull?['continuationToken'] != null;
+  // In demo mode, we always have all recipes loaded
+  bool get hasMore => false;
 }
 
 final recipeProvider =

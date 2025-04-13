@@ -7,6 +7,7 @@ import '../providers/recipe_provider.dart';
 import '../providers/user_provider.dart';
 import '../models/recipe.dart';
 import 'package:flutter/rendering.dart';
+import '../dummy_data/dummy_recipes.dart';
 
 class RecipeScreen extends ConsumerStatefulWidget {
   final String recipeId;
@@ -46,25 +47,36 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
   }
 
   void _toggleFavorite(Recipe recipe) {
-    ref.read(recipeProvider.notifier).toggleFavorite(recipe.id);
-    ref.read(userProfileProvider.notifier).toggleFavoriteRecipe(recipe.id);
+    // DEMO MODE: Don't actually update favorites
+    // ref.read(recipeProvider.notifier).toggleFavorite(recipe.id);
+    // ref.read(userProfileProvider.notifier).toggleFavoriteRecipe(recipe.id);
 
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
           recipe.isFavorite
-              ? '${recipe.title} removed from favorites'
-              : '${recipe.title} added to favorites',
+              ? '[DEMO] ${recipe.title} would be removed from favorites'
+              : '[DEMO] ${recipe.title} would be added to favorites',
         ),
         duration: const Duration(seconds: 2),
         behavior: SnackBarBehavior.floating,
         action: SnackBarAction(
-          label: 'UNDO',
+          label: 'DEMO INFO',
           onPressed: () {
-            ref.read(recipeProvider.notifier).toggleFavorite(recipe.id);
-            ref
-                .read(userProfileProvider.notifier)
-                .toggleFavoriteRecipe(recipe.id);
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Demo Mode'),
+                content: const Text(
+                    'This is a demo. In a real app, favorite recipes would be saved to your profile.'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text('OK'),
+                  ),
+                ],
+              ),
+            );
           },
         ),
       ),
@@ -80,9 +92,22 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
     );
   }
 
+  // DEMO MODE: Direct recipe provider to use dummy data
+  final dummyRecipeProvider = Provider.family<Recipe?, String>((ref, id) {
+    try {
+      return dummyRecipes.firstWhere((recipe) => recipe.id == id);
+    } catch (e) {
+      return null;
+    }
+  });
+
   @override
   Widget build(BuildContext context) {
-    final recipeAsync = ref.watch(recipeDetailProvider(widget.recipeId));
+    // DEMO MODE: Use dummy data directly
+    final recipe = ref.watch(dummyRecipeProvider(widget.recipeId));
+    
+    // Fallback to the normal provider if needed
+    final recipeAsync = recipe ?? ref.watch(recipeDetailProvider(widget.recipeId));
 
     return Scaffold(
       body: recipeAsync == null

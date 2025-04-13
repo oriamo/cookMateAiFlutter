@@ -10,8 +10,27 @@ import '../widgets/category_card.dart';
 import '../widgets/recipe_card.dart';
 import '../widgets/shimmers/recipe_card_shimmer.dart';
 import '../widgets/shimmers/category_card_shimmer.dart';
+import '../dummy_data/dummy_recipes.dart';
+import '../dummy_data/dummy_categories.dart';
 
-// Featured recipes provider - gets first 5 recipes
+// DEMO MODE: Direct access to dummy data for more reliable rendering
+final dummyFeaturedRecipesProvider = Provider<List<Recipe>>((ref) {
+  // Get first 5 recipes from dummy data
+  return dummyRecipes.take(5).toList();
+});
+
+final dummyPopularRecipesProvider = Provider<List<Recipe>>((ref) {
+  // Sort by rating and get top 6
+  final recipes = List<Recipe>.from(dummyRecipes)
+    ..sort((a, b) => b.rating.compareTo(a.rating));
+  return recipes.take(6).toList();
+});
+
+final dummyCategoriesProvider = Provider<List<Category>>((ref) {
+  return dummyCategories;
+});
+
+// Keeping the original providers as fallback, but we'll primarily use the dummy ones
 final featuredRecipesProvider = Provider<AsyncValue<List<Recipe>>>((ref) {
   return ref.watch(recipeProvider).whenData((data) {
     final recipes = (data['recipes'] as List<dynamic>).cast<Recipe>();
@@ -65,6 +84,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // DEMO MODE: Use dummy data providers directly for immediate rendering
+    final dummyFeatured = ref.watch(dummyFeaturedRecipesProvider);
+    final dummyPopular = ref.watch(dummyPopularRecipesProvider);
+    final dummyCategories = ref.watch(dummyCategoriesProvider);
+    
+    // Also watch the original providers as fallback
     final featuredRecipes = ref.watch(featuredRecipesProvider);
     final popularRecipes = ref.watch(popularRecipesProvider);
     final categories = ref.watch(categoriesProvider);
@@ -275,17 +300,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             sliver: SliverGrid(
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
-                  if (categories.isEmpty) {
-                    return const CategoryCardShimmer();
-                  }
+                  // Use dummy categories directly in demo mode
                   return FadeInUp(
                     duration: Duration(milliseconds: 300 + (index * 50)),
                     child: CategoryCard(
-                      category: categories[index],
+                      category: dummyCategories[index],
                     ),
                   );
                 },
-                childCount: categories.isEmpty ? 4 : categories.length,
+                childCount: dummyCategories.length,
               ),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
@@ -342,13 +365,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           SliverToBoxAdapter(
             child: SizedBox(
               height: 300,
-              child: featuredRecipes.when(
-                data: (recipes) => _buildFeaturedRecipes(recipes),
-                loading: () => _buildRecipeShimmers(),
-                error: (error, stack) => Center(
-                  child: Text('Error: $error'),
-                ),
-              ),
+              // In demo mode, use dummy data directly
+              child: _buildFeaturedRecipes(dummyFeatured),
             ),
           ),
 
@@ -376,38 +394,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-            sliver: popularRecipes.when(
-              data: (recipes) => SliverGrid.builder(
+            // In demo mode, use dummy data directly
+            sliver: SliverGrid.builder(
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   mainAxisSpacing: 16,
                   crossAxisSpacing: 16,
                   childAspectRatio: 0.75,
                 ),
-                itemCount: recipes.length,
+                itemCount: dummyPopular.length,
                 itemBuilder: (context, index) {
                   return FadeInUp(
                     duration: Duration(milliseconds: 300 + (index * 100)),
-                    child: RecipeCard(recipe: recipes[index]),
+                    child: RecipeCard(recipe: dummyPopular[index]),
                   );
                 },
-              ),
-              loading: () => SliverGrid.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
-                  childAspectRatio: 0.75,
-                ),
-                itemCount: 4,
-                itemBuilder: (context, index) {
-                  return const RecipeCardShimmer();
-                },
-              ),
-              error: (error, stack) => SliverToBoxAdapter(
-                child: Center(
-                  child: Text('Error: $error'),
-                ),
               ),
             ),
           ),
