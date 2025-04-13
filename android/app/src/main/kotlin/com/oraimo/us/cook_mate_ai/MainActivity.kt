@@ -251,14 +251,8 @@ class MainActivity: FlutterActivity() {
                     .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
                     .build()
                 
-                // Set the allowed deep buffer duration if available
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                    try {
-                        track.setAllowedDeepBufferingSuspendMs(500)
-                    } catch (e: Exception) {
-                        Log.e(TAG, "Error setting deep buffering: ${e.message}")
-                    }
-                }
+                // Note: The deep buffer setting is not compatible with all devices
+                // Leaving it out for compatibility
                 
                 track
             } else {
@@ -317,17 +311,17 @@ class MainActivity: FlutterActivity() {
                         if (data.size >= minWriteSize) {
                             // Write any accumulated data first
                             if (accumulatedSize > 0) {
-                                writeAudioData(accumulatedBuffer, accumulatedSize)
+                                internalWriteAudioData(accumulatedBuffer, accumulatedSize)
                                 accumulatedSize = 0
                             }
                             
                             // Then write this larger chunk directly
-                            writeAudioData(data, data.size)
+                            internalWriteAudioData(data, data.size)
                             
                         } else {
                             // If adding this data would overflow our buffer, write what we have first
                             if (accumulatedSize + data.size > accumulatedBuffer.size) {
-                                writeAudioData(accumulatedBuffer, accumulatedSize)
+                                internalWriteAudioData(accumulatedBuffer, accumulatedSize)
                                 accumulatedSize = 0
                             }
                             
@@ -337,7 +331,7 @@ class MainActivity: FlutterActivity() {
                             
                             // If we've collected enough data, write it now
                             if (accumulatedSize >= minWriteSize) {
-                                writeAudioData(accumulatedBuffer, accumulatedSize)
+                                internalWriteAudioData(accumulatedBuffer, accumulatedSize)
                                 accumulatedSize = 0
                             }
                         }
@@ -351,33 +345,13 @@ class MainActivity: FlutterActivity() {
                 // Write any remaining accumulated data before exiting
                 if (accumulatedSize > 0) {
                     try {
-                        writeAudioData(accumulatedBuffer, accumulatedSize)
+                        internalWriteAudioData(accumulatedBuffer, accumulatedSize)
                     } catch (e: Exception) {
                         Log.e(TAG, "Error writing final audio buffer: ${e.message}")
                     }
                 }
                 
                 Log.d(TAG, "Audio processing thread exiting")
-            }
-            
-            // Helper function to write to AudioTrack
-            fun writeAudioData(buffer: ByteArray, size: Int) {
-                val track = audioTrack ?: return
-                
-                try {
-                    val bytesWritten = track.write(buffer, 0, size)
-                    
-                    if (bytesWritten > 0) {
-                        totalBytesPlayed += bytesWritten
-                        if (bytesWritten >= 1000) {
-                            Log.d(TAG, "Wrote $bytesWritten bytes to AudioTrack (total: $totalBytesPlayed)")
-                        }
-                    } else {
-                        Log.w(TAG, "Failed to write data to AudioTrack: $bytesWritten")
-                    }
-                } catch (e: Exception) {
-                    Log.e(TAG, "Error writing to AudioTrack: ${e.message}")
-                }
             }
             
             audioThread?.start()
@@ -446,6 +420,26 @@ class MainActivity: FlutterActivity() {
         
         // Latency is the difference
         return (elapsedMs - audioMs).toInt()
+    }
+    
+    // Helper method to write audio data to the AudioTrack
+    private fun internalWriteAudioData(buffer: ByteArray, size: Int) {
+        val track = audioTrack ?: return
+        
+        try {
+            val bytesWritten = track.write(buffer, 0, size)
+            
+            if (bytesWritten > 0) {
+                totalBytesPlayed += bytesWritten
+                if (bytesWritten >= 1000) {
+                    Log.d(TAG, "Wrote $bytesWritten bytes to AudioTrack (total: $totalBytesPlayed)")
+                }
+            } else {
+                Log.w(TAG, "Failed to write data to AudioTrack: $bytesWritten")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error writing to AudioTrack: ${e.message}")
+        }
     }
     
     private fun stopAudioTrack() {
