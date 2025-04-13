@@ -31,7 +31,9 @@ class DeepgramAgentService {
   
   // Connection management
   Timer? _inactivityTimer;
+  Timer? _heartbeatTimer;
   final int _inactivityTimeoutSeconds = 30;
+  final int _heartbeatIntervalSeconds = 5; // Send heartbeat every 5 seconds to prevent timeout
   bool _continuousListeningEnabled = false;
   
   // Stream controllers
@@ -133,6 +135,7 @@ class DeepgramAgentService {
       debugPrint('🔊 DEEPGRAM: Initializing native audio stream');
       final result = await _audioChannel.invokeMethod<bool>('initAudioStream', {
         'sampleRate': 24000, // Deepgram's sample rate
+        'enableCommunicationMode': _continuousListeningEnabled, // Enable phone call mode for continuous listening
       });
       
       _isAudioStreamInitialized = result ?? false;
@@ -140,6 +143,20 @@ class DeepgramAgentService {
       return _isAudioStreamInitialized;
     } catch (e) {
       debugPrint('🔴 DEEPGRAM: Error initializing native audio stream: $e');
+      return false;
+    }
+  }
+  
+  /// Enable or disable communication mode for simultaneous recording and playback
+  Future<bool> _setCommunicationMode(bool enabled) async {
+    try {
+      debugPrint('🔊 DEEPGRAM: ${enabled ? "Enabling" : "Disabling"} communication mode');
+      final result = await _audioChannel.invokeMethod<bool>('enableCommunicationMode', {
+        'enabled': enabled,
+      });
+      return result ?? false;
+    } catch (e) {
+      debugPrint('🔴 DEEPGRAM: Error setting communication mode: $e');
       return false;
     }
   }
@@ -293,8 +310,9 @@ class DeepgramAgentService {
         _isConnected = true;
         _updateState(DeepgramAgentState.connected);
         
-        // Start inactivity timer
+        // Start inactivity and heartbeat timers
         _startInactivityTimer();
+        _startHeartbeatTimer();
         
         debugPrint('🟢 DEEPGRAM: Connection completed successfully, state updated to connected');
         return true;
@@ -679,13 +697,22 @@ class DeepgramAgentService {
         StreamSubscription<Uint8List>? audioSubscription;
         StreamSubscription<DeepgramAgentState>? stateSubscription;
         
-        debugPrint('🔵 DEEPGRAM: Starting audio stream with PCM 16-bit, 16kHz, mono');
-        // Start recording to stream
-        final stream = await recorder.startStream(const RecordConfig(
+        // Configure audio recording for continuous listening if enabled
+        final config = RecordConfig(
           encoder: AudioEncoder.pcm16bits,
           sampleRate: 16000,
           numChannels: 1,
-        ));
+          // Use different parameters based on continuous mode
+          // These are platform specific and may need adjustment based on testing
+          autoGain: _continuousListeningEnabled ? true : false, // Auto gain helps with distant speech
+          echoCancel: _continuousListeningEnabled, // Echo cancellation for continuous mode
+          noiseSuppress: true, // Always use noise suppression
+        );
+        
+        debugPrint('🔵 DEEPGRAM: Starting audio stream with PCM 16-bit, 16kHz, mono, continuous mode: $_continuousListeningEnabled');
+        
+        // Start recording to stream
+        final stream = await recorder.startStream(config);
         
         debugPrint('🟢 DEEPGRAM: Audio stream started successfully');
         
@@ -697,7 +724,7 @@ class DeepgramAgentService {
         // Listen to the stream and send audio data to Deepgram
         audioSubscription = stream.listen(
           (data) {
-            if (_isListening && _isConnected) {
+            if (_isConnected) { // Note: removed _isListening check for continuous mode
               if (data.isNotEmpty) {
                 packetCount++;
                 totalBytesSent += data.length;
@@ -711,16 +738,29 @@ class DeepgramAgentService {
                   debugPrint('🔵 DEEPGRAM: Sent $packetCount audio packets, total: ${totalBytesSent} bytes');
                 }
                 
-                // Send audio data to Deepgram
-                sendAudioData(data);
+                // In continuous mode, we send audio data even when the AI is speaking to detect interruptions
+                // In regular mode, only send when explicitly listening
+                if (_continuousListeningEnabled || _isListening) {
+                  // Send audio data to Deepgram
+                  sendAudioData(data);
+                }
                 
                 // Reset inactivity timer since we're actively recording
                 _resetInactivityTimer();
+                
+                // For continuous mode, analyze audio amplitude to detect user speech
+                if (_continuousListeningEnabled && _state == DeepgramAgentState.speaking) {
+                  // Analyze audio data for speech (could use a simple energy detector)
+                  final hasSignificantAudio = _detectSignificantAudio(data);
+                  if (hasSignificantAudio) {
+                    debugPrint('🔊 DEEPGRAM: Detected significant audio during AI speech - possible interruption');
+                  }
+                }
               } else {
                 debugPrint('🟡 DEEPGRAM: Received empty audio data packet');
               }
             } else {
-              debugPrint('🟡 DEEPGRAM: Not sending audio packet - isListening: $_isListening, isConnected: $_isConnected');
+              debugPrint('🟡 DEEPGRAM: Not sending audio packet - isConnected: $_isConnected');
             }
           },
           onError: (e) {
@@ -742,15 +782,14 @@ class DeepgramAgentService {
               stateSubscription?.cancel();
               recorder.stop();
             } else if (state == DeepgramAgentState.speaking) {
-              // When the AI is speaking, we might still want to detect user speech
-              // to allow interruptions, but we'll let the UserStartedSpeaking event
-              // handle that
-              debugPrint('🔵 DEEPGRAM: AI speaking, but keeping mic open for interruptions');
+              // When the AI is speaking, we still want to detect user speech to allow interruptions
+              debugPrint('🔵 DEEPGRAM: AI speaking, keeping mic open and sending data to detect interruptions');
+              // We continue recording - no need to change anything here in continuous mode
             }
           } else {
             // In regular mode, stop recording when we're not in listening state
             if (state != DeepgramAgentState.listening) {
-              debugPrint('🔵 DEEPGRAM: State changed to $state, stopping audio recording');
+              debugPrint('🔵 DEEPGRAM: State changed to $state, stopping audio recording in regular mode');
               audioSubscription?.cancel();
               stateSubscription?.cancel();
               recorder.stop();
@@ -760,14 +799,14 @@ class DeepgramAgentService {
         
         // Debug info for audio amplitude
         Timer.periodic(const Duration(milliseconds: 500), (timer) async {
-          if (!_isListening && !_continuousListeningEnabled) {
+          if (!_isConnected || (!_isListening && !_continuousListeningEnabled)) {
             debugPrint('🔵 DEEPGRAM: Audio amplitude monitoring stopped');
             timer.cancel();
             return;
           }
           
           final amplitude = await recorder.getAmplitude();
-          debugPrint('🔵 DEEPGRAM: Audio amplitude: ${amplitude.current}, isListening: $_isListening');
+          debugPrint('🔵 DEEPGRAM: Audio amplitude: ${amplitude.current}, state: $_state');
           
           // In continuous mode, we can use amplitude to wake the system from idle
           // or to interrupt the AI when it's speaking
@@ -794,6 +833,36 @@ class DeepgramAgentService {
       debugPrint('🔴 DEEPGRAM: Failed to stream audio: $e');
       _errorController.add('Failed to stream audio: $e');
     }
+  }
+  
+  /// Simple energy detector for audio packets
+  bool _detectSignificantAudio(Uint8List audioData) {
+    // This is a very basic detector that looks at the 16-bit PCM values
+    // and calculates an average energy level
+    if (audioData.length < 32) return false;
+    
+    int sum = 0;
+    int count = 0;
+    
+    // Process as 16-bit samples
+    for (int i = 0; i < audioData.length - 1; i += 2) {
+      // Convert two bytes to a 16-bit sample
+      int sample = audioData[i] | (audioData[i + 1] << 8);
+      // Convert from signed to absolute value
+      if (sample > 32767) sample = sample - 65536;
+      sample = sample.abs();
+      sum += sample;
+      count++;
+    }
+    
+    // Calculate average energy level
+    double averageEnergy = count > 0 ? sum / count : 0;
+    
+    // Energy threshold for speech - this needs to be calibrated
+    // through testing on actual device
+    const double SPEECH_THRESHOLD = 1000.0;
+    
+    return averageEnergy > SPEECH_THRESHOLD;
   }
   
   /// Process an image with the LLM
@@ -838,6 +907,47 @@ class DeepgramAgentService {
     });
   }
   
+  /// Start sending periodic heartbeats to keep the connection alive
+  void _startHeartbeatTimer() {
+    _stopHeartbeatTimer(); // Cancel any existing timer
+    
+    _heartbeatTimer = Timer.periodic(Duration(seconds: _heartbeatIntervalSeconds), (timer) {
+      if (!_isConnected) {
+        _stopHeartbeatTimer();
+        return;
+      }
+      
+      // Only send heartbeats if we're not actively streaming audio
+      if (_state != DeepgramAgentState.listening) {
+        debugPrint('🔵 DEEPGRAM: Sending heartbeat to keep connection alive');
+        _sendHeartbeat();
+      }
+    });
+    
+    debugPrint('🔵 DEEPGRAM: Heartbeat timer started (interval: $_heartbeatIntervalSeconds seconds)');
+  }
+  
+  /// Stop the heartbeat timer
+  void _stopHeartbeatTimer() {
+    _heartbeatTimer?.cancel();
+    _heartbeatTimer = null;
+  }
+  
+  /// Send a heartbeat message to keep the connection alive
+  void _sendHeartbeat() {
+    if (!_isConnected || _channel == null) return;
+    
+    try {
+      // Send minimal audio data as a heartbeat
+      // This is a 160-byte silent PCM frame (10ms of 16kHz silence)
+      final heartbeatData = Uint8List(160);
+      _channel!.sink.add(heartbeatData);
+      debugPrint('🔵 DEEPGRAM: Heartbeat sent successfully');
+    } catch (e) {
+      debugPrint('🔴 DEEPGRAM: Error sending heartbeat: $e');
+    }
+  }
+  
   /// Resets the inactivity timer - call this on user activity
   void _resetInactivityTimer() {
     if (_isConnected) {
@@ -851,13 +961,41 @@ class DeepgramAgentService {
     _continuousListeningEnabled = enabled;
     debugPrint('🔵 DEEPGRAM: Continuous listening ${enabled ? 'enabled' : 'disabled'}');
     
-    // If enabling continuous listening, make sure we're connected and listening
-    if (enabled && _isInitialized && !_isListening && !_isConnected) {
-      connect().then((success) {
-        if (success) {
-          startListening();
-        }
+    // Enable or disable communication mode based on continuous listening setting
+    _setCommunicationMode(enabled);
+    
+    // If audio stream is already initialized, reinitialize with new settings
+    if (_isAudioStreamInitialized) {
+      _stopAudioStream().then((_) {
+        _initAudioStream();
       });
+    }
+    
+    // If enabling continuous listening, make sure we're connected and listening
+    if (enabled) {
+      // Make sure we're sending frequent heartbeats in continuous mode
+      if (_isConnected) {
+        // Restart heartbeat with more frequent intervals for continuous mode
+        _heartbeatIntervalSeconds < 3 ? _startHeartbeatTimer() : null;
+      }
+      
+      // Connect if not already connected
+      if (_isInitialized && !_isConnected) {
+        connect().then((success) {
+          if (success) {
+            startListening();
+          }
+        });
+      } else if (_isConnected && !_isListening) {
+        // If connected but not listening, start listening
+        startListening();
+      }
+    } else {
+      // If disabling continuous mode and we're not actively listening,
+      // we can use the standard heartbeat interval
+      if (_isConnected && _state != DeepgramAgentState.listening) {
+        _startHeartbeatTimer();
+      }
     }
   }
   
@@ -887,9 +1025,10 @@ class DeepgramAgentService {
     _isConnected = false;
     _isListening = false;
     
-    // Cancel inactivity timer
+    // Cancel timers
     _inactivityTimer?.cancel();
     _inactivityTimer = null;
+    _stopHeartbeatTimer();
     
     try {
       _channel?.sink.close();

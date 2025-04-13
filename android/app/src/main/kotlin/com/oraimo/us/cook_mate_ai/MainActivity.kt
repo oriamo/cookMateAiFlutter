@@ -8,7 +8,13 @@ import android.util.Log
 import android.media.AudioTrack
 import android.media.AudioFormat
 import android.media.AudioManager
+import android.media.AudioAttributes
+import android.media.AudioDeviceInfo
+import android.media.AudioFocusRequest
+import android.media.AudioRouting
+import android.media.AudioRecordingConfiguration
 import android.os.Build
+import android.content.Context
 import java.util.concurrent.LinkedBlockingQueue
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -22,9 +28,15 @@ class MainActivity: FlutterActivity() {
     private var audioThread: Thread? = null
     private var totalBytesPlayed = 0
     private var startTimeMs = 0L
+    private var audioManager: AudioManager? = null
+    private var isSpeakerphoneOn = false
+    private var audioFocusRequest: AudioFocusRequest? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        
+        // Initialize AudioManager
+        audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         
         Log.d(TAG, "Registering audio streaming method channel")
         
@@ -32,7 +44,13 @@ class MainActivity: FlutterActivity() {
             when (call.method) {
                 "initAudioStream" -> {
                     val sampleRate = call.argument<Int>("sampleRate") ?: 24000
-                    Log.d(TAG, "Initializing audio stream with sample rate: $sampleRate Hz")
+                    val enableCommunicationMode = call.argument<Boolean>("enableCommunicationMode") ?: false
+                    Log.d(TAG, "Initializing audio stream with sample rate: $sampleRate Hz, communication mode: $enableCommunicationMode")
+                    
+                    if (enableCommunicationMode) {
+                        enableCommunicationMode()
+                    }
+                    
                     initAudioTrack(sampleRate)
                     result.success(true)
                 }
@@ -50,6 +68,7 @@ class MainActivity: FlutterActivity() {
                 "stopAudioStream" -> {
                     Log.d(TAG, "Stopping audio stream")
                     stopAudioTrack()
+                    disableCommunicationMode()
                     result.success(true)
                 }
                 "getAudioStats" -> {
@@ -60,11 +79,106 @@ class MainActivity: FlutterActivity() {
                     )
                     result.success(stats)
                 }
+                "enableCommunicationMode" -> {
+                    val enabled = call.argument<Boolean>("enabled") ?: true
+                    if (enabled) {
+                        enableCommunicationMode()
+                    } else {
+                        disableCommunicationMode()
+                    }
+                    result.success(true)
+                }
                 else -> {
                     Log.w(TAG, "Method not implemented: ${call.method}")
                     result.notImplemented()
                 }
             }
+        }
+    }
+    
+    /**
+     * Enable communication mode for simultaneous playback and recording
+     * This configures the audio system similar to a phone call
+     */
+    private fun enableCommunicationMode() {
+        Log.d(TAG, "Enabling communication mode")
+        
+        try {
+            // Request audio focus for communication
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                val focusRequest = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN_TRANSIENT_EXCLUSIVE)
+                    .setAudioAttributes(
+                        AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                            .build()
+                    )
+                    .setAcceptsDelayedFocusGain(true)
+                    .setOnAudioFocusChangeListener { focusChange ->
+                        Log.d(TAG, "Audio focus changed: $focusChange")
+                    }
+                    .build()
+                
+                audioFocusRequest = focusRequest
+                val result = audioManager?.requestAudioFocus(focusRequest)
+                Log.d(TAG, "Audio focus request result: $result")
+            } else {
+                @Suppress("DEPRECATION")
+                val result = audioManager?.requestAudioFocus(
+                    null, 
+                    AudioManager.STREAM_VOICE_CALL,
+                    AudioManager.AUDIOFOCUS_GAIN_TRANSIENT
+                )
+                Log.d(TAG, "Audio focus request result: $result")
+            }
+            
+            // Turn on speakerphone to enable AEC
+            audioManager?.mode = AudioManager.MODE_IN_COMMUNICATION
+            audioManager?.isSpeakerphoneOn = true
+            isSpeakerphoneOn = true
+            
+            // Check if we successfully entered communication mode
+            val currentMode = audioManager?.mode
+            Log.d(TAG, "Current audio mode: $currentMode (MODE_IN_COMMUNICATION=${AudioManager.MODE_IN_COMMUNICATION})")
+            Log.d(TAG, "Speakerphone on: ${audioManager?.isSpeakerphoneOn}")
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Error enabling communication mode: ${e.message}")
+            e.printStackTrace()
+        }
+    }
+    
+    /**
+     * Disable communication mode and return to normal audio mode
+     */
+    private fun disableCommunicationMode() {
+        Log.d(TAG, "Disabling communication mode")
+        
+        try {
+            // Abandon audio focus
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                audioFocusRequest?.let { audioManager?.abandonAudioFocusRequest(it) }
+                audioFocusRequest = null
+            } else {
+                @Suppress("DEPRECATION")
+                audioManager?.abandonAudioFocus(null)
+            }
+            
+            // Turn off speakerphone
+            if (isSpeakerphoneOn) {
+                audioManager?.isSpeakerphoneOn = false
+                isSpeakerphoneOn = false
+            }
+            
+            // Return to normal mode
+            audioManager?.mode = AudioManager.MODE_NORMAL
+            
+            Log.d(TAG, "Current audio mode: ${audioManager?.mode} (MODE_NORMAL=${AudioManager.MODE_NORMAL})")
+            Log.d(TAG, "Speakerphone on: ${audioManager?.isSpeakerphoneOn}")
+            
+        } catch (e: Exception) {
+            Log.e(TAG, "Error disabling communication mode: ${e.message}")
+            e.printStackTrace()
         }
     }
     
@@ -87,7 +201,15 @@ class MainActivity: FlutterActivity() {
         try {
             audioTrack = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 Log.d(TAG, "Using modern AudioTrack API with low latency mode")
+                
+                // Create audio attributes for communication
+                val audioAttributes = AudioAttributes.Builder()
+                    .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
+                    .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
+                    .build()
+                
                 AudioTrack.Builder()
+                    .setAudioAttributes(audioAttributes)
                     .setAudioFormat(AudioFormat.Builder()
                         .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
                         .setSampleRate(sampleRate)
@@ -99,8 +221,15 @@ class MainActivity: FlutterActivity() {
                     .build()
             } else {
                 Log.d(TAG, "Using legacy AudioTrack API")
+                // Use STREAM_VOICE_CALL instead of STREAM_MUSIC for communication mode
+                val streamType = if (isSpeakerphoneOn) {
+                    AudioManager.STREAM_VOICE_CALL
+                } else {
+                    AudioManager.STREAM_MUSIC
+                }
+                
                 AudioTrack(
-                    AudioManager.STREAM_MUSIC,
+                    streamType,
                     sampleRate,
                     AudioFormat.CHANNEL_OUT_MONO,
                     AudioFormat.ENCODING_PCM_16BIT,
@@ -233,6 +362,7 @@ class MainActivity: FlutterActivity() {
     override fun onDestroy() {
         Log.d(TAG, "Activity being destroyed - cleaning up audio resources")
         stopAudioTrack()
+        disableCommunicationMode()
         super.onDestroy()
     }
 }
