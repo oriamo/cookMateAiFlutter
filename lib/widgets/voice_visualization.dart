@@ -21,43 +21,101 @@ class VoiceVisualization extends StatefulWidget {
 }
 
 class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProviderStateMixin {
-  late AnimationController _pulseController;
   late AnimationController _rotationController;
-  late List<AnimationController> _lineControllers;
+  late AnimationController _waveController;
+  late List<AnimationController> _individualControllers;
   
-  final int _numberOfLines = 12; // Number of lines in the visualization
+  final int _numberOfCircles = 10; // Number of circular lines
+  final List<Color> _circleColors = [];
+  final List<double> _circleSizes = [];
+  final List<List<double>> _waveAmplitudes = [];
+  
+  // Random generator for consistent colors and sizes
+  final _random = math.Random(42);
   
   @override
   void initState() {
     super.initState();
     
-    // Main pulse animation
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    )..repeat(reverse: true);
+    // Initialize colors and sizes for each circle
+    _initializeCircleProperties();
     
-    // Rotation animation
+    // Main rotation animation
     _rotationController = AnimationController(
-      duration: const Duration(milliseconds: 8000),
+      duration: const Duration(milliseconds: 10000),
       vsync: this,
     )..repeat();
     
-    // Individual line animations
-    _lineControllers = List.generate(
-      _numberOfLines,
+    // Wave animation for AI speaking
+    _waveController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    )..repeat();
+    
+    // Individual animations for each circle
+    _individualControllers = List.generate(
+      _numberOfCircles,
       (index) => AnimationController(
-        duration: Duration(milliseconds: 1000 + (index * 100)),
+        duration: Duration(milliseconds: 3000 + (_random.nextInt(5) * 500)),
         vsync: this,
       )..repeat(reverse: true),
     );
+    
+    _updateAnimationSpeed();
+  }
+  
+  void _initializeCircleProperties() {
+    // Base colors to choose from
+    final baseColors = [
+      Colors.deepPurple,
+      Colors.purple,
+      Colors.indigo,
+      Colors.blue,
+      Colors.blueAccent,
+      Colors.deepPurple.shade300,
+      Colors.purple.shade300,
+      Colors.purpleAccent,
+      Colors.indigoAccent,
+      Colors.blue.shade300,
+    ];
+    
+    // Generate unique colors and sizes for each circle
+    for (int i = 0; i < _numberOfCircles; i++) {
+      // Get two random colors for the gradient
+      final color1 = baseColors[_random.nextInt(baseColors.length)];
+      final color2 = baseColors[_random.nextInt(baseColors.length)];
+      
+      // Create a slightly different shade for each
+      final customColor = Color.lerp(
+        color1, 
+        color2,
+        0.3 + (_random.nextDouble() * 0.7),
+      )!;
+      
+      _circleColors.add(customColor);
+      
+      // Generate a unique size factor (between 0.3 and 0.95)
+      final sizeFactor = 0.3 + (0.65 * i / (_numberOfCircles - 1));
+      _circleSizes.add(sizeFactor);
+      
+      // Generate random wave amplitudes for this circle
+      // Each circle gets 8 amplitude points around the circle
+      final wavePoints = List.generate(
+        8, 
+        (_) => 0.5 + _random.nextDouble() * 1.5,
+      );
+      _waveAmplitudes.add(wavePoints);
+    }
+    
+    // Sort sizes to ensure proper layering (largest first)
+    _circleSizes.sort((a, b) => b.compareTo(a));
   }
   
   @override
   void dispose() {
-    _pulseController.dispose();
     _rotationController.dispose();
-    for (var controller in _lineControllers) {
+    _waveController.dispose();
+    for (var controller in _individualControllers) {
       controller.dispose();
     }
     super.dispose();
@@ -76,150 +134,141 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
   void _updateAnimationSpeed() {
     switch (widget.state) {
       case VisualizationState.idle:
-        _pulseController.duration = const Duration(milliseconds: 1500);
-        _rotationController.duration = const Duration(milliseconds: 8000);
+        _rotationController.duration = const Duration(milliseconds: 15000);
+        _waveController.duration = const Duration(milliseconds: 3000);
+        _waveController.stop();
         break;
       case VisualizationState.userSpeaking:
-        _pulseController.duration = const Duration(milliseconds: 800);
-        _rotationController.duration = const Duration(milliseconds: 5000);
+        _rotationController.duration = const Duration(milliseconds: 6000);
+        _waveController.duration = const Duration(milliseconds: 2000);
+        _waveController.stop(); // No wave effect during user speaking
         break;
       case VisualizationState.aiSpeaking:
-        _pulseController.duration = const Duration(milliseconds: 1000);
-        _rotationController.duration = const Duration(milliseconds: 6000);
+        _rotationController.duration = const Duration(milliseconds: 10000);
+        _waveController.duration = const Duration(milliseconds: 1200);
+        if (!_waveController.isAnimating) {
+          _waveController.reset();
+          _waveController.repeat();
+        }
         break;
     }
     
-    // Reset animations to apply the new durations
-    _pulseController.reset();
-    _pulseController.repeat(reverse: true);
-    _rotationController.reset();
-    _rotationController.repeat();
+    // Reset rotation animation for smooth transitions
+    if (_rotationController.isAnimating) {
+      final value = _rotationController.value;
+      _rotationController.reset();
+      _rotationController.forward(from: value);
+    } else {
+      _rotationController.repeat();
+    }
+    
+    // Adjust individual circle animations
+    for (int i = 0; i < _numberOfCircles; i++) {
+      _individualControllers[i].duration = Duration(
+        milliseconds: widget.state == VisualizationState.aiSpeaking
+            ? 1000 + (_random.nextInt(10) * 200)
+            : 3000 + (_random.nextInt(5) * 500),
+      );
+      
+      final value = _individualControllers[i].value;
+      _individualControllers[i].reset();
+      _individualControllers[i].forward(from: value);
+      _individualControllers[i].repeat(reverse: true);
+    }
   }
   
   @override
   Widget build(BuildContext context) {
-    // Different colors based on state
-    List<Color> colors;
-    switch (widget.state) {
-      case VisualizationState.idle:
-        colors = [
-          Colors.deepPurple.shade300,
-          Colors.deepPurple.shade500,
-          Colors.deepPurple.shade700,
-        ];
-        break;
-      case VisualizationState.userSpeaking:
-        colors = [
-          Colors.blue.shade300,
-          Colors.deepPurple.shade400,
-          Colors.indigo.shade600,
-        ];
-        break;
-      case VisualizationState.aiSpeaking:
-        colors = [
-          Colors.purple.shade300,
-          Colors.pink.shade400,
-          Colors.deepPurple.shade500,
-        ];
-        break;
-    }
-    
     return LayoutBuilder(
       builder: (context, constraints) {
-        final size = math.min(constraints.maxWidth, constraints.maxHeight) * 0.8;
+        final size = math.min(constraints.maxWidth, constraints.maxHeight) * 0.85;
         
         return Center(
           child: AnimatedBuilder(
-            animation: Listenable.merge([_pulseController, _rotationController]),
+            animation: Listenable.merge([
+              _rotationController, 
+              _waveController,
+              ..._individualControllers,
+            ]),
             builder: (context, child) {
               return Container(
                 width: size,
                 height: size,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: colors[1].withOpacity(0.3),
-                      blurRadius: 30 * _pulseController.value,
-                      spreadRadius: 10 * _pulseController.value,
-                    ),
-                  ],
+                  color: Colors.transparent,
                 ),
                 child: Stack(
+                  alignment: Alignment.center,
                   children: [
-                    // Base circular gradient
+                    // Background subtle glow
                     Container(
-                      width: size * 0.2,
-                      height: size * 0.2,
+                      width: size * 0.9,
+                      height: size * 0.9,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        gradient: RadialGradient(
-                          colors: [
-                            colors[0],
-                            colors[1].withOpacity(0.7),
-                            colors[2].withOpacity(0.0),
-                          ],
-                          stops: const [0.1, 0.4, 1.0],
-                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.deepPurple.withOpacity(0.2),
+                            blurRadius: 30,
+                            spreadRadius: 5,
+                          ),
+                        ],
                       ),
                     ),
                     
-                    // Rotating visualization lines
-                    ...List.generate(_numberOfLines, (index) {
-                      final angle = (index / _numberOfLines) * 2 * math.pi;
-                      final rotationAngle = angle + (_rotationController.value * 2 * math.pi);
-                      final lineLength = size * 0.5 * (0.5 + (_lineControllers[index].value * 0.5));
+                    // Circular lines from largest to smallest
+                    ...List.generate(_numberOfCircles, (index) {
+                      // Get the circle properties
+                      final circleColor = _circleColors[index];
+                      final circleSize = _circleSizes[index];
+                      final waveAmplitudes = _waveAmplitudes[index];
                       
-                      return Positioned.fill(
-                        child: Center(
-                          child: Transform.rotate(
-                            angle: rotationAngle,
-                            child: AnimatedBuilder(
-                              animation: _lineControllers[index],
-                              builder: (context, child) {
-                                return Container(
-                                  width: lineLength,
-                                  height: 2.0 + (widget.state == VisualizationState.idle ? 0.0 : 1.0),
-                                  decoration: BoxDecoration(
-                                    borderRadius: BorderRadius.circular(2),
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        colors[0].withOpacity(0.1),
-                                        colors[1],
-                                        colors[2].withOpacity(0.3),
-                                      ],
-                                      stops: const [0.0, 0.7, 1.0],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
+                      // Rotation angle based on index and animation
+                      final baseRotation = index % 2 == 0 ? 1.0 : -1.0;
+                      final rotationValue = baseRotation * _rotationController.value * 2 * math.pi;
+                      final rotationSpeed = 0.3 + (index / _numberOfCircles) * 0.7;
+                      
+                      // Individual animation for additional variance
+                      final individualAnimation = _individualControllers[index].value;
+                      
+                      return Transform.rotate(
+                        angle: rotationValue * rotationSpeed,
+                        child: CustomPaint(
+                          size: Size(size * circleSize, size * circleSize),
+                          painter: CircularLinePainter(
+                            color: circleColor,
+                            strokeWidth: 2 + (index % 3),
+                            waveAmplitudes: waveAmplitudes,
+                            wavePhase: widget.state == VisualizationState.aiSpeaking 
+                                ? _waveController.value * 2 * math.pi 
+                                : 0,
+                            individualFactor: individualAnimation,
+                            isAiSpeaking: widget.state == VisualizationState.aiSpeaking,
                           ),
                         ),
                       );
                     }),
                     
                     // Center circle
-                    Center(
-                      child: Container(
-                        width: size * 0.15,
-                        height: size * 0.15,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: RadialGradient(
-                            colors: [
-                              Colors.white.withOpacity(0.9),
-                              colors[0],
-                            ],
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: colors[1].withOpacity(0.5),
-                              blurRadius: 10,
-                              spreadRadius: 2,
-                            ),
+                    Container(
+                      width: size * 0.12,
+                      height: size * 0.12,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: RadialGradient(
+                          colors: [
+                            Colors.white.withOpacity(0.9),
+                            Colors.deepPurple.shade300,
                           ],
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.deepPurple.withOpacity(0.5),
+                            blurRadius: 10,
+                            spreadRadius: 2,
+                          ),
+                        ],
                       ),
                     ),
                   ],
@@ -230,5 +279,103 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
         );
       },
     );
+  }
+}
+
+/// Custom painter for drawing the circular lines with wave distortion
+class CircularLinePainter extends CustomPainter {
+  final Color color;
+  final double strokeWidth;
+  final List<double> waveAmplitudes;
+  final double wavePhase;
+  final double individualFactor;
+  final bool isAiSpeaking;
+  
+  CircularLinePainter({
+    required this.color,
+    required this.strokeWidth,
+    required this.waveAmplitudes,
+    required this.wavePhase,
+    required this.individualFactor,
+    required this.isAiSpeaking,
+  });
+  
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+    
+    // Create gradient shader
+    final gradient = SweepGradient(
+      colors: [
+        color.withOpacity(0.7),
+        color,
+        color.withOpacity(0.9),
+        color.withOpacity(0.7),
+      ],
+      stops: const [0.0, 0.3, 0.7, 1.0],
+    );
+    
+    final rect = Rect.fromCircle(center: center, radius: radius);
+    final shader = gradient.createShader(rect);
+    
+    final paint = Paint()
+      ..shader = shader
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+    
+    // Draw circle with wave distortion when AI is speaking
+    final path = Path();
+    
+    // Number of points to draw
+    const numPoints = 100;
+    
+    // If AI is speaking, deform the circle with wave patterns
+    if (isAiSpeaking) {
+      for (int i = 0; i <= numPoints; i++) {
+        final angle = (i / numPoints) * 2 * math.pi;
+        
+        // Calculate wave distortion
+        // Use multiple sine waves with different frequencies for more complex waves
+        double waveDistortion = 0;
+        
+        // Apply multiple wavs based on the amplitude points
+        for (int w = 0; w < waveAmplitudes.length; w++) {
+          final waveFreq = w + 1;
+          final amplitude = waveAmplitudes[w] * individualFactor;
+          waveDistortion += math.sin(angle * waveFreq + wavePhase) * amplitude;
+        }
+        
+        // Scale the distortion based on state
+        final scaledDistortion = isAiSpeaking ? waveDistortion * strokeWidth : 0;
+        
+        // Calculate point position
+        final x = center.dx + (radius + scaledDistortion) * math.cos(angle);
+        final y = center.dy + (radius + scaledDistortion) * math.sin(angle);
+        
+        // Draw the path
+        if (i == 0) {
+          path.moveTo(x, y);
+        } else {
+          path.lineTo(x, y);
+        }
+      }
+      // Close the path
+      path.close();
+    } else {
+      // For user speaking or idle, just draw a perfect circle
+      path.addOval(rect);
+    }
+    
+    // Draw the path
+    canvas.drawPath(path, paint);
+  }
+  
+  @override
+  bool shouldRepaint(covariant CircularLinePainter oldDelegate) {
+    return oldDelegate.wavePhase != wavePhase ||
+        oldDelegate.individualFactor != individualFactor ||
+        oldDelegate.isAiSpeaking != isAiSpeaking;
   }
 }
