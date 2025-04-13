@@ -10,17 +10,17 @@ import 'services/timer_service.dart';
 void main() async {
   // Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Load environment variables from .env file
   await dotenv.load();
-  
+
   // Initialize Gemini with API key from .env
   final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
   Gemini.init(apiKey: apiKey);
-  
+
   // Initialize TimerService
   await TimerService().init();
-  
+
   runApp(
     const ProviderScope(
       child: CookMateApp(),

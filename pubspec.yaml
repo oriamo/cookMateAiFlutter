@@ -23,7 +23,7 @@ dependencies:
   animations: ^2.0.8
   animate_do: ^3.3.0
   lottie: ^3.1.0
-  dotlottie_loader: ^0.0.5
+  dotlottie_loader: ^0.0.4 # Downgraded from ^0.0.5
 
   cached_network_image: ^3.3.1
   flutter_staggered_grid_view: ^0.7.0
@@ -66,7 +66,7 @@ dependencies:
   intl: ^0.19.0
   uuid: ^4.3.3
   path_provider: ^2.1.2
-  permission_handler: ^11.3.1
+  permission_handler: ^11.0.0 # or latest version
   flutter_dotenv: ^5.1.0
   just_audio: ^0.9.46
   video_player: ^2.9.5
