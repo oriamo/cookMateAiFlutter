@@ -2,10 +2,10 @@
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:dotlottie_loader/dotlottie_loader.dart';
-import 'package:dotlottie_flutter/dotlottie.dart';
 import 'dart:io' as io;
 import 'dart:developer' as developer;
 import 'package:flutter/services.dart' show rootBundle;
+
 import 'dart:math' as math;
 
 enum VisualizationState {
@@ -240,13 +240,16 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with SingleTick
   
   Widget _buildDotLottieAnimation(String file) {
     developer.log('Using DotLottie animation file: $file', name: 'VoiceVisualization');
-    return DotLottie(
-      path: file,
-      width: 200,
-      height: 200,
-      autoplay: true,
-      loop: true,
-    )
+    return DotLottieLoader.fromAsset(
+      file,
+      controller: _animationController,
+      animate: widget.state != VisualizationState.idle,
+      fit: BoxFit.contain,
+      errorBuilder: (context, error, stackTrace) {
+        developer.log('Error loading DotLottie animation $file: $error', name: 'VoiceVisualization');
+        return _buildPlaceholderAnimation();
+      },
+    );
   }
   
   Widget _buildPlaceholderAnimation() {
