@@ -38,7 +38,9 @@ dependencies:
   # Speech and Voice Processing
   speech_to_text: ^7.0.0
   flutter_tts: ^3.8.5
-  vad: ^0.0.3
+  vad: ^0.0.5
+  web_socket_channel: ^2.4.0  # For Deepgram WebSocket communication
+  record: ^5.0.1  # For audio recording
 
   # Camera and Image Processing
   camera: ^0.10.5+9
@@ -52,6 +54,7 @@ dependencies:
   path_provider: ^2.1.2
   permission_handler: ^11.3.1
   flutter_dotenv: ^5.1.0
+  just_audio: ^0.9.46
 
 
 

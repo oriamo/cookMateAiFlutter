@@ -68,8 +68,8 @@ class SttService {
         debugPrint('STT_DEBUG: Speech recognition initialized successfully');
         
         // Check if device has speech recognition capability
-        final hasSpeech = await _speechToText.hasSpeech;
-        debugPrint('STT_DEBUG: Device has speech recognition capability: $hasSpeech');
+        final isAvailable = await _speechToText.initialize();
+        debugPrint('STT_DEBUG: Device has speech recognition capability: $isAvailable');
         
         // Get available locales for debugging
         final locales = await _speechToText.locales();
@@ -242,7 +242,6 @@ class SttService {
     final statusText = '''
 STT_DEBUG: Speech status:
 - Initialized: $_isInitialized
-- Has speech: ${_speechToText.hasSpeech}
 - Is listening: $_isListening
 - System is listening: ${_speechToText.isListening}
 - Available: ${_speechToText.isAvailable}

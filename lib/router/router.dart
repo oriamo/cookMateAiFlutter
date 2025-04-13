@@ -8,6 +8,7 @@ import '../screens/category_screen.dart';
 import '../screens/profile_screen.dart';
 import '../screens/explore_screen.dart';
 import '../screens/ai_chat_screen.dart';
+import '../screens/voice_agent_screen.dart';
 import '../widgets/app_scaffold.dart';
 
 final router = GoRouter(
@@ -82,6 +83,13 @@ final router = GoRouter(
           path: '/ai-chat',
           name: 'ai-chat',
           builder: (context, state) => const AssistantScreen(),
+        ),
+        
+        // Voice Agent route
+        GoRoute(
+          path: '/voice-agent',
+          name: 'voice-agent',
+          builder: (context, state) => const VoiceAgentScreen(),
         ),
       ],
     ),
