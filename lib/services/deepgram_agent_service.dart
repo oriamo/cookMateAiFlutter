@@ -34,9 +34,15 @@ class DeepgramAgentService {
   Timer? _heartbeatTimer;
   Timer? _forcedAudioTimer;
   final int _inactivityTimeoutSeconds = 30;
-  final int _heartbeatIntervalSeconds = 5; // Send heartbeat every 5 seconds to prevent timeout
-  final int _forcedAudioIntervalMs = 500; // Send audio data every 500ms regardless of state
+  final int _heartbeatIntervalSeconds = 2; // Send heartbeat every 2 seconds to prevent timeout
+  final int _forcedAudioIntervalMs = 250; // Send audio data every 250ms regardless of state
   bool _continuousListeningEnabled = false;
+  
+  // Packet tracking for debugging
+  int _heartbeatCount = 0;
+  int _forcedAudioCount = 0;
+  int _lastHeartbeatTimestamp = 0;
+  int _lastForcedAudioTimestamp = 0;
   
   // Keep track of the recorder and audio subscription
   AudioRecorder? _recorder;
@@ -49,6 +55,9 @@ class DeepgramAgentService {
   
   // Current state
   DeepgramAgentState _state = DeepgramAgentState.idle;
+  
+  // Debug flags
+  bool _verboseLogging = true; // Set to true to see all logs
   
   // LLM service for integration
   final LlmService _llmService;
@@ -617,16 +626,72 @@ class DeepgramAgentService {
     }
   }
   
-  /// Start listening for voice input
+  /// Start listening for voice input - this is the main entry point for starting conversations
   Future<bool> startListening() async {
+    debugPrint('🎤 DEEPGRAM: Starting listening mode. Connected: $_isConnected, Already listening: $_isListening');
+    
+    // First make sure we're connected - this is critical
     if (!_isConnected) {
-      final connected = await connect();
-      if (!connected) return false;
+      debugPrint('🎤 DEEPGRAM: Not connected, connecting first');
+      
+      // Clear old timers before connecting
+      _stopHeartbeatTimer();
+      _stopForcedAudioTimer();
+      
+      // Try to connect with a timeout
+      bool connected = false;
+      try {
+        connected = await connect().timeout(
+          Duration(seconds: 5),
+          onTimeout: () {
+            debugPrint('🔴 DEEPGRAM: Connection attempt timed out after 5 seconds');
+            return false;
+          }
+        );
+      } catch (e) {
+        debugPrint('🔴 DEEPGRAM: Error during connection attempt: $e');
+        connected = false;
+      }
+      
+      if (!connected) {
+        debugPrint('🔴 DEEPGRAM: Connection failed, cannot start listening');
+        _errorController.add('Failed to connect to Deepgram voice service. Please check your internet connection and try again.');
+        return false;
+      }
+      
+      // Wait a moment to ensure connection is stable before starting audio
+      await Future.delayed(Duration(milliseconds: 500));
     }
     
-    if (_isListening) return true; // Already listening
+    // Double-check connection status
+    if (!_isConnected) {
+      debugPrint('🔴 DEEPGRAM: Still not connected after connection attempt');
+      return false;
+    }
+    
+    // If already listening, just make sure everything is running properly
+    if (_isListening) {
+      debugPrint('🎤 DEEPGRAM: Already listening, ensuring timers and audio stream are active');
+      
+      // Make sure our critical timers are running
+      _startHeartbeatTimer();
+      _startForcedAudioTimer();
+      
+      // Reset inactivity timer
+      _resetInactivityTimer();
+      
+      // For continuous listening, make sure we're still streaming audio
+      if (_recordingSubscription == null || _recorder == null) {
+        debugPrint('🔴 DEEPGRAM: Audio stream not active despite being in listening state - restarting audio');
+        await _streamAudio();
+      }
+      
+      return true;
+    }
     
     try {
+      debugPrint('🎤 DEEPGRAM: Starting new listening session');
+      
       // Update state to listening
       _isListening = true;
       _updateState(DeepgramAgentState.listening);
@@ -634,19 +699,50 @@ class DeepgramAgentService {
       // Reset inactivity timer since we're actively using the connection
       _resetInactivityTimer();
       
-      // Reuse existing audio stream if we're in continuous mode and already recording
-      // Otherwise, start a new stream
-      if (!(_continuousListeningEnabled && _recorder != null)) {
-        debugPrint('🔊 DEEPGRAM: Starting new audio stream for listening');
-        await _streamAudio();
-      } else {
-        debugPrint('🔊 DEEPGRAM: Reusing existing audio stream (continuous mode)');
+      // Always ensure heartbeat and forced audio timers are running
+      _startHeartbeatTimer();
+      _startForcedAudioTimer();
+      
+      // Always stop any existing recording first to avoid conflicts
+      await _stopRecording();
+      
+      // Start fresh audio stream - most critical part
+      debugPrint('🎤 DEEPGRAM: Starting new audio stream for listening');
+      await _streamAudio();
+      
+      // Very important: Enable continuous listening by default
+      // This ensures the connection stays active
+      if (!_continuousListeningEnabled) {
+        debugPrint('🎤 DEEPGRAM: Enabling continuous listening mode for more stable connections');
+        _continuousListeningEnabled = true;
+        await _setCommunicationMode(true);
       }
+      
+      // Send a detailed log message with connection status
+      debugPrint('🟢 DEEPGRAM: Listening mode fully started successfully.');
+      debugPrint('🟢 DEEPGRAM: Status: Connected: $_isConnected, Listening: $_isListening, Continuous: $_continuousListeningEnabled, State: $_state');
       
       return true;
     } catch (e) {
       debugPrint('🔴 DEEPGRAM: Failed to start listening: $e');
       _errorController.add('Failed to start listening: $e');
+      
+      // Set our state tracking correctly
+      _isListening = false;
+      
+      // Try to recover if possible
+      if (_isConnected) {
+        debugPrint('🎤 DEEPGRAM: Will retry starting audio stream in 1 second after failure');
+        Future.delayed(Duration(seconds: 1), () {
+          if (_isConnected) {
+            // Make sure heartbeat is still running even if audio failed
+            _startHeartbeatTimer();
+            _startForcedAudioTimer();
+            _streamAudio();
+          }
+        });
+      }
+      
       return false;
     }
   }
@@ -780,6 +876,10 @@ class DeepgramAgentService {
     try {
       debugPrint('🔵 DEEPGRAM: Initializing audio recorder for streaming');
       
+      // Make sure heartbeat and forced audio timers are running before starting recording
+      _startHeartbeatTimer();
+      _startForcedAudioTimer();
+      
       // Create a new recorder
       _recorder = AudioRecorder();
       
@@ -793,12 +893,6 @@ class DeepgramAgentService {
         return;
       }
       
-      // Always start forced audio timer to ensure connection stays alive
-      _startForcedAudioTimer();
-      
-      // Start heartbeat timer
-      _startHeartbeatTimer();
-      
       // Configure audio recording for continuous listening if enabled
       final config = RecordConfig(
         encoder: AudioEncoder.pcm16bits,
@@ -810,39 +904,60 @@ class DeepgramAgentService {
         noiseSuppress: true, // Always use noise suppression
       );
       
-      debugPrint('🔵 DEEPGRAM: Starting audio stream with PCM 16-bit, 16kHz, mono, continuous mode: $_continuousListeningEnabled');
+      debugPrint('🟢 DEEPGRAM: Starting audio stream with PCM 16-bit, 16kHz, mono, continuous mode: $_continuousListeningEnabled');
       
       // Start recording to stream
       final stream = await _recorder!.startStream(config);
       
       debugPrint('🟢 DEEPGRAM: Audio stream started successfully');
       
-      // Add tracking variables
+      // Add tracking variables for detailed logging
       bool hasSentAudioData = false;
       int packetCount = 0;
       int totalBytesSent = 0;
+      int microStreamStartTime = DateTime.now().millisecondsSinceEpoch;
+      int lastPacketTimestamp = microStreamStartTime;
+      int maxGapBetweenPackets = 0;
       
       // Listen to the stream and send audio data to Deepgram
       _recordingSubscription = stream.listen(
         (data) {
           if (_isConnected && data.isNotEmpty) {
+            final now = DateTime.now().millisecondsSinceEpoch;
+            final timeSinceLastPacket = now - lastPacketTimestamp;
+            lastPacketTimestamp = now;
+            
+            // Update metrics
             packetCount++;
             totalBytesSent += data.length;
+            if (timeSinceLastPacket > maxGapBetweenPackets) {
+              maxGapBetweenPackets = timeSinceLastPacket;
+            }
             
+            // Log first packet
             if (!hasSentAudioData) {
               debugPrint('🟢 DEEPGRAM: First audio packet received and sent: ${data.length} bytes');
               hasSentAudioData = true;
             }
             
+            // Periodic logging with more detail
             if (packetCount % 20 == 0) {
-              debugPrint('🔵 DEEPGRAM: Sent $packetCount audio packets, total: ${totalBytesSent} bytes');
+              final avgPacketSize = totalBytesSent / packetCount;
+              final runningTimeMs = now - microStreamStartTime;
+              final packetsPerSecond = packetCount / (runningTimeMs / 1000);
+              
+              debugPrint('🎤 DEEPGRAM: Audio stream stats: $packetCount packets, ${totalBytesSent ~/ 1024} KB total, '
+                  '${avgPacketSize.toStringAsFixed(1)} bytes avg, ${packetsPerSecond.toStringAsFixed(1)} pkts/sec, '
+                  'max gap: $maxGapBetweenPackets ms');
             }
             
-            // CRITICAL CHANGE: Always send audio data regardless of state
+            // CRITICAL SECTION: Send audio data regardless of conversation state
             // This ensures continuous streaming to Deepgram to prevent timeout
             try {
               if (_channel != null) {
-                _channel!.sink.add(data);
+                // Add a sequence tag to help identify this is mic data 
+                final micPacket = _markAsMicPacket(data, packetCount);
+                _channel!.sink.add(micPacket);
                 
                 // Reset inactivity timer since we're actively sending data
                 _resetInactivityTimer();
@@ -856,28 +971,50 @@ class DeepgramAgentService {
                     _updateState(DeepgramAgentState.listening);
                   }
                 }
+              } else {
+                debugPrint('🔴 DEEPGRAM: WebSocket channel is null while trying to send audio packet #$packetCount');
+                
+                // Try to reconnect immediately if channel is null
+                _reconnect();
               }
             } catch (e) {
-              debugPrint('🔴 DEEPGRAM: Error sending audio data: $e');
+              debugPrint('🔴 DEEPGRAM: Error sending audio packet #$packetCount: $e');
               
-              // Try to reconnect if we can't send data
-              if (_isConnected) {
+              // Try to reconnect if we can't send data, but limit reconnection frequency
+              if (_isConnected && packetCount % 5 == 0) {
                 _reconnect();
               }
             }
+          } else if (!_isConnected) {
+            debugPrint('🔴 DEEPGRAM: Not connected while receiving audio packet #$packetCount');
+            // Cancel subscription if we're no longer connected
+            _recordingSubscription?.cancel();
+            _recordingSubscription = null;
           }
         },
         onError: (e) {
           debugPrint('🔴 DEEPGRAM: Audio recording error: $e');
           _errorController.add('Audio recording error: $e');
+          
+          // Try to restart on error in continuous mode
+          if (_continuousListeningEnabled && _isConnected) {
+            debugPrint('🔵 DEEPGRAM: Attempting to restart audio stream after error');
+            
+            // Small delay before restart
+            Future.delayed(Duration(milliseconds: 500), () {
+              if (_isConnected && _continuousListeningEnabled) {
+                _streamAudio();
+              }
+            });
+          }
         },
         onDone: () {
-          debugPrint('🔵 DEEPGRAM: Audio stream done, packets sent: $packetCount');
+          debugPrint('🔵 DEEPGRAM: Audio stream done, packets sent: $packetCount, total: ${totalBytesSent ~/ 1024} KB');
           
           // If continuous listening is enabled and we're still connected, 
-          // but the stream ended, restart it
+          // but the stream ended, restart it immediately
           if (_continuousListeningEnabled && _isConnected) {
-            debugPrint('🔵 DEEPGRAM: Restarting audio stream for continuous listening');
+            debugPrint('🔵 DEEPGRAM: Restarting audio stream for continuous listening - previous stream ended');
             _streamAudio();
           }
         },
@@ -893,14 +1030,36 @@ class DeepgramAgentService {
       // If we're using continuous listening and there was an error,
       // try to restart the streaming after a short delay
       if (_continuousListeningEnabled && _isConnected) {
-        debugPrint('🔵 DEEPGRAM: Will attempt to restart audio stream in 3 seconds');
-        Future.delayed(Duration(seconds: 3), () {
+        debugPrint('🔵 DEEPGRAM: Will attempt to restart audio stream in 2 seconds after failure');
+        Future.delayed(Duration(seconds: 2), () {
           if (_isConnected && _continuousListeningEnabled) {
             _streamAudio();
           }
         });
       }
     }
+  }
+  
+  /// Mark a packet as coming from microphone by inserting a small header
+  /// This doesn't modify the audio data itself but helps with debugging
+  Uint8List _markAsMicPacket(Uint8List original, int sequenceNumber) {
+    // For very small packets, don't modify them
+    if (original.length < 16) return original;
+    
+    // Clone the original data
+    final packet = Uint8List.fromList(original);
+    
+    // First 2 bytes: 'MIC' marker (subtle, non-destructive)
+    // We only set a single bit in each byte to minimize audio impact
+    packet[0] = (packet[0] & 0xFE) | 0x01; // Set lowest bit
+    packet[1] = (packet[1] & 0xFE) | 0x01; // Set lowest bit
+    
+    // Encode sequence at bytes 2-3 (very subtly)
+    // Only modify the lowest bit to avoid affecting audio quality
+    packet[2] = (packet[2] & 0xFE) | ((sequenceNumber & 0x01) != 0 ? 1 : 0);
+    packet[3] = (packet[3] & 0xFE) | ((sequenceNumber & 0x02) != 0 ? 1 : 0);
+    
+    return packet;
   }
   
   /// Start monitoring audio amplitude to detect speech and interruptions
@@ -1046,82 +1205,167 @@ class DeepgramAgentService {
     if (!_isConnected || _channel == null) return;
     
     try {
-      // Send minimal audio data as a heartbeat
-      // This is a 160-byte silent PCM frame (10ms of 16kHz silence)
-      final heartbeatData = Uint8List(160);
+      // Create a heartbeat packet with a unique pattern to be easily identifiable in logs
+      final now = DateTime.now();
+      _heartbeatCount++;
+      final timeSinceLastHeartbeat = _lastHeartbeatTimestamp > 0 
+          ? now.millisecondsSinceEpoch - _lastHeartbeatTimestamp 
+          : 0;
+      
+      // Create a heartbeat packet with more data (640 bytes) to ensure it's received
+      final heartbeatData = _createHeartbeatPacket(_heartbeatCount);
+      
+      // Send the heartbeat packet
       _channel!.sink.add(heartbeatData);
-      debugPrint('🔵 DEEPGRAM: Heartbeat sent successfully');
+      
+      // Update timestamp
+      _lastHeartbeatTimestamp = now.millisecondsSinceEpoch;
+      
+      // Log with sequence number for tracking
+      debugPrint('❤️ DEEPGRAM: Heartbeat #$_heartbeatCount sent successfully (${heartbeatData.length} bytes, ${timeSinceLastHeartbeat}ms since last)');
+      
+      // Reset inactivity timer since we just sent data
+      _resetInactivityTimer();
     } catch (e) {
-      debugPrint('🔴 DEEPGRAM: Error sending heartbeat: $e');
+      debugPrint('🔴 DEEPGRAM: Error sending heartbeat #$_heartbeatCount: $e');
+      
+      // Try to reconnect if there's an error
+      if (_isConnected) {
+        _reconnect();
+      }
     }
+  }
+  
+  /// Create a heartbeat packet that's distinct from regular audio
+  Uint8List _createHeartbeatPacket(int sequenceNumber) {
+    // Create a larger packet (640 bytes) for heartbeats
+    final packet = Uint8List(640);
+    
+    // Add a recognizable pattern for heartbeats
+    // This helps identify them in logs and for debugging
+    // First 4 bytes: 'HEAT' marker
+    packet[0] = 72; // 'H'
+    packet[1] = 69; // 'E'
+    packet[2] = 65; // 'A'
+    packet[3] = 84; // 'T'
+    
+    // Next 4 bytes: sequence number 
+    packet[4] = (sequenceNumber >> 24) & 0xFF;
+    packet[5] = (sequenceNumber >> 16) & 0xFF;
+    packet[6] = (sequenceNumber >> 8) & 0xFF;
+    packet[7] = sequenceNumber & 0xFF;
+    
+    // Add some low-level non-zero random noise in the remaining bytes
+    final random = math.Random();
+    for (int i = 8; i < packet.length; i += 2) {
+      // Low amplitude sine wave pattern (values between -10 and 10)
+      final noise = (math.sin(i * 0.1) * 10).toInt();
+      packet[i] = noise & 0xFF;
+      packet[i + 1] = 0; // Higher byte is zero for very low values
+    }
+    
+    return packet;
   }
   
   /// Start a forced audio timer that sends audio data periodically regardless of state
   void _startForcedAudioTimer() {
     _stopForcedAudioTimer();
     
-    // Use a shorter interval of 250ms for more frequent packets
-    final interval = 250; 
+    // Log that we are starting the timer
+    debugPrint('🔵 DEEPGRAM: Starting forced audio timer (${_forcedAudioIntervalMs}ms intervals)');
     
-    _forcedAudioTimer = Timer.periodic(Duration(milliseconds: interval), (_) {
+    _forcedAudioTimer = Timer.periodic(Duration(milliseconds: _forcedAudioIntervalMs), (_) {
       if (!_isConnected || _channel == null) {
+        debugPrint('🔴 DEEPGRAM: Not connected in forced audio timer - stopping timer');
         _stopForcedAudioTimer();
         return;
       }
       
-      // Create a non-zero audio packet (some random noise that won't be audible)
-      // This ensures Deepgram doesn't time out waiting for data
-      final forcedAudioData = _createForcedAudioPacket();
+      final now = DateTime.now();
+      _forcedAudioCount++;
+      final timeSinceLastAudio = _lastForcedAudioTimestamp > 0 
+          ? now.millisecondsSinceEpoch - _lastForcedAudioTimestamp 
+          : 0;
+      
+      // Create a varied forced audio packet with a distinctive pattern
+      final forcedAudioData = _createForcedAudioPacket(_forcedAudioCount);
       try {
         _channel!.sink.add(forcedAudioData);
-        // Only log occasionally to reduce spam
-        if (DateTime.now().millisecondsSinceEpoch % 2000 < 250) {
-          debugPrint('🔵 DEEPGRAM: Forced audio packet sent to keep connection alive');
+        
+        // Update timestamp
+        _lastForcedAudioTimestamp = now.millisecondsSinceEpoch;
+        
+        // Log every 10th packet to reduce spam but maintain visibility
+        if (_forcedAudioCount % 10 == 0) {
+          debugPrint('🔉 DEEPGRAM: Forced audio packet #$_forcedAudioCount sent (${forcedAudioData.length} bytes, ${timeSinceLastAudio}ms since last)');
         }
         
         // Reset inactivity timer with each packet
         _resetInactivityTimer();
       } catch (e) {
-        debugPrint('🔴 DEEPGRAM: Error sending forced audio packet: $e');
+        debugPrint('🔴 DEEPGRAM: Error sending forced audio packet #$_forcedAudioCount: $e');
         
-        // Try to reconnect if we can't send data
-        if (_isConnected) {
+        // Try to reconnect if we can't send data, but only every 5th failure to avoid too many reconnect attempts
+        if (_isConnected && (_forcedAudioCount % 5 == 0)) {
+          debugPrint('🔴 DEEPGRAM: Multiple forced audio packet failures - attempting reconnection');
           _reconnect();
         }
       }
     });
     
-    debugPrint('🟢 DEEPGRAM: Started forced audio timer (${interval}ms intervals)');
+    debugPrint('🟢 DEEPGRAM: Forced audio timer started with ${_forcedAudioIntervalMs}ms intervals');
   }
   
   /// Stop the forced audio timer
   void _stopForcedAudioTimer() {
-    _forcedAudioTimer?.cancel();
-    _forcedAudioTimer = null;
+    if (_forcedAudioTimer != null) {
+      debugPrint('🔵 DEEPGRAM: Stopping forced audio timer (sent $_forcedAudioCount packets)');
+      _forcedAudioTimer?.cancel();
+      _forcedAudioTimer = null;
+    }
   }
   
-  /// Create a forced audio packet with minimal non-zero content
-  Uint8List _createForcedAudioPacket() {
-    // Create a packet with 320 bytes (10ms of 16kHz audio, stereo)
+  /// Create a forced audio packet with distinctive pattern and sequence number
+  Uint8List _createForcedAudioPacket(int sequenceNumber) {
+    // Create a packet with 480 bytes (15ms of 16kHz audio at 16-bit mono)
     // Using a larger packet for more stability
-    final packet = Uint8List(320);
+    final packet = Uint8List(480);
     
-    // Add very low level random noise so it's not completely silent
-    // but won't be audible or affect speech recognition
-    final random = math.Random();
-    for (int i = 0; i < packet.length; i += 2) {
-      // Very low amplitude noise (values between -5 and 5)
-      final noise = (random.nextInt(11) - 5);
-      packet[i] = noise & 0xFF;
-      packet[i + 1] = 0; // Higher byte is zero for very low values
+    // Add a recognizable pattern for forced audio packets
+    // First 4 bytes: 'FORC' marker
+    packet[0] = 70; // 'F'
+    packet[1] = 79; // 'O'
+    packet[2] = 82; // 'R'
+    packet[3] = 67; // 'C'
+    
+    // Next 4 bytes: sequence number
+    packet[4] = (sequenceNumber >> 24) & 0xFF;
+    packet[5] = (sequenceNumber >> 16) & 0xFF;
+    packet[6] = (sequenceNumber >> 8) & 0xFF;
+    packet[7] = sequenceNumber & 0xFF;
+    
+    // Add structured noise that simulates low-level speech energy
+    // This is more effective at keeping connections alive than pure random noise
+    for (int i = 8; i < packet.length; i += 2) {
+      double sample;
+      
+      // Create a multi-tone signal with decreasing amplitude
+      if (i < 100) {
+        // Start with higher amplitude
+        sample = math.sin(i * 0.1) * 15 + math.sin(i * 0.05) * 5;
+      } else if (i < 300) {
+        // Middle section
+        sample = math.sin(i * 0.2) * 10 + math.sin(i * 0.07) * 3;
+      } else {
+        // End with lower amplitude
+        sample = math.sin(i * 0.3) * 5 + math.sin(i * 0.09) * 2;
+      }
+      
+      // Convert to 16-bit sample (LSB, MSB)
+      final intSample = sample.toInt();
+      packet[i] = intSample & 0xFF;
+      packet[i + 1] = (intSample >> 8) & 0xFF;
     }
-    
-    // Ensure the first few bytes have some non-zero values
-    // This helps some WebSocket implementations recognize it as valid data
-    packet[0] = 1;
-    packet[1] = 0;
-    packet[2] = 2;
-    packet[3] = 0;
     
     return packet;
   }
@@ -1188,22 +1432,79 @@ class DeepgramAgentService {
   
   /// Attempts to reconnect if the connection was dropped
   Future<void> _reconnect() async {
-    debugPrint('🔵 DEEPGRAM: Attempting to reconnect...');
+    // Don't attempt multiple reconnects at the same time
+    static bool _isReconnecting = false;
+    if (_isReconnecting) {
+      debugPrint('🔵 DEEPGRAM: Reconnection already in progress, skipping duplicate request');
+      return;
+    }
     
-    // Clean up old connection
-    await _disconnect(keepState: true);
-    
-    // Try to reconnect
-    final connected = await connect();
-    
-    if (connected) {
-      debugPrint('🟢 DEEPGRAM: Successfully reconnected');
-      // If we were listening before, start listening again
-      if (_state == DeepgramAgentState.listening) {
-        await startListening();
+    try {
+      _isReconnecting = true;
+      
+      // Keep track of the state we had before reconnecting
+      final previousState = _state;
+      final wasListening = _isListening;
+      
+      debugPrint('🔵 DEEPGRAM: Attempting to reconnect... (previous state: $previousState, was listening: $wasListening)');
+      
+      // Clean up old connection but preserve state
+      await _disconnect(keepState: true);
+      
+      // Wait a moment before reconnecting to avoid rapid reconnect loops
+      await Future.delayed(Duration(milliseconds: 500));
+      
+      // Try to reconnect with a timeout
+      bool connected = false;
+      try {
+        connected = await connect().timeout(
+          Duration(seconds: 5),
+          onTimeout: () {
+            debugPrint('🔴 DEEPGRAM: Reconnection attempt timed out after 5 seconds');
+            return false;
+          }
+        );
+      } catch (e) {
+        debugPrint('🔴 DEEPGRAM: Error during reconnection attempt: $e');
+        connected = false;
       }
-    } else {
-      debugPrint('🔴 DEEPGRAM: Failed to reconnect');
+      
+      if (connected) {
+        debugPrint('🟢 DEEPGRAM: Successfully reconnected to Deepgram');
+        
+        // Always start heartbeat and forced audio timers after reconnection
+        _startHeartbeatTimer();
+        _startForcedAudioTimer();
+        
+        // Wait a moment to ensure WebSocket stabilizes
+        await Future.delayed(Duration(milliseconds: 300));
+        
+        // If we were listening before, restart listening
+        if (wasListening) {
+          debugPrint('🟢 DEEPGRAM: Restarting listening after successful reconnection');
+          await startListening();
+        } else {
+          debugPrint('🟢 DEEPGRAM: Connection restored but not resuming listening (wasn\'t active before)');
+        }
+      } else {
+        debugPrint('🔴 DEEPGRAM: Failed to reconnect to Deepgram');
+        
+        // If this was a critical failure during active conversation, notify the user
+        if (wasListening) {
+          _errorController.add('Lost connection to voice service. Please try again.');
+          _updateState(DeepgramAgentState.idle);
+        }
+        
+        // Try one more time after a delay if we were in an active conversation
+        if (wasListening && previousState != DeepgramAgentState.idle) {
+          debugPrint('🔵 DEEPGRAM: Will attempt one more reconnection in 3 seconds');
+          Future.delayed(Duration(seconds: 3), () {
+            _reconnect();
+          });
+        }
+      }
+    } finally {
+      _isReconnecting = false;
     }
   }
   
