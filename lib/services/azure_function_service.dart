@@ -12,7 +12,7 @@ class AzureFunctionService {
       return 'http://10.0.2.2:7071/api';
     }
     // Use localhost for other platforms
-    return 'http://localhost:7071/api';
+    return 'http://172.27.176.1:7071/api';
   }
 
   late final Dio _dio;
