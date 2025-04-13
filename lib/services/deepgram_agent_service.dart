@@ -29,9 +29,10 @@ class DeepgramAgentService {
   bool _isInitialized = false;
   bool _isListening = false;
   
-  // Keep alive mechanism
-  Timer? _keepAliveTimer;
-  final int _keepAliveIntervalSeconds = 30;
+  // Connection management
+  Timer? _inactivityTimer;
+  final int _inactivityTimeoutSeconds = 30;
+  bool _continuousListeningEnabled = false;
   
   // Stream controllers
   final _messageController = StreamController<String>.broadcast();
@@ -292,8 +293,8 @@ class DeepgramAgentService {
         _isConnected = true;
         _updateState(DeepgramAgentState.connected);
         
-        // Start keep-alive timer
-        _resetKeepAliveTimer();
+        // Start inactivity timer
+        _startInactivityTimer();
         
         debugPrint('🟢 DEEPGRAM: Connection completed successfully, state updated to connected');
         return true;
@@ -323,8 +324,8 @@ class DeepgramAgentService {
     _channel!.stream.listen(
       (dynamic message) {
         try {
-          // Reset auto-reconnect timer since we got a message
-          _resetKeepAliveTimer();
+          // Reset inactivity timer since we got a message
+          _resetInactivityTimer();
           
           // Check if this is a binary message (audio from the server)
           if (message is List<int>) {
@@ -373,8 +374,21 @@ class DeepgramAgentService {
                 debugPrint('🔊 DEEPGRAM: User started speaking event');
                 _updateState(DeepgramAgentState.listening);
                 
-                // Cancel any ongoing audio playback
-                _stopAudioStream();
+                // Reset inactivity timer since user is active
+                _resetInactivityTimer();
+                
+                // In continuous listening mode, we should cancel any ongoing playback
+                // so the user can interrupt the AI
+                if (_continuousListeningEnabled) {
+                  debugPrint('🔊 DEEPGRAM: User interrupted AI, stopping audio playback');
+                  _stopAudioStream();
+                } else {
+                  // In regular mode, just make sure we're in listening state
+                  // but don't interrupt ongoing audio
+                  if (_state != DeepgramAgentState.speaking) {
+                    _stopAudioStream();
+                  }
+                }
                 break;
                 
               case 'UserStoppedSpeaking':
@@ -403,7 +417,24 @@ class DeepgramAgentService {
                   
                   // Only update state if we're still in speaking mode
                   if (_state == DeepgramAgentState.speaking) {
-                    _updateState(DeepgramAgentState.connected); // Change to connected instead of idle to keep the connection active
+                    if (_continuousListeningEnabled) {
+                      // In continuous mode, transition back to listening
+                      debugPrint('🔊 DEEPGRAM: Continuous listening active, returning to listening state');
+                      _updateState(DeepgramAgentState.listening);
+                      
+                      // Make sure we're ready for recording again
+                      if (!_isListening) {
+                        _isListening = true;
+                        // Restart audio streaming
+                        _streamAudio();
+                      }
+                    } else {
+                      // In regular mode, transition to connected state
+                      _updateState(DeepgramAgentState.connected);
+                    }
+                    
+                    // Reset inactivity timer to start countdown for disconnection
+                    _resetInactivityTimer();
                   }
                 });
                 break;
@@ -562,8 +593,8 @@ class DeepgramAgentService {
       _isListening = true;
       _updateState(DeepgramAgentState.listening);
       
-      // Reset keep-alive timer since we're actively using the connection
-      _resetKeepAliveTimer();
+      // Reset inactivity timer since we're actively using the connection
+      _resetInactivityTimer();
       
       // Start streaming audio
       await _streamAudio();
@@ -584,11 +615,8 @@ class DeepgramAgentService {
       _isListening = false;
       _updateState(DeepgramAgentState.connected);
       
-      // Reset keep-alive timer when transitioning to connected state
-      _resetKeepAliveTimer();
-      
-      // Send a small ping to ensure the connection is still active
-      _sendPing();
+      // Reset inactivity timer when transitioning to connected state
+      _resetInactivityTimer();
       
       return true;
     } catch (e) {
@@ -685,6 +713,9 @@ class DeepgramAgentService {
                 
                 // Send audio data to Deepgram
                 sendAudioData(data);
+                
+                // Reset inactivity timer since we're actively recording
+                _resetInactivityTimer();
               } else {
                 debugPrint('🟡 DEEPGRAM: Received empty audio data packet');
               }
@@ -703,17 +734,33 @@ class DeepgramAgentService {
         
         // Create a subscription to listen for when recording should stop
         stateSubscription = _stateController.stream.listen((state) {
-          if (state != DeepgramAgentState.listening) {
-            debugPrint('🔵 DEEPGRAM: State changed to $state, stopping audio recording');
-            audioSubscription?.cancel();
-            stateSubscription?.cancel();
-            recorder.stop();
+          if (_continuousListeningEnabled) {
+            // In continuous mode, only stop recording if we disconnect
+            if (state == DeepgramAgentState.idle) {
+              debugPrint('🔵 DEEPGRAM: State changed to idle, stopping continuous audio recording');
+              audioSubscription?.cancel();
+              stateSubscription?.cancel();
+              recorder.stop();
+            } else if (state == DeepgramAgentState.speaking) {
+              // When the AI is speaking, we might still want to detect user speech
+              // to allow interruptions, but we'll let the UserStartedSpeaking event
+              // handle that
+              debugPrint('🔵 DEEPGRAM: AI speaking, but keeping mic open for interruptions');
+            }
+          } else {
+            // In regular mode, stop recording when we're not in listening state
+            if (state != DeepgramAgentState.listening) {
+              debugPrint('🔵 DEEPGRAM: State changed to $state, stopping audio recording');
+              audioSubscription?.cancel();
+              stateSubscription?.cancel();
+              recorder.stop();
+            }
           }
         });
         
         // Debug info for audio amplitude
         Timer.periodic(const Duration(milliseconds: 500), (timer) async {
-          if (!_isListening) {
+          if (!_isListening && !_continuousListeningEnabled) {
             debugPrint('🔵 DEEPGRAM: Audio amplitude monitoring stopped');
             timer.cancel();
             return;
@@ -721,6 +768,23 @@ class DeepgramAgentService {
           
           final amplitude = await recorder.getAmplitude();
           debugPrint('🔵 DEEPGRAM: Audio amplitude: ${amplitude.current}, isListening: $_isListening');
+          
+          // In continuous mode, we can use amplitude to wake the system from idle
+          // or to interrupt the AI when it's speaking
+          if (_continuousListeningEnabled && amplitude.current > 20) {
+            if (_state == DeepgramAgentState.connected || _state == DeepgramAgentState.idle) {
+              // Wake from idle state
+              debugPrint('🔊 DEEPGRAM: Detected speech in continuous mode, returning to listening state');
+              _updateState(DeepgramAgentState.listening);
+              _resetInactivityTimer();
+            } else if (_state == DeepgramAgentState.speaking && amplitude.current > 30) {
+              // Higher threshold for interrupting during speech to avoid false triggers
+              debugPrint('🔊 DEEPGRAM: Detected user interruption during AI speech, stopping playback');
+              _stopAudioStream();
+              _updateState(DeepgramAgentState.listening);
+              _resetInactivityTimer();
+            }
+          }
         });
       } else {
         debugPrint('🔴 DEEPGRAM: Microphone permission denied');
@@ -757,37 +821,43 @@ class DeepgramAgentService {
     }
   }
   
-  /// Resets the keep-alive timer
-  void _resetKeepAliveTimer() {
-    _keepAliveTimer?.cancel();
-    _keepAliveTimer = Timer(Duration(seconds: _keepAliveIntervalSeconds), () {
-      debugPrint('🔵 DEEPGRAM: Keep-alive timer triggered, reconnecting...');
+  /// Start the inactivity timer that will close connection after timeout
+  void _startInactivityTimer() {
+    _inactivityTimer?.cancel();
+    _inactivityTimer = Timer(Duration(seconds: _inactivityTimeoutSeconds), () {
+      debugPrint('🔵 DEEPGRAM: Inactivity timeout reached, closing connection to save costs');
       
-      // Only try to reconnect if we're currently connected
-      if (_isConnected) {
-        // Send a ping or reconnect
-        _sendPing();
+      // If we're still connected but idle, disconnect to save costs
+      if (_isConnected && (_state == DeepgramAgentState.connected || _state == DeepgramAgentState.idle)) {
+        debugPrint('🔵 DEEPGRAM: Closing inactive connection');
+        _disconnect();
+        
+        // Notify user that connection was closed due to inactivity
+        _messageController.add("Voice connection closed due to inactivity. Tap the mic to start a new conversation.");
       }
     });
   }
   
-  /// Sends a ping to keep the connection alive
-  void _sendPing() {
-    if (_channel == null || !_isConnected) {
-      debugPrint('🔴 DEEPGRAM: Cannot send ping - not connected');
-      return;
+  /// Resets the inactivity timer - call this on user activity
+  void _resetInactivityTimer() {
+    if (_isConnected) {
+      debugPrint('🔵 DEEPGRAM: Resetting inactivity timer due to user activity');
+      _startInactivityTimer();
     }
+  }
+  
+  /// Enables or disables continuous listening mode
+  void setContinuousListening(bool enabled) {
+    _continuousListeningEnabled = enabled;
+    debugPrint('🔵 DEEPGRAM: Continuous listening ${enabled ? 'enabled' : 'disabled'}');
     
-    try {
-      debugPrint('🔵 DEEPGRAM: Sending ping to keep connection alive');
-      // Deepgram doesn't have a formal ping, so we'll send an empty audio chunk
-      // This should keep the connection alive without causing any problems
-      final emptyAudio = Uint8List(2); // Minimal valid PCM data (silence)
-      _channel!.sink.add(emptyAudio);
-    } catch (e) {
-      debugPrint('🔴 DEEPGRAM: Error sending ping: $e');
-      // Try to reconnect if ping fails
-      _reconnect();
+    // If enabling continuous listening, make sure we're connected and listening
+    if (enabled && _isInitialized && !_isListening && !_isConnected) {
+      connect().then((success) {
+        if (success) {
+          startListening();
+        }
+      });
     }
   }
   
@@ -817,9 +887,9 @@ class DeepgramAgentService {
     _isConnected = false;
     _isListening = false;
     
-    // Cancel keep-alive timer
-    _keepAliveTimer?.cancel();
-    _keepAliveTimer = null;
+    // Cancel inactivity timer
+    _inactivityTimer?.cancel();
+    _inactivityTimer = null;
     
     try {
       _channel?.sink.close();

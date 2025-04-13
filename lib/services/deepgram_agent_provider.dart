@@ -54,6 +54,9 @@ class DeepgramAgentProvider extends ChangeNotifier {
     _initialize();
   }
   
+  // State
+  bool _continuousListeningEnabled = false;
+  
   // Getters
   bool get isInitializing => _isInitializing;
   bool get isInitialized => _isInitialized;
@@ -61,6 +64,7 @@ class DeepgramAgentProvider extends ChangeNotifier {
   List<DeepgramAgentMessage> get messages => List.unmodifiable(_messages);
   DeepgramAgentState get state => _deepgramAgentService.state;
   DeepgramAgentService get deepgramAgentService => _deepgramAgentService;
+  bool get continuousListeningEnabled => _continuousListeningEnabled;
   
   // Initialize the Deepgram Agent service
   Future<void> _initialize() async {
@@ -264,6 +268,20 @@ class DeepgramAgentProvider extends ChangeNotifier {
     );
     
     _messages.add(message);
+    notifyListeners();
+  }
+  
+  // Toggle continuous listening mode
+  void setContinuousListening(bool enabled) {
+    _continuousListeningEnabled = enabled;
+    _deepgramAgentService.setContinuousListening(enabled);
+    
+    if (enabled) {
+      _addSystemMessage('Continuous listening mode enabled. The AI will listen for new queries after responding.');
+    } else {
+      _addSystemMessage('Continuous listening mode disabled. Tap the mic to start each new query.');
+    }
+    
     notifyListeners();
   }
   
