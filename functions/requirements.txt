@@ -8,3 +8,5 @@ python-dotenv
 azure-storage-blob
 aiohttp
 uuid
+requests
+python-dateutil

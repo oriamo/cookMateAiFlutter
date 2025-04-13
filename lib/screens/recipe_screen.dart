@@ -10,7 +10,7 @@ import 'package:flutter/rendering.dart';
 
 class RecipeScreen extends ConsumerStatefulWidget {
   final String recipeId;
-  
+
   const RecipeScreen({super.key, required this.recipeId});
 
   @override
@@ -21,33 +21,34 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
   int _currentTab = 0;
   final ScrollController _scrollController = ScrollController();
   bool _showFab = true;
-  
+
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
   }
-  
+
   @override
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
   }
-  
+
   void _onScroll() {
-    final showFab = _scrollController.position.userScrollDirection == ScrollDirection.forward;
+    final showFab = _scrollController.position.userScrollDirection ==
+        ScrollDirection.forward;
     if (showFab != _showFab) {
       setState(() {
         _showFab = showFab;
       });
     }
   }
-  
+
   void _toggleFavorite(Recipe recipe) {
     ref.read(recipeProvider.notifier).toggleFavorite(recipe.id);
     ref.read(userProfileProvider.notifier).toggleFavoriteRecipe(recipe.id);
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -61,13 +62,15 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
           label: 'UNDO',
           onPressed: () {
             ref.read(recipeProvider.notifier).toggleFavorite(recipe.id);
-            ref.read(userProfileProvider.notifier).toggleFavoriteRecipe(recipe.id);
+            ref
+                .read(userProfileProvider.notifier)
+                .toggleFavoriteRecipe(recipe.id);
           },
         ),
       ),
     );
   }
-  
+
   void _shareRecipe(Recipe recipe) {
     Share.share(
       'Check out this amazing recipe for ${recipe.title}! '
@@ -80,7 +83,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
   @override
   Widget build(BuildContext context) {
     final recipeAsync = ref.watch(recipeDetailProvider(widget.recipeId));
-    
+
     return Scaffold(
       body: recipeAsync == null
           ? const Center(child: Text('Recipe not found'))
@@ -89,7 +92,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
               slivers: [
                 // App Bar
                 _buildAppBar(context, recipeAsync),
-                
+
                 // Recipe Content
                 SliverToBoxAdapter(
                   child: Column(
@@ -123,35 +126,36 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
                               ),
                             ),
                             const SizedBox(height: 16),
-                            
+
                             // Recipe info cards
                             FadeInUp(
                               duration: const Duration(milliseconds: 500),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   _buildInfoCard(
-                                    context, 
-                                    Icons.timer_outlined, 
+                                    context,
+                                    Icons.timer_outlined,
                                     '${recipeAsync.totalTimeMinutes} min',
                                     'Total Time',
                                   ),
                                   _buildInfoCard(
-                                    context, 
-                                    Icons.restaurant_outlined, 
-                                    recipeAsync.difficulty, 
+                                    context,
+                                    Icons.restaurant_outlined,
+                                    recipeAsync.difficulty,
                                     'Difficulty',
                                   ),
                                   _buildInfoCard(
-                                    context, 
-                                    Icons.person_outline, 
-                                    '${recipeAsync.servings}', 
+                                    context,
+                                    Icons.person_outline,
+                                    '${recipeAsync.servings}',
                                     'Servings',
                                   ),
                                   _buildInfoCard(
-                                    context, 
-                                    Icons.local_fire_department_outlined, 
-                                    '${recipeAsync.calories}', 
+                                    context,
+                                    Icons.local_fire_department_outlined,
+                                    '${recipeAsync.calories}',
                                     'Calories',
                                   ),
                                 ],
@@ -160,7 +164,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
                           ],
                         ),
                       ),
-                      
+
                       // Chef info
                       FadeInUp(
                         duration: const Duration(milliseconds: 600),
@@ -170,7 +174,8 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
                             children: [
                               CircleAvatar(
                                 radius: 24,
-                                backgroundColor: Theme.of(context).colorScheme.primary,
+                                backgroundColor:
+                                    Theme.of(context).colorScheme.primary,
                                 child: Text(
                                   recipeAsync.chefName.substring(0, 1),
                                   style: const TextStyle(
@@ -222,9 +227,9 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
                           ),
                         ),
                       ),
-                      
+
                       const SizedBox(height: 24),
-                      
+
                       // Tabs
                       FadeInUp(
                         duration: const Duration(milliseconds: 700),
@@ -262,9 +267,9 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
                           ),
                         ),
                       ),
-                      
+
                       const SizedBox(height: 16),
-                      
+
                       // Tab content
                       FadeInUp(
                         duration: const Duration(milliseconds: 800),
@@ -274,7 +279,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
                           _buildAITipsTab(recipeAsync),
                         ][_currentTab],
                       ),
-                      
+
                       const SizedBox(height: 32),
                     ],
                   ),
@@ -295,7 +300,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
           : null,
     );
   }
-  
+
   Widget _buildAppBar(BuildContext context, Recipe recipe) {
     return SliverAppBar(
       expandedHeight: 250,
@@ -316,7 +321,8 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
               ),
               errorWidget: (context, url, error) => Container(
                 color: Colors.grey.shade300,
-                child: const Icon(Icons.restaurant, color: Colors.white, size: 50),
+                child:
+                    const Icon(Icons.restaurant, color: Colors.white, size: 50),
               ),
             ),
             // Gradient overlay
@@ -365,8 +371,9 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
       ],
     );
   }
-  
-  Widget _buildInfoCard(BuildContext context, IconData icon, String value, String label) {
+
+  Widget _buildInfoCard(
+      BuildContext context, IconData icon, String value, String label) {
     return Container(
       width: 80,
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
@@ -405,10 +412,10 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
       ),
     );
   }
-  
+
   Widget _buildTabButton(String label, int tabIndex, int count) {
     final isSelected = _currentTab == tabIndex;
-    
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -420,7 +427,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: isSelected 
+              color: isSelected
                   ? Theme.of(context).colorScheme.primary
                   : Colors.transparent,
               width: 2,
@@ -461,7 +468,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
       ),
     );
   }
-  
+
   Widget _buildIngredientsTab(Recipe recipe) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -515,7 +522,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          
+
           // Ingredients list
           ListView.builder(
             shrinkWrap: true,
@@ -538,9 +545,13 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Text(
-                        recipe.ingredients[index],
-                        style: const TextStyle(fontSize: 16),
+                      child: ListTile(
+                        leading: Icon(Icons.local_dining),
+                        title: Text(
+                          recipe.ingredients[index]
+                              .toString(), // Convert to string
+                          style: Theme.of(context).textTheme.bodyLarge,
+                        ),
                       ),
                     ),
                   ],
@@ -552,7 +563,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
       ),
     );
   }
-  
+
   Widget _buildInstructionsTab(Recipe recipe) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -603,7 +614,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
       ),
     );
   }
-  
+
   Widget _buildAITipsTab(Recipe recipe) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),

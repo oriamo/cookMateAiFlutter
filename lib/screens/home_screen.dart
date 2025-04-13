@@ -12,18 +12,20 @@ import '../widgets/shimmers/recipe_card_shimmer.dart';
 import '../widgets/shimmers/category_card_shimmer.dart';
 
 // Define providers for home screen
-final featuredRecipesProvider = Provider<List<Recipe>>((ref) {
-  final allRecipes = ref.watch(recipeProvider);
-  // Return the first 5 recipes as featured recipes
-  return allRecipes.take(5).toList();
+final featuredRecipesProvider = Provider<AsyncValue<List<Recipe>>>((ref) {
+  return ref.watch(recipeProvider).whenData((data) {
+    final recipes = (data['recipes'] as List<dynamic>).cast<Recipe>();
+    return recipes.take(5).toList();
+  });
 });
 
-final popularRecipesProvider = Provider<List<Recipe>>((ref) {
-  final allRecipes = ref.watch(recipeProvider);
-  // Sort recipes by rating and return top ones
-  final sortedRecipes = List<Recipe>.from(allRecipes)
-    ..sort((a, b) => b.rating.compareTo(a.rating));
-  return sortedRecipes.take(6).toList();
+final popularRecipesProvider = Provider<AsyncValue<List<Recipe>>>((ref) {
+  return ref.watch(recipeProvider).whenData((data) {
+    final recipes = (data['recipes'] as List<dynamic>).cast<Recipe>();
+    return recipes.toList()
+      ..sort((a, b) => b.rating.compareTo(a.rating))
+      ..take(10); // Limit to top 10 recipes
+  });
 });
 
 // Use the existing categoriesProvider from category_provider.dart
@@ -41,20 +43,20 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isSearchBarVisible = false;
-  
+
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
   }
-  
+
   @override
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
   }
-  
+
   void _onScroll() {
     final isVisible = _scrollController.position.pixels > 140;
     if (isVisible != _isSearchBarVisible) {
@@ -64,12 +66,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     }
   }
 
+  List<Recipe> _getRecentRecipes(AsyncValue<Map<String, dynamic>> allRecipes) {
+    return allRecipes.whenData((data) {
+          final recipes = (data['recipes'] as List<dynamic>).cast<Recipe>();
+          return recipes.take(5).toList();
+        }).value ??
+        [];
+  }
+
+  List<Recipe> _getSortedRecipes(AsyncValue<Map<String, dynamic>> allRecipes) {
+    return allRecipes.whenData((data) {
+          final recipes = (data['recipes'] as List<dynamic>).cast<Recipe>();
+          return recipes.toList()..sort((a, b) => b.rating.compareTo(a.rating));
+        }).value ??
+        [];
+  }
+
   @override
   Widget build(BuildContext context) {
     final featuredRecipes = ref.watch(featuredRecipesProvider);
     final popularRecipes = ref.watch(popularRecipesProvider);
     final categories = ref.watch(categoriesProvider);
-    
+
     return Scaffold(
       body: CustomScrollView(
         controller: _scrollController,
@@ -113,7 +131,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                             const SizedBox(width: 4),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
                                 color: Colors.white.withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(4),
@@ -129,7 +148,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             ),
                             const Spacer(),
                             IconButton(
-                              icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+                              icon: const Icon(Icons.notifications_outlined,
+                                  color: Colors.white),
                               onPressed: () {},
                             ),
                           ],
@@ -153,7 +173,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 context.go('/search');
                               },
                               child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 12),
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(8),
@@ -199,7 +220,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ],
           ),
-          
+
           // Categories section
           SliverToBoxAdapter(
             child: Padding(
@@ -210,8 +231,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Text(
                     'Categories',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                   TextButton(
                     onPressed: () {
@@ -223,7 +244,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
           ),
-          
+
           SliverToBoxAdapter(
             child: SizedBox(
               height: 120,
@@ -232,7 +253,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   : _buildCategories(categories),
             ),
           ),
-          
+
           // Featured recipes section
           SliverToBoxAdapter(
             child: Padding(
@@ -245,12 +266,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       Text(
                         'Featured',
                         style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
+                              fontWeight: FontWeight.bold,
+                            ),
                       ),
                       const SizedBox(width: 8),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 2),
                         decoration: BoxDecoration(
                           color: Colors.orange,
                           borderRadius: BorderRadius.circular(12),
@@ -274,16 +296,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
           ),
-          
+
           SliverToBoxAdapter(
             child: SizedBox(
               height: 300,
-              child: featuredRecipes.isEmpty
-                  ? _buildRecipeShimmers()
-                  : _buildFeaturedRecipes(featuredRecipes),
+              child: featuredRecipes.when(
+                data: (recipes) => _buildFeaturedRecipes(recipes),
+                loading: () => _buildRecipeShimmers(),
+                error: (error, stack) => Center(
+                  child: Text('Error: $error'),
+                ),
+              ),
             ),
           ),
-          
+
           // Popular recipes section
           SliverToBoxAdapter(
             child: Padding(
@@ -294,8 +320,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   Text(
                     'Popular Recipes',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                   TextButton(
                     onPressed: () {},
@@ -305,39 +331,45 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               ),
             ),
           ),
-          
+
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-            sliver: popularRecipes.isEmpty
-                ? SliverGrid.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 16,
-                      childAspectRatio: 0.75,
-                    ),
-                    itemCount: 4,
-                    itemBuilder: (context, index) {
-                      return const RecipeCardShimmer();
-                    },
-                  )
-                : SliverGrid.builder(
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 16,
-                      childAspectRatio: 0.75,
-                    ),
-                    itemCount: popularRecipes.length,
-                    itemBuilder: (context, index) {
-                      return FadeInUp(
-                        duration: Duration(milliseconds: 300 + (index * 100)),
-                        child: RecipeCard(recipe: popularRecipes[index]),
-                      );
-                    },
-                  ),
+            sliver: popularRecipes.when(
+              data: (recipes) => SliverGrid.builder(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16,
+                  childAspectRatio: 0.75,
+                ),
+                itemCount: recipes.length,
+                itemBuilder: (context, index) {
+                  return FadeInUp(
+                    duration: Duration(milliseconds: 300 + (index * 100)),
+                    child: RecipeCard(recipe: recipes[index]),
+                  );
+                },
+              ),
+              loading: () => SliverGrid.builder(
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 16,
+                  crossAxisSpacing: 16,
+                  childAspectRatio: 0.75,
+                ),
+                itemCount: 4,
+                itemBuilder: (context, index) {
+                  return const RecipeCardShimmer();
+                },
+              ),
+              error: (error, stack) => SliverToBoxAdapter(
+                child: Center(
+                  child: Text('Error: $error'),
+                ),
+              ),
+            ),
           ),
-          
+
           // AI Assistant banner
           SliverToBoxAdapter(
             child: Padding(
@@ -422,7 +454,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       ),
     );
   }
-  
+
   Widget _buildCategories(List<Category> categories) {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -439,7 +471,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       },
     );
   }
-  
+
   Widget _buildCategoryShimmers() {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -453,7 +485,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       },
     );
   }
-  
+
   Widget _buildFeaturedRecipes(List<Recipe> recipes) {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -473,7 +505,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       },
     );
   }
-  
+
   Widget _buildRecipeShimmers() {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),

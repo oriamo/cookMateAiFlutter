@@ -5,6 +5,7 @@ import '../models/ingredient.dart';
 import '../models/recipe.dart';
 import '../providers/ingredients_provider.dart';
 import '../providers/recipe_provider.dart';
+import '../widgets/recipe_card.dart'; // Add this import
 
 class IngredientDetailScreen extends ConsumerWidget {
   final String ingredientId;
@@ -517,212 +518,28 @@ class IngredientDetailScreen extends ConsumerWidget {
 
   Widget _buildRecipeInfo(
       BuildContext context, WidgetRef ref, Ingredient ingredient) {
-    final recipes = ref.watch(recipeProvider);
-    final relatedRecipe = recipes.firstWhere(
-      (recipe) => recipe.id == ingredient.recipeId,
-      orElse: () => Recipe(
-        id: '',
-        title: 'Recipe not found',
-        description: 'No description available',
-        totalTimeMinutes: 0,
-        prepTimeMinutes: 0,
-        cookTimeMinutes: 0,
-        difficulty: 'Easy',
-        servings: 0,
-        calories: 0,
-        chefName: 'Unknown',
-        rating: 0.0,
-        reviewCount: 0,
-        ingredients: [],
-        instructions: [],
-        tags: [],
-        createdAt: DateTime.now(),
-        categoryId: '',
-        cuisineType: '',
-      ),
-    );
+    return ref.watch(recipeProvider).when(
+          data: (data) {
+            if (ingredient.recipeId == null) {
+              return const SizedBox.shrink();
+            }
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 24),
-      elevation: 2,
-      clipBehavior: Clip.antiAlias,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.purple.shade50,
-            ),
-            child: const Row(
-              children: [
-                Icon(
-                  Icons.menu_book,
-                  color: Colors.purple,
-                ),
-                SizedBox(width: 12),
-                Text(
-                  'From Recipe',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.purple,
-                  ),
-                ),
-              ],
-            ),
+            final recipes = data['recipes'] as Map<String, dynamic>;
+            final recipe = recipes[ingredient.recipeId];
+            if (recipe == null) {
+              return const SizedBox.shrink();
+            }
+
+            return RecipeCard(
+              recipe: Recipe.fromJson(recipe),
+              isHorizontal: true,
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => Center(
+            child: Text('Error: $error'),
           ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                if (relatedRecipe.id.isNotEmpty)
-                  InkWell(
-                    onTap: () {
-                      context.push('/recipe/${relatedRecipe.id}');
-                    },
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade50,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey.shade200),
-                      ),
-                      child: Row(
-                        children: [
-                          if (relatedRecipe.imageUrl != null &&
-                              relatedRecipe.imageUrl!.isNotEmpty)
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(
-                                relatedRecipe.imageUrl!,
-                                width: 70,
-                                height: 70,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return Container(
-                                    width: 70,
-                                    height: 70,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(8),
-                                      color: Colors.purple.shade100,
-                                    ),
-                                    child: const Icon(Icons.broken_image,
-                                        color: Colors.purple),
-                                  );
-                                },
-                              ),
-                            )
-                          else
-                            Container(
-                              width: 70,
-                              height: 70,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(8),
-                                color: Colors.purple.shade100,
-                              ),
-                              child: const Icon(Icons.restaurant,
-                                  color: Colors.purple),
-                            ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  relatedRecipe.title,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                if (relatedRecipe.difficulty.isNotEmpty ||
-                                    relatedRecipe.totalTimeMinutes > 0)
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.timer,
-                                        size: 14,
-                                        color: Colors.grey.shade600,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        '${relatedRecipe.totalTimeMinutes} min',
-                                        style: TextStyle(
-                                          color: Colors.grey.shade600,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Icon(
-                                        Icons.bar_chart,
-                                        size: 14,
-                                        color: Colors.grey.shade600,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        relatedRecipe.difficulty,
-                                        style: TextStyle(
-                                          color: Colors.grey.shade600,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        'Tap to view recipe details',
-                                        style: TextStyle(
-                                          color: Colors.purple.shade300,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                    ),
-                                    Icon(
-                                      Icons.arrow_forward,
-                                      size: 16,
-                                      color: Colors.purple.shade300,
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  )
-                else
-                  ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.info_outline,
-                        color: Colors.grey,
-                      ),
-                    ),
-                    title: const Text('Recipe not found'),
-                    subtitle: const Text(
-                      'This ingredient was added from a recipe that may have been deleted.',
-                    ),
-                  ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
+        );
   }
 
   void _showDeleteConfirmation(

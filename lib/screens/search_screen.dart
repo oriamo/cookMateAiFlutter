@@ -7,17 +7,28 @@ import '../models/recipe.dart';
 import '../screens/recipe_screen.dart';
 
 // Define the searchRecipesProvider that accepts a search query parameter
-final searchRecipesProvider = FutureProvider.family<List<Recipe>, String>((ref, query) async {
+final searchRecipesProvider =
+    Provider.family<AsyncValue<List<Recipe>>, String>((ref, query) {
   final allRecipes = ref.watch(recipeProvider);
-  
-  // Filter recipes based on the search query
-  return allRecipes.where((recipe) {
-    final lowerCaseQuery = query.toLowerCase();
-    return recipe.title.toLowerCase().contains(lowerCaseQuery) ||
-           recipe.description.toLowerCase().contains(lowerCaseQuery) ||
-           recipe.ingredients.any((ingredient) => 
-               ingredient.toLowerCase().contains(lowerCaseQuery));
-  }).toList();
+
+  return allRecipes.when(
+    data: (data) {
+      final recipes = (data['recipes'] as List<dynamic>).cast<Recipe>();
+      if (query.isEmpty) return AsyncValue.data(recipes);
+
+      final filteredRecipes = recipes.where((recipe) {
+        final lowerCaseQuery = query.toLowerCase();
+        return recipe.title.toLowerCase().contains(lowerCaseQuery) ||
+            recipe.description.toLowerCase().contains(lowerCaseQuery) ||
+            recipe.ingredients.any((ingredient) =>
+                ingredient.toString().toLowerCase().contains(lowerCaseQuery));
+      }).toList();
+
+      return AsyncValue.data(filteredRecipes);
+    },
+    loading: () => const AsyncValue.loading(),
+    error: (error, stack) => AsyncValue.error(error, stack),
+  );
 });
 
 class SearchScreen extends ConsumerStatefulWidget {
@@ -33,17 +44,17 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   late FocusNode _focusNode;
   String _query = '';
-  
+
   @override
   void initState() {
     super.initState();
     _focusNode = FocusNode();
-    
+
     if (widget.initialQuery != null && widget.initialQuery!.isNotEmpty) {
       _searchController.text = widget.initialQuery!;
       _query = widget.initialQuery!;
     }
-    
+
     // Request focus after the first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_query.isEmpty) {
@@ -51,32 +62,49 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       }
     });
   }
-  
+
   @override
   void dispose() {
     _searchController.dispose();
     _focusNode.dispose();
     super.dispose();
   }
-  
+
   void _performSearch(String query) {
     setState(() {
       _query = query.trim();
     });
-    
+
     if (_query.isNotEmpty) {
       ref.read(userProfileProvider.notifier).addRecentSearch(_query);
     }
   }
 
+  List<Recipe> _filterRecipes(
+      AsyncValue<Map<String, dynamic>> recipesData, String query) {
+    return recipesData.when(
+      data: (data) {
+        final recipes = (data['recipes'] as List<dynamic>).cast<Recipe>();
+        if (query.isEmpty) return recipes;
+
+        return recipes.where((recipe) {
+          return recipe.title.toLowerCase().contains(query.toLowerCase()) ||
+              recipe.description.toLowerCase().contains(query.toLowerCase());
+        }).toList();
+      },
+      loading: () => [],
+      error: (_, __) => [],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final searchResultsAsync = _query.isNotEmpty 
+    final searchResultsAsync = _query.isNotEmpty
         ? ref.watch(searchRecipesProvider(_query))
         : AsyncValue.data(<Recipe>[]);
-    
+
     final recentSearches = ref.watch(userProfileProvider).recentSearches;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: TextField(
@@ -127,7 +155,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
     );
   }
-  
+
   Widget _buildRecentSearches(List<String> recentSearches) {
     return CustomScrollView(
       slivers: [
@@ -150,7 +178,9 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     if (recentSearches.isNotEmpty)
                       TextButton(
                         onPressed: () {
-                          ref.read(userProfileProvider.notifier).clearRecentSearches();
+                          ref
+                              .read(userProfileProvider.notifier)
+                              .clearRecentSearches();
                         },
                         child: const Text('Clear'),
                       ),
@@ -199,7 +229,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             ),
           ),
         ),
-        
+
         SliverToBoxAdapter(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -225,14 +255,15 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                     _buildSearchCategoryChip('Desserts', Icons.cake),
                     _buildSearchCategoryChip('Healthy', Icons.fitness_center),
                     _buildSearchCategoryChip('Asian', Icons.ramen_dining),
-                    _buildSearchCategoryChip('Budget-Friendly', Icons.attach_money),
+                    _buildSearchCategoryChip(
+                        'Budget-Friendly', Icons.attach_money),
                   ],
                 ),
               ],
             ),
           ),
         ),
-        
+
         // Search tips
         SliverToBoxAdapter(
           child: Padding(
@@ -273,7 +304,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       ],
     );
   }
-  
+
   Widget _buildSearchCategoryChip(String label, IconData icon) {
     return ActionChip(
       avatar: Icon(icon, size: 16),
@@ -284,7 +315,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
       },
     );
   }
-  
+
   Widget _buildSearchResults(List<Recipe> searchResults) {
     if (searchResults.isEmpty) {
       return Center(
@@ -316,7 +347,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         ),
       );
     }
-    
+
     return ListView.builder(
       padding: const EdgeInsets.all(16),
       itemCount: searchResults.length,
@@ -367,7 +398,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(Icons.timer_outlined, size: 14, color: Colors.grey.shade600),
+                      Icon(Icons.timer_outlined,
+                          size: 14, color: Colors.grey.shade600),
                       const SizedBox(width: 4),
                       Text(
                         '${recipe.totalTimeMinutes} min',
@@ -390,7 +422,8 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                   ),
                 ],
               ),
-              trailing: Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey.shade400),
+              trailing: Icon(Icons.arrow_forward_ios,
+                  size: 16, color: Colors.grey.shade400),
             ),
           ),
         );
