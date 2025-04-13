@@ -10,7 +10,7 @@ import 'package:flutter/rendering.dart';
 
 class RecipeScreen extends ConsumerStatefulWidget {
   final String recipeId;
-  
+
   const RecipeScreen({super.key, required this.recipeId});
 
   @override
@@ -21,33 +21,34 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
   int _currentTab = 0;
   final ScrollController _scrollController = ScrollController();
   bool _showFab = true;
-  
+
   @override
   void initState() {
     super.initState();
     _scrollController.addListener(_onScroll);
   }
-  
+
   @override
   void dispose() {
     _scrollController.removeListener(_onScroll);
     _scrollController.dispose();
     super.dispose();
   }
-  
+
   void _onScroll() {
-    final showFab = _scrollController.position.userScrollDirection == ScrollDirection.forward;
+    final showFab = _scrollController.position.userScrollDirection ==
+        ScrollDirection.forward;
     if (showFab != _showFab) {
       setState(() {
         _showFab = showFab;
       });
     }
   }
-  
+
   void _toggleFavorite(Recipe recipe) {
     ref.read(recipeProvider.notifier).toggleFavorite(recipe.id);
     ref.read(userProfileProvider.notifier).toggleFavoriteRecipe(recipe.id);
-    
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
@@ -61,13 +62,15 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
           label: 'UNDO',
           onPressed: () {
             ref.read(recipeProvider.notifier).toggleFavorite(recipe.id);
-            ref.read(userProfileProvider.notifier).toggleFavoriteRecipe(recipe.id);
+            ref
+                .read(userProfileProvider.notifier)
+                .toggleFavoriteRecipe(recipe.id);
           },
         ),
       ),
     );
   }
-  
+
   void _shareRecipe(Recipe recipe) {
     Share.share(
       'Check out this amazing recipe for ${recipe.title}! '
@@ -80,7 +83,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
   @override
   Widget build(BuildContext context) {
     final recipeAsync = ref.watch(recipeDetailProvider(widget.recipeId));
-    
+
     return Scaffold(
       body: recipeAsync == null
           ? const Center(child: Text('Recipe not found'))
@@ -89,7 +92,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
               slivers: [
                 // App Bar
                 _buildAppBar(context, recipeAsync),
-                
+
                 // Recipe Content
                 SliverToBoxAdapter(
                   child: Column(
@@ -119,39 +122,41 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
                                 style: TextStyle(
                                   fontSize: 16,
                                   color: Colors.grey.shade700,
+                                  height: 1.5,
                                 ),
                               ),
                             ),
                             const SizedBox(height: 16),
-                            
+
                             // Recipe info cards
                             FadeInUp(
                               duration: const Duration(milliseconds: 500),
                               child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   _buildInfoCard(
-                                    context, 
-                                    Icons.timer_outlined, 
+                                    context,
+                                    Icons.timer_outlined,
                                     '${recipeAsync.totalTimeMinutes} min',
                                     'Total Time',
                                   ),
                                   _buildInfoCard(
-                                    context, 
-                                    Icons.restaurant_outlined, 
-                                    recipeAsync.difficulty, 
+                                    context,
+                                    Icons.restaurant_outlined,
+                                    recipeAsync.difficulty,
                                     'Difficulty',
                                   ),
                                   _buildInfoCard(
-                                    context, 
-                                    Icons.person_outline, 
-                                    '${recipeAsync.servings}', 
+                                    context,
+                                    Icons.person_outline,
+                                    '${recipeAsync.servings}',
                                     'Servings',
                                   ),
                                   _buildInfoCard(
-                                    context, 
-                                    Icons.local_fire_department_outlined, 
-                                    '${recipeAsync.calories}', 
+                                    context,
+                                    Icons.local_fire_department_outlined,
+                                    '${recipeAsync.calories}',
                                     'Calories',
                                   ),
                                 ],
@@ -160,7 +165,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
                           ],
                         ),
                       ),
-                      
+
                       // Chef info
                       FadeInUp(
                         duration: const Duration(milliseconds: 600),
@@ -170,7 +175,8 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
                             children: [
                               CircleAvatar(
                                 radius: 24,
-                                backgroundColor: Theme.of(context).colorScheme.primary,
+                                backgroundColor:
+                                    Theme.of(context).colorScheme.primary,
                                 child: Text(
                                   recipeAsync.chefName.substring(0, 1),
                                   style: const TextStyle(
@@ -222,9 +228,9 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
                           ),
                         ),
                       ),
-                      
+
                       const SizedBox(height: 24),
-                      
+
                       // Tabs
                       FadeInUp(
                         duration: const Duration(milliseconds: 700),
@@ -262,9 +268,9 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
                           ),
                         ),
                       ),
-                      
+
                       const SizedBox(height: 16),
-                      
+
                       // Tab content
                       FadeInUp(
                         duration: const Duration(milliseconds: 800),
@@ -274,7 +280,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
                           _buildAITipsTab(recipeAsync),
                         ][_currentTab],
                       ),
-                      
+
                       const SizedBox(height: 32),
                     ],
                   ),
@@ -295,7 +301,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
           : null,
     );
   }
-  
+
   Widget _buildAppBar(BuildContext context, Recipe recipe) {
     return SliverAppBar(
       expandedHeight: 250,
@@ -306,18 +312,50 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
           children: [
             // Recipe image
             CachedNetworkImage(
-              imageUrl: recipe.imageUrl ?? 'https://via.placeholder.com/400',
+              imageUrl: recipe.imageUrl ??
+                  'https://images.unsplash.com/photo-1495521821757-a1efb6729352?auto=format&fit=crop&w=800&q=80',
               fit: BoxFit.cover,
+              maxWidthDiskCache: 1200, // Larger cache for detail view
+              memCacheWidth: 1200,
+              fadeInDuration: const Duration(milliseconds: 300),
+              httpHeaders: recipe.imageUrl
+                          ?.contains('stfunc602d62e0.blob.core.windows.net') ==
+                      true
+                  ? {'Cache-Control': 'max-age=31536000'} // Cache for 1 year
+                  : null,
               placeholder: (context, url) => Container(
-                color: Colors.grey.shade300,
-                child: const Center(
-                  child: CircularProgressIndicator(),
+                color: Colors.grey.shade100,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                        Theme.of(context).colorScheme.primary),
+                  ),
                 ),
               ),
-              errorWidget: (context, url, error) => Container(
-                color: Colors.grey.shade300,
-                child: const Icon(Icons.restaurant, color: Colors.white, size: 50),
-              ),
+              errorWidget: (context, url, error) {
+                print('Image load error for $url: $error');
+                return Container(
+                  color: Colors.grey.shade100,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.restaurant,
+                        color: Colors.grey.shade400,
+                        size: 48,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Image not available',
+                        style: TextStyle(
+                          color: Colors.grey.shade600,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
             ),
             // Gradient overlay
             Container(
@@ -365,8 +403,9 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
       ],
     );
   }
-  
-  Widget _buildInfoCard(BuildContext context, IconData icon, String value, String label) {
+
+  Widget _buildInfoCard(
+      BuildContext context, IconData icon, String value, String label) {
     return Container(
       width: 80,
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
@@ -405,10 +444,10 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
       ),
     );
   }
-  
+
   Widget _buildTabButton(String label, int tabIndex, int count) {
     final isSelected = _currentTab == tabIndex;
-    
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -420,7 +459,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: isSelected 
+              color: isSelected
                   ? Theme.of(context).colorScheme.primary
                   : Colors.transparent,
               width: 2,
@@ -461,7 +500,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
       ),
     );
   }
-  
+
   Widget _buildIngredientsTab(Recipe recipe) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -515,13 +554,18 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
             ),
           ),
           const SizedBox(height: 16),
-          
+
           // Ingredients list
           ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: recipe.ingredients.length,
             itemBuilder: (context, index) {
+              final ingredient = recipe.ingredients[index];
+              final name = ingredient['name'] as String? ?? '';
+              final amount = ingredient['amount'] as String? ?? '';
+              final unit = ingredient['unit'] as String? ?? '';
+
               return Padding(
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Row(
@@ -538,9 +582,22 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Text(
-                        recipe.ingredients[index],
-                        style: const TextStyle(fontSize: 16),
+                      child: ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: Text(
+                          name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        trailing: Text(
+                          [amount, unit].where((e) => e.isNotEmpty).join(' '),
+                          style: TextStyle(
+                            color: Colors.grey.shade600,
+                            fontSize: 14,
+                          ),
+                        ),
                       ),
                     ),
                   ],
@@ -552,7 +609,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
       ),
     );
   }
-  
+
   Widget _buildInstructionsTab(Recipe recipe) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -603,7 +660,7 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
       ),
     );
   }
-  
+
   Widget _buildAITipsTab(Recipe recipe) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),

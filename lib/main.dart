@@ -71,7 +71,8 @@ class _CookMateAppState extends State<CookMateApp> {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.deepPurple,
-          primary: Colors.deepPurple,
+          primary: Colors.green,
+          // primary: Colors.deepPurple,
           secondary: Colors.deepOrange,
         ),
         useMaterial3: true,

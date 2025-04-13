@@ -6,7 +6,7 @@ import '../models/category.dart';
 class CategoryCard extends StatelessWidget {
   final Category category;
   final bool isFeatured;
-  
+
   const CategoryCard({
     super.key,
     required this.category,
@@ -59,21 +59,21 @@ class CategoryCard extends StatelessWidget {
                 ),
               ),
             ),
-            
+
             // Gradient overlay
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                   colors: [
-                    Colors.transparent,
-                    Colors.black.withOpacity(0.7),
+                    Colors.green.shade400.withOpacity(0.8),
+                    Colors.green.shade700.withOpacity(0.9),
                   ],
                 ),
               ),
             ),
-            
+
             // Category info
             Positioned(
               left: 12,
