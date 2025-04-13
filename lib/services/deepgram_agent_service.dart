@@ -15,8 +15,10 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'dart:io';
 import 'package:just_audio/just_audio.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:flutter/services.dart';
 
 import 'llm_service.dart';
+import 'deepgram_agent_types.dart';
 
 /// Service that manages the connection to Deepgram's Voice Agent API
 class DeepgramAgentService {
@@ -35,7 +37,7 @@ class DeepgramAgentService {
   // Current state
   DeepgramAgentState _state = DeepgramAgentState.idle;
   
-  // LLM service for Gemini integration
+  // LLM service for integration
   final LlmService _llmService;
   
   // Camera controller for vision capabilities
@@ -53,20 +55,15 @@ class DeepgramAgentService {
   bool get isListening => _isListening;
   CameraController? get cameraController => _cameraController;
   
-  // Constructor - reuses the existing LLM service for Gemini integration
+  // Constructor - reuses the existing LLM service for integration
   DeepgramAgentService(this._llmService);
   
-  // Create a TTS engine for audio playback
+  // Create a TTS engine for fallback audio playback
   final FlutterTts _tts = FlutterTts();
   
-  // Direct audio playback approach
-  bool _isPlayingAudio = false;
-  AudioPlayer? _currentPlayer;
-  final List<Uint8List> _audioBuffer = [];
-  File? _tempFile; // Temporary file for current audio session
-  
-  // Message tracking for context
-  final List<Map<String, dynamic>> _messages = [];
+  // Native Audio Interface
+  static const MethodChannel _audioChannel = MethodChannel('com.oraimo.us.cook_mate_ai/audio_stream');
+  bool _isAudioStreamInitialized = false;
   
   /// Initialize the Deepgram Agent service
   Future<bool> initialize() async {
@@ -113,8 +110,8 @@ class DeepgramAgentService {
       // Initialize TTS as fallback
       await _initializeTts();
       
-      // Configure audio player
-      debugPrint('🎵 DEEPGRAM: Initializing with direct audio playback');
+      // Initialize native audio streaming
+      await _initAudioStream();
       
       _isInitialized = true;
       _updateState(DeepgramAgentState.idle);
@@ -122,6 +119,123 @@ class DeepgramAgentService {
     } catch (e) {
       _errorController.add('Failed to initialize Deepgram Agent: $e');
       return false;
+    }
+  }
+  
+  /// Initialize native audio streaming
+  Future<bool> _initAudioStream() async {
+    try {
+      debugPrint('🔊 DEEPGRAM: Initializing native audio stream');
+      final result = await _audioChannel.invokeMethod<bool>('initAudioStream', {
+        'sampleRate': 24000, // Deepgram's sample rate
+      });
+      
+      _isAudioStreamInitialized = result ?? false;
+      debugPrint('🔊 DEEPGRAM: Native audio stream initialized: $_isAudioStreamInitialized');
+      return _isAudioStreamInitialized;
+    } catch (e) {
+      debugPrint('🔴 DEEPGRAM: Error initializing native audio stream: $e');
+      return false;
+    }
+  }
+  
+  /// Stop native audio streaming
+  Future<bool> _stopAudioStream() async {
+    if (!_isAudioStreamInitialized) return true;
+    
+    try {
+      debugPrint('🔊 DEEPGRAM: Stopping native audio stream');
+      final result = await _audioChannel.invokeMethod<bool>('stopAudioStream');
+      _isAudioStreamInitialized = false;
+      return result ?? true;
+    } catch (e) {
+      debugPrint('🔴 DEEPGRAM: Error stopping native audio stream: $e');
+      return false;
+    }
+  }
+  
+  /// Get native audio stream statistics
+  Future<Map<String, dynamic>> _getAudioStats() async {
+    if (!_isAudioStreamInitialized) {
+      return {
+        'isPlaying': false,
+        'totalBytesPlayed': 0,
+        'latencyMs': 0,
+      };
+    }
+    
+    try {
+      final result = await _audioChannel.invokeMethod<Map<dynamic, dynamic>>('getAudioStats');
+      return result?.cast<String, dynamic>() ?? {
+        'isPlaying': false,
+        'totalBytesPlayed': 0,
+        'latencyMs': 0,
+      };
+    } catch (e) {
+      debugPrint('🔴 DEEPGRAM: Error getting audio stats: $e');
+      return {
+        'isPlaying': false,
+        'totalBytesPlayed': 0,
+        'latencyMs': 0,
+      };
+    }
+  }
+  
+  /// Initialize Text-to-Speech engine
+  Future<void> _initializeTts() async {
+    debugPrint('🔵 DEEPGRAM: Initializing TTS engine');
+    await _tts.setLanguage('en-US');
+    await _tts.setSpeechRate(0.5);
+    await _tts.setVolume(1.0);
+    await _tts.setPitch(1.0);
+    
+    _tts.setCompletionHandler(() {
+      debugPrint('🔵 DEEPGRAM: TTS playback completed');
+      if (_state == DeepgramAgentState.speaking) {
+        _updateState(DeepgramAgentState.idle);
+      }
+    });
+    
+    debugPrint('🟢 DEEPGRAM: TTS engine initialized');
+  }
+  
+  /// Handle audio data from Deepgram with native streaming
+  void _handleAudioData(Uint8List audioData) async {
+    try {
+      // Update state to indicate the agent is speaking
+      _updateState(DeepgramAgentState.speaking);
+      
+      // Send data to native audio player
+      if (_isAudioStreamInitialized) {
+        debugPrint('🔊 DEEPGRAM: Sending ${audioData.length} bytes to native audio player');
+        try {
+          await _audioChannel.invokeMethod<bool>('writeAudioData', {
+            'data': audioData,
+          });
+        } catch (e) {
+          debugPrint('🔴 DEEPGRAM: Error sending audio data to native player: $e');
+          
+          // If native playback fails, initialize it again
+          if (!await _initAudioStream()) {
+            // If re-init fails, fall back to TTS
+            debugPrint('🔴 DEEPGRAM: Failed to reinitialize native audio - falling back to TTS');
+            await _tts.speak('Audio playback failed. Falling back to text-to-speech.');
+          }
+        }
+      } else {
+        // If native audio isn't available, try to initialize it
+        debugPrint('🔊 DEEPGRAM: Native audio not initialized - attempting to initialize');
+        if (await _initAudioStream()) {
+          // Try again with the same data
+          _handleAudioData(audioData);
+        } else {
+          // Fall back to TTS
+          debugPrint('🔴 DEEPGRAM: Native audio initialization failed - falling back to TTS');
+          await _tts.speak('Audio playback not available. Using text-to-speech instead.');
+        }
+      }
+    } catch (e) {
+      debugPrint('🔴 DEEPGRAM: Error handling audio data: $e');
     }
   }
   
@@ -197,9 +311,6 @@ class DeepgramAgentService {
     
     debugPrint('🔵 DEEPGRAM: Setting up WebSocket listeners');
     
-    // Initialize TTS settings
-    _initializeTts();
-    
     // Listen for messages from Deepgram
     _channel!.stream.listen(
       (dynamic message) {
@@ -209,12 +320,10 @@ class DeepgramAgentService {
             // Handle binary audio response from the agent
             debugPrint('🔵 DEEPGRAM: Received binary audio data: ${message.length} bytes');
             
-            // Store audio data for playback
+            // Process audio data with native audio player
             final audioData = Uint8List.fromList(message);
             _handleAudioData(audioData);
             
-            // Update state to indicate the agent is speaking
-            _updateState(DeepgramAgentState.speaking);
             return;
           }
           
@@ -250,14 +359,11 @@ class DeepgramAgentService {
                 
               case 'UserStartedSpeaking':
                 // User started speaking
-                debugPrint('🎵 DEEPGRAM: User started speaking event');
+                debugPrint('🔊 DEEPGRAM: User started speaking event');
                 _updateState(DeepgramAgentState.listening);
                 
                 // Cancel any ongoing audio playback
-                if (_isPlayingAudio) {
-                  debugPrint('🎵 DEEPGRAM: Stopping audio playback because user started speaking');
-                  _cancelAudioPlayback();
-                }
+                await _stopAudioStream();
                 break;
                 
               case 'UserStoppedSpeaking':
@@ -268,18 +374,27 @@ class DeepgramAgentService {
                 
               case 'AgentStartedSpeaking':
                 // Agent started speaking
-                debugPrint('🔵 DEEPGRAM: Agent started speaking event');
+                debugPrint('🔊 DEEPGRAM: Agent started speaking event');
                 _updateState(DeepgramAgentState.speaking);
                 break;
                 
               case 'AgentStoppedSpeaking':
                 // Agent stopped speaking
-                debugPrint('🎵 DEEPGRAM: Agent stopped speaking event');
+                debugPrint('🔊 DEEPGRAM: Agent stopped speaking event');
                 
                 // Let audio finish playing naturally
-                debugPrint('🎵 DEEPGRAM: Agent finished speaking, letting audio complete');
+                debugPrint('🔊 DEEPGRAM: Agent finished speaking, letting audio complete');
                 
-                _updateState(DeepgramAgentState.idle);
+                // Wait a bit and check audio status
+                Future.delayed(Duration(seconds: 1), () async {
+                  final stats = await _getAudioStats();
+                  debugPrint('🔊 DEEPGRAM: Audio stats: ${stats.toString()}');
+                  
+                  // Only update state if we're still in speaking mode
+                  if (_state == DeepgramAgentState.speaking) {
+                    _updateState(DeepgramAgentState.idle);
+                  }
+                });
                 break;
                 
               case 'AgentFinishedThinking':
@@ -291,6 +406,20 @@ class DeepgramAgentService {
                 }
                 break;
                 
+              case 'EndOfThought':
+                // Mark the transition from processing to speaking
+                debugPrint('🔊 DEEPGRAM: Received EndOfThought - AI finished processing');
+                // Make sure we're ready for new audio
+                await _stopAudioStream();
+                await _initAudioStream();
+                break;
+                
+              case 'AgentAudioDone':
+                // All audio has been sent
+                debugPrint('🔊 DEEPGRAM: Received AgentAudioDone - Audio streaming complete');
+                // Wait for playback to finish naturally
+                break;
+                
               case 'Error':
                 // Error from Deepgram
                 if (data.containsKey('description')) {
@@ -298,14 +427,6 @@ class DeepgramAgentService {
                   debugPrint('🔴 DEEPGRAM: $errorMsg');
                   _errorController.add(errorMsg);
                 }
-                break;
-                
-              case 'EndOfThought':
-                // Mark the transition from processing to speaking
-                debugPrint('🎵 DEEPGRAM: Received EndOfThought - AI finished processing');
-                // Make sure we're ready for new audio
-                _audioBuffer.clear();
-                _isPlayingAudio = false;
                 break;
                 
               default:
@@ -352,34 +473,6 @@ class DeepgramAgentService {
       debugPrint('🔵 DEEPGRAM: Received interim transcript: "$transcript"');
       _updateState(DeepgramAgentState.listening);
     }
-  }
-  
-  /// Handle LLM requests from Deepgram
-  Future<void> _handleLlmRequest(String userMessage) async {
-    try {
-      // Process with LLM (Gemini)
-      final response = await _llmService.generateTextResponse(userMessage);
-      
-      // Send response back to Deepgram
-      _sendLlmResponse(response);
-      
-      // Add to message stream
-      _messageController.add(response);
-    } catch (e) {
-      _errorController.add('Error processing LLM request: $e');
-    }
-  }
-  
-  /// Send LLM response back to Deepgram
-  void _sendLlmResponse(String response) {
-    if (_channel == null || !_isConnected) return;
-    
-    final message = {
-      'type': 'LLMResponse',
-      'response': response,
-    };
-    
-    _channel!.sink.add(json.encode(message));
   }
   
   /// Send agent configuration to Deepgram
@@ -652,8 +745,8 @@ class DeepgramAgentService {
   Future<void> dispose() async {
     await _disconnect();
     
-    // Clean up audio resources
-    _cancelAudioPlayback();
+    // Stop native audio stream
+    await _stopAudioStream();
     
     // Dispose of camera controller
     await _cameraController?.dispose();
@@ -672,197 +765,6 @@ class DeepgramAgentService {
     _stateController.add(_state);
     
     debugPrint('Deepgram Agent state changed to: $_state');
-  }
-
-  /// Initialize Text-to-Speech engine
-  Future<void> _initializeTts() async {
-    debugPrint('🔵 DEEPGRAM: Initializing TTS engine');
-    await _tts.setLanguage('en-US');
-    await _tts.setSpeechRate(0.5);
-    await _tts.setVolume(1.0);
-    await _tts.setPitch(1.0);
-    
-    _tts.setCompletionHandler(() {
-      debugPrint('🔵 DEEPGRAM: TTS playback completed');
-      if (_state == DeepgramAgentState.speaking) {
-        _updateState(DeepgramAgentState.idle);
-      }
-    });
-    
-    debugPrint('🟢 DEEPGRAM: TTS engine initialized');
-  }
-  
-  // These streaming methods have been removed and replaced with direct playback
-  
-  /// Handle audio data from Deepgram with direct playback
-  void _handleAudioData(Uint8List audioData) {
-    try {
-      // Update state to indicate the agent is speaking
-      _updateState(DeepgramAgentState.speaking);
-      
-      // Store the audio data
-      _audioBuffer.add(audioData);
-      debugPrint('🎵 DEEPGRAM: Received audio packet: ${audioData.length} bytes');
-      
-      // Only start playback if we're not already playing
-      if (!_isPlayingAudio) {
-        _playAudio();
-      }
-    } catch (e) {
-      debugPrint('🔴 DEEPGRAM: Error handling audio data: $e');
-    }
-  }
-  
-  /// Play audio as soon as we receive it
-  Future<void> _playAudio() async {
-    if (_isPlayingAudio || _audioBuffer.isEmpty) return;
-    
-    _isPlayingAudio = true;
-    
-    try {
-      // Combine all current audio packets
-      final BytesBuilder builder = BytesBuilder();
-      for (final chunk in _audioBuffer) {
-        builder.add(chunk);
-      }
-      
-      // Create WAV data with header
-      final wavHeader = _createWavHeader(builder.length, 1, 24000, 16);
-      
-      // Create a new buffer with header first, then audio data
-      final finalBuilder = BytesBuilder();
-      finalBuilder.add(wavHeader);
-      finalBuilder.add(builder.toBytes());
-      final wavData = finalBuilder.toBytes();
-      
-      // Write to temporary file
-      final tempDir = await getTemporaryDirectory();
-      _tempFile = File('${tempDir.path}/deepgram_audio_${DateTime.now().millisecondsSinceEpoch}.wav');
-      await _tempFile!.writeAsBytes(wavData);
-      
-      // Create player
-      _currentPlayer = AudioPlayer();
-      await _currentPlayer!.setVolume(1.0);
-      
-      // Play audio
-      await _currentPlayer!.setFilePath(_tempFile!.path);
-      await _currentPlayer!.play();
-      
-      debugPrint('🎵 DEEPGRAM: Playing audio (${wavData.length} bytes)');
-      
-      // Wait for playback to complete
-      await _currentPlayer!.processingStateStream.firstWhere(
-        (state) => state == ProcessingState.completed, 
-        orElse: () => ProcessingState.idle
-      );
-      
-      debugPrint('🎵 DEEPGRAM: Audio playback completed');
-      
-      // Clean up
-      _audioBuffer.clear();
-      await _currentPlayer!.dispose();
-      _currentPlayer = null;
-      
-      // Delete temp file after a delay
-      Future.delayed(Duration(seconds: 1), () {
-        _tempFile?.delete();
-        _tempFile = null;
-      });
-      
-      _isPlayingAudio = false;
-      
-      // Update state
-      if (_state == DeepgramAgentState.speaking) {
-        _updateState(DeepgramAgentState.idle);
-      }
-    } catch (e) {
-      debugPrint('🔴 DEEPGRAM: Error playing audio: $e');
-      
-      // Clean up on error
-      _audioBuffer.clear();
-      if (_currentPlayer != null) {
-        await _currentPlayer!.dispose();
-        _currentPlayer = null;
-      }
-      _tempFile?.delete();
-      _tempFile = null;
-      _isPlayingAudio = false;
-    }
-  }
-  
-  /// Cancel any ongoing audio playback
-  Future<void> _cancelAudioPlayback() async {
-    _audioBuffer.clear();
-    
-    if (_currentPlayer != null) {
-      try {
-        await _currentPlayer!.stop();
-        await _currentPlayer!.dispose();
-        debugPrint('🎵 DEEPGRAM: Successfully cancelled audio playback');
-      } catch (e) {
-        debugPrint('🔴 DEEPGRAM: Error cancelling audio playback: $e');
-      } finally {
-        _currentPlayer = null;
-      }
-    }
-    
-    // Clean up temp file
-    if (_tempFile != null) {
-      try {
-        await _tempFile!.delete();
-        _tempFile = null;
-      } catch (e) {
-        debugPrint('🔴 DEEPGRAM: Error deleting temp file: $e');
-      }
-    }
-    
-    _isPlayingAudio = false;
-  }
-  
-  // These streaming methods are no longer used
-  // We've simplified to use direct playback
-  
-  // This placeholder method is no longer used
-  
-  /// Create a WAV header for the audio data
-  Uint8List _createWavHeader(int dataLength, int numChannels, int sampleRate, int bitsPerSample) {
-    final byteRate = (sampleRate * numChannels * bitsPerSample) ~/ 8;
-    final blockAlign = (numChannels * bitsPerSample) ~/ 8;
-    
-    final buffer = ByteData(44);
-    
-    // RIFF chunk descriptor
-    buffer.setUint8(0, 'R'.codeUnitAt(0));
-    buffer.setUint8(1, 'I'.codeUnitAt(0));
-    buffer.setUint8(2, 'F'.codeUnitAt(0));
-    buffer.setUint8(3, 'F'.codeUnitAt(0));
-    buffer.setUint32(4, 36 + dataLength, Endian.little);
-    buffer.setUint8(8, 'W'.codeUnitAt(0));
-    buffer.setUint8(9, 'A'.codeUnitAt(0));
-    buffer.setUint8(10, 'V'.codeUnitAt(0));
-    buffer.setUint8(11, 'E'.codeUnitAt(0));
-    
-    // 'fmt ' sub-chunk
-    buffer.setUint8(12, 'f'.codeUnitAt(0));
-    buffer.setUint8(13, 'm'.codeUnitAt(0));
-    buffer.setUint8(14, 't'.codeUnitAt(0));
-    buffer.setUint8(15, ' '.codeUnitAt(0));
-    buffer.setUint32(16, 16, Endian.little); // fmt chunk size
-    buffer.setUint16(20, 1, Endian.little); // PCM format
-    buffer.setUint16(22, numChannels, Endian.little);
-    buffer.setUint32(24, sampleRate, Endian.little);
-    buffer.setUint32(28, byteRate, Endian.little);
-    buffer.setUint16(32, blockAlign, Endian.little);
-    buffer.setUint16(34, bitsPerSample, Endian.little);
-    
-    // 'data' sub-chunk
-    buffer.setUint8(36, 'd'.codeUnitAt(0));
-    buffer.setUint8(37, 'a'.codeUnitAt(0));
-    buffer.setUint8(38, 't'.codeUnitAt(0));
-    buffer.setUint8(39, 'a'.codeUnitAt(0));
-    buffer.setUint32(40, dataLength, Endian.little);
-    
-    return buffer.buffer.asUint8List();
   }
 }
 
