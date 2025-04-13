@@ -1430,10 +1430,12 @@ class DeepgramAgentService {
     }
   }
   
+  // Flag to prevent multiple simultaneous reconnections
+  bool _isReconnecting = false;
+  
   /// Attempts to reconnect if the connection was dropped
   Future<void> _reconnect() async {
     // Don't attempt multiple reconnects at the same time
-    static bool _isReconnecting = false;
     if (_isReconnecting) {
       debugPrint('🔵 DEEPGRAM: Reconnection already in progress, skipping duplicate request');
       return;
