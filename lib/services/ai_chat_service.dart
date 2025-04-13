@@ -1,11 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-import 'package:google_generative_ai/google_generative_ai.dart' as genai;
-import 'package:flutter_gemini/flutter_gemini.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:uuid/uuid.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'dart:convert';
 import '../models/chat_message.dart';
 
@@ -19,117 +15,42 @@ enum AIServiceError {
   unknown
 }
 
-class AIChatService {
-  final genai.GenerativeModel _model;
-  late genai.ChatSession _chat;
-  final int _maxRetries = 2;
+// Mock responses for demo mode
+final List<String> mockResponses = [
+  "I'd recommend using chicken thighs instead of breast for your curry. They have more flavor and stay juicy even when overcooked a bit.",
   
-  AIChatService()
-      : _model = genai.GenerativeModel(
-          model: 'gemini-1.5-flash',
-          apiKey: dotenv.env['GEMINI_API_KEY'] ?? '',
-          safetySettings: [
-            genai.SafetySetting(genai.HarmCategory.dangerousContent, genai.HarmBlockThreshold.medium),
-            genai.SafetySetting(genai.HarmCategory.harassment, genai.HarmBlockThreshold.medium),
-            genai.SafetySetting(genai.HarmCategory.hateSpeech, genai.HarmBlockThreshold.medium),
-            genai.SafetySetting(genai.HarmCategory.sexuallyExplicit, genai.HarmBlockThreshold.medium),
-          ],
-        ) {
-    _initChat();
-  }
+  "For a quick weeknight dinner, try this 15-minute pasta: Boil spaghetti, then toss with olive oil, garlic, red pepper flakes, and parmesan. Add some spinach at the end to wilt it. Simple but delicious!",
+  
+  "The best way to store fresh herbs is to trim the stems, place them in a glass with water (like flowers), cover loosely with a plastic bag, and refrigerate. Change the water every couple of days, and they'll last much longer!",
+  
+  "Yes, you can substitute yogurt for sour cream in most recipes. Greek yogurt works best because of its thicker consistency. Use equal amounts, but expect a slightly tangier flavor.",
+  
+  "For crispier roasted vegetables, make sure to: 1) Pat them dry before seasoning, 2) Use enough oil to coat but not drench, 3) Don't overcrowd the pan, 4) Roast at a high temperature (425-450°F), and 5) Flip halfway through cooking.",
+  
+  "To fix an over-salted soup, try adding a peeled, raw potato chunk and simmer for 15 minutes. The potato will absorb some of the salt. You can also add more unsalted broth or a splash of cream to dilute it.",
+  
+  "For a moist chocolate cake, add a cup of hot coffee to the batter (it enhances the chocolate flavor without adding coffee taste) and use oil instead of butter. Also, don't overbake - when a toothpick comes out with a few moist crumbs, it's done.",
+];
 
-  void _initChat() {
-    _chat = _model.startChat(
-      history: [
-        genai.Content('user', [
-          genai.TextPart('You are CookMate AI, a helpful cooking assistant. Your goal is to provide cooking advice, recipe suggestions, and food-related tips. Please provide concise, practical responses focused on cooking, food preparation, and recipe guidance. Always consider dietary restrictions when they are mentioned. If you don\'t know the answer to a cooking question, say so honestly rather than making up information.')
-        ]),
-        genai.Content('model', [
-          genai.TextPart('Hello! I\'m CookMate AI, your personal cooking assistant. I\'m here to help with recipe ideas, cooking techniques, ingredient substitutions, and any other food-related questions you might have. Feel free to ask about specific cuisines, dietary preferences, or quick meal ideas. How can I assist with your cooking today?')
-        ]),
-      ],
-    );
-  }
+class AIChatService {
+  final _random = DateTime.now().millisecondsSinceEpoch; // For deterministic responses
+  int _responseIndex = 0;
+  
+  AIChatService();
 
-  AIServiceError _parseError(Exception e) {
-    final errorMessage = e.toString().toLowerCase();
-    
-    if (errorMessage.contains('network') || 
-        errorMessage.contains('socket') || 
-        errorMessage.contains('connect')) {
-      return AIServiceError.network;
-    } else if (errorMessage.contains('authentication') || 
-              errorMessage.contains('api key') ||
-              errorMessage.contains('unauthorized')) {
-      return AIServiceError.authentication;
-    } else if (errorMessage.contains('rate limit') || 
-              errorMessage.contains('quota') ||
-              errorMessage.contains('too many requests')) {
-      return AIServiceError.rateLimited;
-    } else if (errorMessage.contains('5') && 
-              errorMessage.contains('error')) {
-      return AIServiceError.serverError;
-    } else if (errorMessage.contains('model') && 
-              errorMessage.contains('unavailable')) {
-      return AIServiceError.modelUnavailable;
-    } else if (errorMessage.contains('safety') || 
-              errorMessage.contains('content') ||
-              errorMessage.contains('filtered')) {
-      return AIServiceError.contentFiltered;
-    }
-    
-    return AIServiceError.unknown;
-  }
-
-  String _getErrorMessage(AIServiceError error) {
-    switch (error) {
-      case AIServiceError.network:
-        return 'Network connection issue. Please check your internet connection and try again.';
-      case AIServiceError.authentication:
-        return 'Authentication error. Please contact support.';
-      case AIServiceError.rateLimited:
-        return 'You\'ve reached the limit of requests. Please try again later.';
-      case AIServiceError.serverError:
-        return 'Server error. Please try again later.';
-      case AIServiceError.modelUnavailable:
-        return 'The AI service is temporarily unavailable. Please try again later.';
-      case AIServiceError.contentFiltered:
-        return 'I cannot respond to this type of content. Please ask about cooking-related topics.';
-      case AIServiceError.unknown:
-      default:
-        return 'An unexpected error occurred. Please try again.';
-    }
-  }
-
+  // In demo mode, we'll return predefined responses
   Future<String> sendMessage(String message, {int retryCount = 0}) async {
-    try {
-      final response = await _chat.sendMessage(
-        genai.Content('user', [genai.TextPart(message)]),
-      );
-
-      final responseText = response.text;
-      return responseText ?? 'Sorry, I couldn\'t generate a response.';
-    } catch (e) {
-      // Retry logic for network and server errors
-      if (retryCount < _maxRetries) {
-        final error = e is Exception ? _parseError(e) : AIServiceError.unknown;
-        
-        if (error == AIServiceError.network || 
-            error == AIServiceError.serverError) {
-          // Wait for a bit before retrying (exponential backoff)
-          await Future.delayed(Duration(milliseconds: 500 * (retryCount + 1)));
-          return sendMessage(message, retryCount: retryCount + 1);
-        }
-      }
-      
-      // If retries exhausted or other error type
-      final error = e is Exception ? _parseError(e) : AIServiceError.unknown;
-      return _getErrorMessage(error);
-    }
+    // Simulate network delay
+    await Future.delayed(const Duration(seconds: 1));
+    
+    // Provide a response based on a cycle of our mock responses
+    _responseIndex = (_responseIndex + 1) % mockResponses.length;
+    return mockResponses[_responseIndex];
   }
   
   void resetChat() {
-    _initChat();
+    // Reset response index
+    _responseIndex = 0;
   }
 }
 
@@ -203,19 +124,12 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
     // Get AI response
     final response = await _aiService.sendMessage(content);
     
-    // Check if response is an error message
-    final isError = response.startsWith('Sorry,') || 
-                   response.contains('error') ||
-                   response.contains('unavailable') ||
-                   response.contains('try again');
-    
     // Replace loading message with actual response
     state = state.where((message) => message.id != loadingMessageId).toList();
     state = [...state, ChatMessage(
       id: _uuid.v4(),
       content: response,
       role: MessageRole.assistant,
-      isError: isError,
     )];
     
     // Save chat history

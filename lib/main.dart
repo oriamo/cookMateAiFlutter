@@ -7,25 +7,43 @@ import 'router/router.dart';
 import 'screens/permissions_screen.dart';
 import 'services/timer_service.dart';
 
+// Global flag for demo mode
+const bool isDemoMode = true;
+
 void main() async {
   // Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Load environment variables from .env file
-  await dotenv.load();
+  try {
+    // Load environment variables from .env file if not in demo mode
+    if (!isDemoMode) {
+      await dotenv.load();
+      
+      // Initialize Gemini with API key from .env
+      final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
+      Gemini.init(apiKey: apiKey);
+    } else {
+      // In demo mode, we'll just provide a placeholder
+      print('Running in DEMO MODE - Using mock data instead of API services');
+    }
 
-  // Initialize Gemini with API key from .env
-  final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
-  Gemini.init(apiKey: apiKey);
+    // Initialize TimerService
+    await TimerService().init();
 
-  // Initialize TimerService
-  await TimerService().init();
-
-  runApp(
-    const ProviderScope(
-      child: CookMateApp(),
-    ),
-  );
+    runApp(
+      const ProviderScope(
+        child: CookMateApp(),
+      ),
+    );
+  } catch (e) {
+    print('Error during initialization: $e');
+    // Default to demo mode if there's an error
+    runApp(
+      const ProviderScope(
+        child: CookMateApp(),
+      ),
+    );
+  }
 }
 
 class CookMateApp extends StatefulWidget {
@@ -37,6 +55,15 @@ class CookMateApp extends StatefulWidget {
 
 class _CookMateAppState extends State<CookMateApp> {
   bool _permissionsGranted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // In demo mode, we'll auto-grant permissions
+    if (isDemoMode) {
+      _permissionsGranted = true;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,12 +94,11 @@ class _CookMateAppState extends State<CookMateApp> {
     }
 
     return MaterialApp.router(
-      title: 'CookMate AI',
+      title: 'CookMate AI' + (isDemoMode ? ' (Demo)' : ''),
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.deepPurple,
           primary: Colors.green,
-          // primary: Colors.deepPurple,
           secondary: Colors.deepOrange,
         ),
         useMaterial3: true,

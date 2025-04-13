@@ -2,11 +2,13 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/ingredient.dart';
+import '../dummy_data/dummy_ingredients.dart';
 import 'package:uuid/uuid.dart';
 
 class IngredientsNotifier extends StateNotifier<List<Ingredient>> {
   static const String _storageKey = 'user_ingredients_data';
   final _uuid = const Uuid();
+  bool _isInitialDataLoaded = false;
 
   IngredientsNotifier() : super([]) {
     _loadIngredients();
@@ -14,6 +16,16 @@ class IngredientsNotifier extends StateNotifier<List<Ingredient>> {
 
   Future<void> _loadIngredients() async {
     try {
+      // Demo mode: load dummy ingredients first if no saved data
+      if (!_isInitialDataLoaded) {
+        state = List<Ingredient>.from(dummyIngredients);
+        _isInitialDataLoaded = true;
+        
+        // Save to SharedPreferences for persistence
+        await _saveIngredients();
+      }
+      
+      // Try to load from SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       final ingredientsJson = prefs.getString(_storageKey);
 
@@ -133,7 +145,6 @@ class IngredientsNotifier extends StateNotifier<List<Ingredient>> {
   void _logDebug(String message) {
     // Only log in debug mode
     assert(() {
-      // ignore: avoid_print
       print('[IngredientsNotifier] $message');
       return true;
     }());

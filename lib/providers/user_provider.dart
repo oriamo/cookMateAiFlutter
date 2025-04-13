@@ -2,15 +2,28 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_profile.dart';
+import '../dummy_data/dummy_user_profile.dart';
 
 class UserProfileNotifier extends StateNotifier<UserProfile> {
   static const String _storageKey = 'user_profile_data';
+  bool _isInitialDataLoaded = false;
+  
   UserProfileNotifier() : super(UserProfile.empty()) {
     _loadUserProfile();
   }
 
   Future<void> _loadUserProfile() async {
     try {
+      // Demo mode: load dummy user if no saved data
+      if (!_isInitialDataLoaded) {
+        state = dummyUserProfile;
+        _isInitialDataLoaded = true;
+        
+        // Save to SharedPreferences for persistence
+        await _saveUserProfile();
+      }
+      
+      // Try to load from SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       final profileJson = prefs.getString(_storageKey);
 
@@ -165,7 +178,6 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
   void _logDebug(String message) {
     // Only log in debug mode
     assert(() {
-      // ignore: avoid_print
       print('[UserProfile] $message');
       return true;
     }());
