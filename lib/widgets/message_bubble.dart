@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/assistant_service.dart';
+import '../services/assistant_service.dart';
 
 class MessageBubble extends StatelessWidget {
   final AssistantMessage message;

@@ -8,7 +8,7 @@ def kotlin_version = "1.8.10"
 
 android {
     namespace = "com.oraimo.us.cook_mate_ai"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 34 // Set explicitly to match device's API level
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -26,7 +26,7 @@ android {
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = 23
-        targetSdk = flutter.targetSdkVersion
+        targetSdk = 34 // Set explicitly to match device's API level
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

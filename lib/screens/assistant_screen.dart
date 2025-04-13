@@ -5,27 +5,12 @@ import 'package:camera/camera.dart';
 import 'package:go_router/go_router.dart';
 import 'package:animate_do/animate_do.dart';
 
-import '../services/assistant_service.dart';
+import '../services/assistant_service.dart'; // For AssistantState and AssistantMessage types
 import '../services/deepgram_agent_provider.dart';
 import '../services/deepgram_agent_types.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/glowing_live_button.dart';
-
-// Provider for the assistant service
-final assistantServiceProvider = Provider<AssistantService>((ref) {
-  // Create and return a new instance of AssistantService
-  final service = AssistantService();
-  
-  // Initialize the service
-  service.initialize();
-  
-  // Dispose of the service when the provider is disposed
-  ref.onDispose(() {
-    service.dispose();
-  });
-  
-  return service;
-});
+import '../services/assistant_provider.dart';
 
 class AssistantScreen extends ConsumerStatefulWidget {
   const AssistantScreen({Key? key}) : super(key: key);
@@ -63,11 +48,11 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
     
-    // Get the assistant service
-    final assistantService = ref.read(assistantServiceProvider);
+    // Get the assistant provider
+    final provider = ref.read(assistantProvider);
     
     // Send the message
-    assistantService.sendTextMessage(text);
+    provider.sendTextMessage(text);
     
     // Clear the input field
     _messageController.clear();
@@ -85,16 +70,16 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
   
   // Capture image and send with message
   void _captureAndSendImage() async {
-    final assistantService = ref.read(assistantServiceProvider);
+    final provider = ref.read(assistantProvider);
     final text = _messageController.text.trim();
     final promptText = text.isNotEmpty ? text : "What can you tell me about this?";
     
     // Try to capture a frame
-    final frame = await assistantService.videoService.captureFrame();
+    final frame = await provider.assistantService.videoService.captureFrame();
     
     if (frame != null) {
       // Send the image with the message
-      assistantService.sendImageMessage(promptText, frame);
+      provider.sendImageMessage(promptText, frame);
       
       // Clear the input field
       _messageController.clear();
@@ -122,26 +107,26 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
   
   @override
   Widget build(BuildContext context) {
-    // Access the assistant service
-    final assistantService = ref.watch(assistantServiceProvider);
+    // Access the assistant provider
+    final provider = ref.watch(assistantProvider);
     
-    // Listen for new messages and scroll to bottom
-    ref.listen<List<AssistantMessage>>(
-      Provider((ref) => assistantService.messages), 
+    // Listen for changes in the provider
+    ref.listen<AssistantProvider>(
+      assistantProvider, 
       (previous, next) {
-        if (previous == null || previous.length != next.length) {
+        if (previous == null || previous.messages.length != next.messages.length) {
           Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
         }
       }
     );
     
     // Get the current state of the assistant
-    final isListening = assistantService.state == AssistantState.listening;
-    final isProcessing = assistantService.state == AssistantState.processing;
-    final isSpeaking = assistantService.state == AssistantState.speaking;
+    final isListening = provider.state == AssistantState.listening;
+    final isProcessing = provider.state == AssistantState.processing;
+    final isSpeaking = provider.state == AssistantState.speaking;
     
     // Get the camera controller for the camera preview
-    final cameraController = assistantService.cameraController;
+    final cameraController = provider.assistantService.cameraController;
     
     return Scaffold(
       appBar: AppBar(
@@ -159,7 +144,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
             const SizedBox(width: 10),
             const Text('Alloy Assistant'),
             const SizedBox(width: 10),
-            _buildStatusIndicator(assistantService.state),
+            _buildStatusIndicator(provider.state),
           ],
         ),
         backgroundColor: Colors.deepPurple,
@@ -175,7 +160,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
           // Clear history button
           IconButton(
             icon: const Icon(Icons.delete_outline),
-            onPressed: assistantService.clearHistory,
+            onPressed: provider.clearHistory,
             tooltip: 'Clear Chat History',
           ),
         ],
@@ -197,7 +182,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
           
           // Chat messages
           Expanded(
-            child: _buildMessageList(assistantService.messages),
+            child: _buildMessageList(provider.messages),
           ),
           
           // Input area
@@ -205,7 +190,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
             isListening: isListening,
             isProcessing: isProcessing,
             isSpeaking: isSpeaking,
-            assistantService: assistantService,
+            provider: provider,
           ),
           
           // Bottom padding for safe area
@@ -345,7 +330,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
     required bool isListening,
     required bool isProcessing,
     required bool isSpeaking,
-    required AssistantService assistantService,
+    required AssistantProvider provider,
   }) {
     final isInputDisabled = isProcessing || isSpeaking;
     
