@@ -59,16 +59,11 @@ class DeepgramAgentService {
   // Create a TTS engine for audio playback
   final FlutterTts _tts = FlutterTts();
   
-  // Phone call style continuous audio streaming
+  // Direct audio playback approach
   bool _isPlayingAudio = false;
   AudioPlayer? _currentPlayer;
   final List<Uint8List> _audioBuffer = [];
-  bool _isStreamingMode = true;     // Enable phone-call style streaming
-  
-  // For real-time audio handling
-  File? _currentAudioFile;
-  IOSink? _audioFileSink;
-  int _totalBytesWritten = 0;
+  File? _tempFile; // Temporary file for current audio session
   
   // Message tracking for context
   final List<Map<String, dynamic>> _messages = [];
@@ -118,10 +113,8 @@ class DeepgramAgentService {
       // Initialize TTS as fallback
       await _initializeTts();
       
-      // Configure audio settings for streaming mode
-      if (_isStreamingMode) {
-        debugPrint('🎧 DEEPGRAM: Initializing in phone-call style streaming mode');
-      }
+      // Configure audio player
+      debugPrint('🎵 DEEPGRAM: Initializing with direct audio playback');
       
       _isInitialized = true;
       _updateState(DeepgramAgentState.idle);
@@ -257,12 +250,12 @@ class DeepgramAgentService {
                 
               case 'UserStartedSpeaking':
                 // User started speaking
-                debugPrint('🔵 DEEPGRAM: User started speaking event');
+                debugPrint('🎵 DEEPGRAM: User started speaking event');
                 _updateState(DeepgramAgentState.listening);
                 
-                // In streaming mode, close the current audio stream
-                if (_isStreamingMode && _isPlayingAudio) {
-                  debugPrint('🎧 DEEPGRAM: Stopping audio stream because user started speaking');
+                // Cancel any ongoing audio playback
+                if (_isPlayingAudio) {
+                  debugPrint('🎵 DEEPGRAM: Stopping audio playback because user started speaking');
                   _cancelAudioPlayback();
                 }
                 break;
@@ -281,14 +274,10 @@ class DeepgramAgentService {
                 
               case 'AgentStoppedSpeaking':
                 // Agent stopped speaking
-                debugPrint('🔵 DEEPGRAM: Agent stopped speaking event');
+                debugPrint('🎵 DEEPGRAM: Agent stopped speaking event');
                 
-                // Finalize the audio stream
-                if (_isStreamingMode && _isPlayingAudio) {
-                  // Let the audio finish playing naturally
-                  // We'll let the player finish rather than abruptly stopping
-                  debugPrint('🎧 DEEPGRAM: Agent finished speaking, letting audio complete');
-                }
+                // Let audio finish playing naturally
+                debugPrint('🎵 DEEPGRAM: Agent finished speaking, letting audio complete');
                 
                 _updateState(DeepgramAgentState.idle);
                 break;
@@ -313,12 +302,10 @@ class DeepgramAgentService {
                 
               case 'EndOfThought':
                 // Mark the transition from processing to speaking
-                debugPrint('🔵 DEEPGRAM: Received EndOfThought - AI finished processing');
-                // Prepare for new audio stream
-                if (_isStreamingMode) {
-                  // Close existing stream to prepare for a new one
-                  _closeStreamingAudio();
-                }
+                debugPrint('🎵 DEEPGRAM: Received EndOfThought - AI finished processing');
+                // Make sure we're ready for new audio
+                _audioBuffer.clear();
+                _isPlayingAudio = false;
                 break;
                 
               default:
@@ -705,117 +692,127 @@ class DeepgramAgentService {
     debugPrint('🟢 DEEPGRAM: TTS engine initialized');
   }
   
-  /// Initialize streaming audio system
-  Future<void> _initializeStreamingAudio() async {
-    try {
-      // Clean up any existing audio resources
-      await _closeStreamingAudio();
-      
-      // Create a new temp file for streaming
-      final tempDir = await getTemporaryDirectory();
-      _currentAudioFile = File('${tempDir.path}/deepgram_stream_${DateTime.now().millisecondsSinceEpoch}.wav');
-      debugPrint('🎧 DEEPGRAM: Created streaming audio file: ${_currentAudioFile!.path}');
-      
-      // Create the file with header first
-      final placeholderHeader = _createWavHeader(100000000, 1, 24000, 16);
-      await _currentAudioFile!.writeAsBytes(placeholderHeader);
-      _totalBytesWritten = placeholderHeader.length;
-      
-      // Open a sink to append to the file
-      _audioFileSink = _currentAudioFile!.openWrite(mode: FileMode.append);
-      
-      // Create and prepare player for streaming
-      _currentPlayer = AudioPlayer();
-      await _currentPlayer!.setVolume(1.0);
-      
-      // Load the file for playback as soon as it starts filling
-      await _currentPlayer!.setFilePath(_currentAudioFile!.path);
-      debugPrint('🎧 DEEPGRAM: Audio player initialized for streaming');
-      
-      // Start playback - this will play as the file grows
-      await _currentPlayer!.play();
-      _isPlayingAudio = true;
-      
-      debugPrint('🎧 DEEPGRAM: Started streaming audio playback');
-    } catch (e) {
-      debugPrint('🔴 DEEPGRAM: Error initializing streaming audio: $e');
-    }
-  }
+  // These streaming methods have been removed and replaced with direct playback
   
-  /// Close streaming audio resources
-  Future<void> _closeStreamingAudio() async {
-    try {
-      // Close file sink
-      if (_audioFileSink != null) {
-        await _audioFileSink!.flush();
-        await _audioFileSink!.close();
-        _audioFileSink = null;
-      }
-      
-      // Clean up player
-      if (_currentPlayer != null) {
-        await _currentPlayer!.stop();
-        await _currentPlayer!.dispose();
-        _currentPlayer = null;
-      }
-      
-      // Delete temp file
-      if (_currentAudioFile != null && await _currentAudioFile!.exists()) {
-        await _currentAudioFile!.delete();
-        _currentAudioFile = null;
-      }
-      
-      _isPlayingAudio = false;
-      _totalBytesWritten = 0;
-      debugPrint('🎧 DEEPGRAM: Closed streaming audio resources');
-    } catch (e) {
-      debugPrint('🔴 DEEPGRAM: Error closing streaming audio: $e');
-    }
-  }
-  
-  /// Handle audio data from Deepgram - phone call style streaming
+  /// Handle audio data from Deepgram with direct playback
   void _handleAudioData(Uint8List audioData) {
     try {
       // Update state to indicate the agent is speaking
       _updateState(DeepgramAgentState.speaking);
       
-      // Initialize streaming if needed
-      if (!_isPlayingAudio) {
-        _initializeStreamingAudio();
-      }
+      // Store the audio data
+      _audioBuffer.add(audioData);
+      debugPrint('🎵 DEEPGRAM: Received audio packet: ${audioData.length} bytes');
       
-      // Write audio chunk to the streaming file
-      if (_audioFileSink != null) {
-        _audioFileSink!.add(audioData);
-        _totalBytesWritten += audioData.length;
-        debugPrint('🎧 DEEPGRAM: Added ${audioData.length} bytes to audio stream (total: $_totalBytesWritten)');
+      // Only start playback if we're not already playing
+      if (!_isPlayingAudio) {
+        _playAudio();
       }
     } catch (e) {
       debugPrint('🔴 DEEPGRAM: Error handling audio data: $e');
     }
   }
   
+  /// Play audio as soon as we receive it
+  Future<void> _playAudio() async {
+    if (_isPlayingAudio || _audioBuffer.isEmpty) return;
+    
+    _isPlayingAudio = true;
+    
+    try {
+      // Combine all current audio packets
+      final BytesBuilder builder = BytesBuilder();
+      for (final chunk in _audioBuffer) {
+        builder.add(chunk);
+      }
+      
+      // Create WAV data with header
+      final wavHeader = _createWavHeader(builder.length, 1, 24000, 16);
+      builder.insert(0, wavHeader);
+      final wavData = builder.toBytes();
+      
+      // Write to temporary file
+      final tempDir = await getTemporaryDirectory();
+      _tempFile = File('${tempDir.path}/deepgram_audio_${DateTime.now().millisecondsSinceEpoch}.wav');
+      await _tempFile!.writeAsBytes(wavData);
+      
+      // Create player
+      _currentPlayer = AudioPlayer();
+      await _currentPlayer!.setVolume(1.0);
+      
+      // Play audio
+      await _currentPlayer!.setFilePath(_tempFile!.path);
+      await _currentPlayer!.play();
+      
+      debugPrint('🎵 DEEPGRAM: Playing audio (${wavData.length} bytes)');
+      
+      // Wait for playback to complete
+      await _currentPlayer!.processingStateStream.firstWhere(
+        (state) => state == ProcessingState.completed, 
+        orElse: () => ProcessingState.idle
+      );
+      
+      debugPrint('🎵 DEEPGRAM: Audio playback completed');
+      
+      // Clean up
+      _audioBuffer.clear();
+      await _currentPlayer!.dispose();
+      _currentPlayer = null;
+      
+      // Delete temp file after a delay
+      Future.delayed(Duration(seconds: 1), () {
+        _tempFile?.delete();
+        _tempFile = null;
+      });
+      
+      _isPlayingAudio = false;
+      
+      // Update state
+      if (_state == DeepgramAgentState.speaking) {
+        _updateState(DeepgramAgentState.idle);
+      }
+    } catch (e) {
+      debugPrint('🔴 DEEPGRAM: Error playing audio: $e');
+      
+      // Clean up on error
+      _audioBuffer.clear();
+      if (_currentPlayer != null) {
+        await _currentPlayer!.dispose();
+        _currentPlayer = null;
+      }
+      _tempFile?.delete();
+      _tempFile = null;
+      _isPlayingAudio = false;
+    }
+  }
+  
   /// Cancel any ongoing audio playback
   Future<void> _cancelAudioPlayback() async {
-    // In streaming mode, we need to close the whole streaming setup
-    if (_isStreamingMode) {
-      await _closeStreamingAudio();
-      return;
-    }
+    _audioBuffer.clear();
     
-    // Legacy cancellation for non-streaming mode
     if (_currentPlayer != null) {
       try {
         await _currentPlayer!.stop();
         await _currentPlayer!.dispose();
-        debugPrint('🔵 DEEPGRAM: Successfully cancelled audio playback');
+        debugPrint('🎵 DEEPGRAM: Successfully cancelled audio playback');
       } catch (e) {
         debugPrint('🔴 DEEPGRAM: Error cancelling audio playback: $e');
       } finally {
         _currentPlayer = null;
-        _isPlayingAudio = false;
       }
     }
+    
+    // Clean up temp file
+    if (_tempFile != null) {
+      try {
+        await _tempFile!.delete();
+        _tempFile = null;
+      } catch (e) {
+        debugPrint('🔴 DEEPGRAM: Error deleting temp file: $e');
+      }
+    }
+    
+    _isPlayingAudio = false;
   }
   
   // These streaming methods are no longer used
