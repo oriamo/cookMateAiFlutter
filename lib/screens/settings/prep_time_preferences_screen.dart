@@ -83,121 +83,127 @@ class PrepTimePreferencesScreenState
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Preparation Time'),
-        automaticallyImplyLeading: !widget.isOnboarding,
-        backgroundColor: Colors.green,
-        foregroundColor: Colors.white,
-        actions: [
-          if (widget.isOnboarding)
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Colors.white),
-              ),
+    return widget.isInCoordinator
+        ? _buildContent()
+        : Scaffold(
+            appBar: AppBar(
+              title: const Text('Preparation Time'),
+              automaticallyImplyLeading: !widget.isOnboarding,
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+              actions: [
+                if (widget.isOnboarding)
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+              ],
             ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Progress Indicator
-          if (widget.isOnboarding)
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Container(
-                      height: 8,
-                      color: Colors.green,
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      height: 8,
-                      color: Colors.green,
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      height: 8,
-                      color: Colors.green,
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      height: 8,
-                      color: Colors.green,
-                    ),
-                  ),
-                  Expanded(
-                    child: Container(
-                      height: 8,
-                      color: Colors.green,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            body: _buildContent(),
+          );
+  }
 
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'How much time do you want to spend cooking?',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                    ),
+  Widget _buildContent() {
+    return Column(
+      children: [
+        // Progress Indicator - only show when NOT in coordinator
+        if (widget.isOnboarding && !widget.isInCoordinator)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Container(
+                    height: 8,
+                    color: Colors.green,
                   ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'This helps us recommend recipes that fit your schedule.',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey,
-                    ),
+                ),
+                Expanded(
+                  child: Container(
+                    height: 8,
+                    color: Colors.green,
                   ),
-                  const SizedBox(height: 32),
-
-                  // Prep time options
-                  ...buildPrepTimeCards(),
-                ],
-              ),
+                ),
+                Expanded(
+                  child: Container(
+                    height: 8,
+                    color: Colors.green,
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    height: 8,
+                    color: Colors.green,
+                  ),
+                ),
+                Expanded(
+                  child: Container(
+                    height: 8,
+                    color: Colors.green,
+                  ),
+                ),
+              ],
             ),
           ),
 
-          // Continue button
-          if (!widget.isInCoordinator)
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              child: ElevatedButton(
-                onPressed: _savePrepTimePreference,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.green,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                child: Text(
-                  widget.isOnboarding ? 'Continue' : 'Save Preference',
-                  style: const TextStyle(
-                    fontSize: 18,
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'How much time do you want to spend cooking?',
+                  style: TextStyle(
+                    fontSize: 28,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
+                const SizedBox(height: 16),
+                const Text(
+                  'This helps us recommend recipes that fit your schedule.',
+                  style: TextStyle(
+                    fontSize: 16,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Prep time options
+                ...buildPrepTimeCards(),
+              ],
+            ),
+          ),
+        ),
+
+        // Continue button - only show when not in coordinator
+        if (!widget.isInCoordinator)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            child: ElevatedButton(
+              onPressed: _savePrepTimePreference,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                widget.isOnboarding ? 'Continue' : 'Save Preference',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 

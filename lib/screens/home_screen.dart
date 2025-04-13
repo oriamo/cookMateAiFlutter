@@ -20,15 +20,6 @@ final featuredRecipesProvider = Provider<AsyncValue<List<Recipe>>>((ref) {
   });
 });
 
-<<<<<<< HEAD
-// Popular recipes provider - sorts by rating and takes top 6
-final popularRecipesProvider = Provider<List<Recipe>>((ref) {
-  final allRecipes = ref.watch(recipeProvider);
-  // Sort recipes by rating and return top ones
-  final sortedRecipes = List<Recipe>.from(allRecipes)
-    ..sort((a, b) => b.rating.compareTo(a.rating));
-  return sortedRecipes.take(6).toList();
-=======
 final popularRecipesProvider = Provider<AsyncValue<List<Recipe>>>((ref) {
   return ref.watch(recipeProvider).whenData((data) {
     final recipes = (data['recipes'] as List<dynamic>).cast<Recipe>().toList();
@@ -39,7 +30,6 @@ final popularRecipesProvider = Provider<AsyncValue<List<Recipe>>>((ref) {
             ? 6
             : recipes.length); // Take exactly 6 items or all if less than 6
   });
->>>>>>> apitesting
 });
 
 // Categories provider - uses existing category provider
@@ -149,7 +139,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                 ),
                               ),
                             ),
-<<<<<<< HEAD
                             // Removing the Spacer and shopping cart icon to fix overflow
                           ],
                         ),
@@ -195,13 +184,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                   ),
                                 ),
                               ),
-=======
-                            const Spacer(),
-                            IconButton(
-                              icon: const Icon(Icons.notifications_outlined,
-                                  color: Colors.white),
-                              onPressed: () {},
->>>>>>> apitesting
                             ),
                           ],
                         ),
@@ -299,14 +281,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
 
-<<<<<<< HEAD
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: 120,
-              child: categories.isEmpty
-                  ? _buildCategoryShimmers()
-                  : _buildCategories(categories),
-=======
+          // SliverToBoxAdapter(
+          //   child: SizedBox(
+          //     height: 120,
+          //     child: categories.isEmpty
+          //         ? _buildCategoryShimmers()
+          //         : _buildCategories(categories),
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverGrid(
@@ -330,7 +310,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
               ),
->>>>>>> apitesting
             ),
           ),
 
@@ -414,38 +393,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-<<<<<<< HEAD
-            sliver: popularRecipes.isEmpty
-                ? SliverGrid.builder(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 16,
-                      childAspectRatio: 0.75,
-                    ),
-                    itemCount: 4,
-                    itemBuilder: (context, index) {
-                      return const RecipeCardShimmer();
-                    },
-                  )
-                : SliverGrid.builder(
-                    gridDelegate:
-                        const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 16,
-                      childAspectRatio: 0.75,
-                    ),
-                    itemCount: popularRecipes.length,
-                    itemBuilder: (context, index) {
-                      return FadeInUp(
-                        duration: Duration(milliseconds: 300 + (index * 100)),
-                        child: RecipeCard(recipe: popularRecipes[index]),
-                      );
-                    },
-                  ),
-=======
             sliver: popularRecipes.when(
               data: (recipes) => SliverGrid.builder(
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
@@ -480,7 +427,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ),
               ),
             ),
->>>>>>> apitesting
           ),
 
           // AI Assistant banner
@@ -625,8 +571,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       scrollDirection: Axis.horizontal,
       itemCount: 3,
       itemBuilder: (context, index) {
-        return Padding(
-          padding: const EdgeInsets.only(right: 16),
+        return const Padding(
+          padding: EdgeInsets.only(right: 16),
           child: SizedBox(
             width: 220,
             child: RecipeCardShimmer(),

@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../providers/ingredients_provider.dart';
 import '../models/ingredient.dart';
-import 'package:uuid/uuid.dart';
+// import 'package:uuid/uuid.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -320,7 +320,8 @@ class _IngredientsScreenState extends ConsumerState<IngredientsScreen>
                                 final newIngredient = ingredients.firstWhere(
                                   (ingredient) =>
                                       ingredient.name == _nameController.text,
-                                  orElse: () => Ingredient(id: '', name: ''),
+                                  orElse: () =>
+                                      const Ingredient(id: '', name: ''),
                                 );
                                 if (newIngredient.id.isNotEmpty) {
                                   context
