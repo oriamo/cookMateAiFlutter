@@ -68,8 +68,7 @@ class AzureFunctionServiceMock implements AzureFunctionService {
       calories: 0,
     );
   }
-  }
-  
+
   @override
   Future<void> toggleFavorite(String recipeId) async {
     // Mock implementation for demo mode
