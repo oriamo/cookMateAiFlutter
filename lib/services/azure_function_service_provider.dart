@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'azure_function_service.dart';
+import '../models/recipe.dart';
 
 // Provider that creates and returns the AzureFunctionService instance
 final azureFunctionServiceProvider = Provider<AzureFunctionService>((ref) {
@@ -50,11 +51,23 @@ class AzureFunctionServiceMock implements AzureFunctionService {
     // Mock implementation for demo mode
     return [];
   }
-  
   @override
-  Future<dynamic> getMeal(String id) async {
+  Future<Recipe> getMeal(String id) async {
     // Mock implementation for demo mode
-    return {};
+    return Recipe(
+      id: id,
+      title: 'Mock Recipe',
+      ingredients: [],
+      instructions: [],
+      prepTimeMinutes: 20,
+      totalTimeMinutes: 3,
+      description: 'This is a mock recipe for demo purposes.',
+      servings: 1,
+      category: 'Mock Category',
+      difficulty: 'Easy',
+      calories: 0,
+    );
+  }
   }
   
   @override

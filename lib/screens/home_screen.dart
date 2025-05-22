@@ -8,8 +8,6 @@ import '../models/recipe.dart';
 import '../models/category.dart';
 import '../widgets/category_card.dart';
 import '../widgets/recipe_card.dart';
-import '../widgets/shimmers/recipe_card_shimmer.dart';
-import '../widgets/shimmers/category_card_shimmer.dart';
 import '../dummy_data/dummy_recipes.dart';
 import '../dummy_data/dummy_categories.dart';
 
@@ -88,11 +86,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final dummyFeatured = ref.watch(dummyFeaturedRecipesProvider);
     final dummyPopular = ref.watch(dummyPopularRecipesProvider);
     final dummyCategories = ref.watch(dummyCategoriesProvider);
-    
-    // Also watch the original providers as fallback
-    final featuredRecipes = ref.watch(featuredRecipesProvider);
-    final popularRecipes = ref.watch(popularRecipesProvider);
-    final categories = ref.watch(categoriesProvider);
 
     return Scaffold(
       body: CustomScrollView(
@@ -395,20 +388,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           SliverPadding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
             // In demo mode, use dummy data directly
-            sliver: SliverGrid.builder(
-                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 16,
-                  crossAxisSpacing: 16,
-                  childAspectRatio: 0.75,
+            sliver: SliverGrid(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                mainAxisSpacing: 16,
+                crossAxisSpacing: 16,
+                childAspectRatio: 0.75,
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) => FadeInUp(
+                  duration: Duration(milliseconds: 300 + (index * 100)),
+                  child: RecipeCard(recipe: dummyPopular[index]),
                 ),
-                itemCount: dummyPopular.length,
-                itemBuilder: (context, index) {
-                  return FadeInUp(
-                    duration: Duration(milliseconds: 300 + (index * 100)),
-                    child: RecipeCard(recipe: dummyPopular[index]),
-                  );
-                },
+                childCount: dummyPopular.length,
               ),
             ),
           ),
@@ -498,37 +490,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
-  Widget _buildCategories(List<Category> categories) {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      scrollDirection: Axis.horizontal,
-      itemCount: categories.length,
-      itemBuilder: (context, index) {
-        return Padding(
-          padding: const EdgeInsets.only(right: 16),
-          child: FadeInRight(
-            duration: Duration(milliseconds: 300 + (index * 100)),
-            child: CategoryCard(category: categories[index]),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildCategoryShimmers() {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      scrollDirection: Axis.horizontal,
-      itemCount: 5,
-      itemBuilder: (context, index) {
-        return const Padding(
-          padding: EdgeInsets.only(right: 16),
-          child: CategoryCardShimmer(),
-        );
-      },
-    );
-  }
-
   Widget _buildFeaturedRecipes(List<Recipe> recipes) {
     return ListView.builder(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -543,23 +504,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               duration: Duration(milliseconds: 300 + (index * 100)),
               child: RecipeCard(recipe: recipes[index]),
             ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildRecipeShimmers() {
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      scrollDirection: Axis.horizontal,
-      itemCount: 3,
-      itemBuilder: (context, index) {
-        return const Padding(
-          padding: EdgeInsets.only(right: 16),
-          child: SizedBox(
-            width: 220,
-            child: RecipeCardShimmer(),
           ),
         );
       },
