@@ -67,6 +67,9 @@ class DeepgramAgentProvider extends ChangeNotifier {
   bool _disableInterruptionsEnabled = false;
   double _noiseTolerance = 25.0; // Default to slightly higher than service default
   
+  // Audio output mode state
+  bool _isSpeakerphoneEnabled = true;
+
   // Getters
   bool get isInitializing => _isInitializing;
   bool get isInitialized => _isInitialized;
@@ -77,6 +80,7 @@ class DeepgramAgentProvider extends ChangeNotifier {
   bool get continuousListeningEnabled => _continuousListeningEnabled;
   bool get disableInterruptionsEnabled => _disableInterruptionsEnabled;
   double get noiseTolerance => _noiseTolerance;
+  bool get isSpeakerphoneEnabled => _isSpeakerphoneEnabled;
   
   // Initialize the Deepgram Agent service
   Future<void> _initialize() async {
@@ -376,6 +380,20 @@ class DeepgramAgentProvider extends ChangeNotifier {
     _addSystemMessage('Noise tolerance set to ${tolerance.toStringAsFixed(1)}. Higher values ignore more background noise.');
     
     notifyListeners();
+  }
+  
+  // Toggle speakerphone on/off
+  Future<void> toggleSpeakerphone() async {
+    final newValue = !_isSpeakerphoneEnabled;
+    try {
+      final success = await _deepgramAgentService.setSpeakerphoneEnabled(newValue);
+      if (success) {
+        _isSpeakerphoneEnabled = newValue;
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint('Error toggling speakerphone: $e');
+    }
   }
   
   // Clear chat history

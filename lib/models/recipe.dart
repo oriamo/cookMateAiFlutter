@@ -1,5 +1,6 @@
 import 'package:uuid/uuid.dart';
 import 'dart:math';
+import 'instruction.dart';
 
 class Recipe {
   final String id;
@@ -7,7 +8,7 @@ class Recipe {
   final String description;
   final String? imageUrl;
   final List<Map<String, dynamic>> ingredients;
-  final List<String> instructions;
+  final List<InstructionStep> instructions;
   final int totalTimeMinutes;
   final String category;
   final double rating;
@@ -44,7 +45,7 @@ class Recipe {
     String? description,
     String? imageUrl,
     List<Map<String, dynamic>>? ingredients,
-    List<String>? instructions,
+    List<InstructionStep>? instructions,
     int? totalTimeMinutes,
     String? category,
     double? rating,
@@ -154,7 +155,7 @@ class Recipe {
                 .toList() ??
             [],
         instructions: (json['instructions'] as List<dynamic>?)
-                ?.map((i) => i.toString())
+                ?.map((i) => InstructionStep.fromJson(Map<String, dynamic>.from(i)))
                 .toList() ??
             [],
         totalTimeMinutes:
@@ -196,7 +197,9 @@ class Recipe {
       'description': description,
       'imageUrl': imageUrl,
       'ingredients': ingredients,
-      'instructions': instructions,
+      'instructions': instructions
+          .map((step) => step.toJson())
+          .toList(),
       'totalTimeMinutes': totalTimeMinutes,
       'category': category,
       'rating': rating,

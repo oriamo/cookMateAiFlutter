@@ -60,15 +60,15 @@ class CategoryCard extends StatelessWidget {
               ),
             ),
 
-            // Gradient overlay
+            // Dark gradient tint for readability
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                   colors: [
-                    Colors.green.shade400.withOpacity(0.8),
-                    Colors.green.shade700.withOpacity(0.9),
+                    Colors.transparent,
+                    Colors.black.withOpacity(0.6),
                   ],
                 ),
               ),

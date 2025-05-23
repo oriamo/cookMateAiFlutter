@@ -1,3 +1,4 @@
+import '../models/instruction.dart';
 import '../models/recipe.dart';
 
 final List<Recipe> dummyRecipes = [
@@ -17,12 +18,26 @@ final List<Recipe> dummyRecipes = [
       {'name': 'Fresh parsley', 'amount': '2', 'unit': 'tbsp, chopped'},
     ],
     instructions: [
-      'Cook pasta according to package directions until al dente. Reserve 1/2 cup pasta water before draining.',
-      'While pasta cooks, melt butter in a large skillet over medium heat. Add minced garlic and sauté for 1-2 minutes until fragrant.',
-      'Reduce heat to medium-low and add heavy cream. Simmer for 3-4 minutes until it starts to thicken slightly.',
-      'Stir in the grated parmesan cheese until melted and smooth. Season with salt and pepper.',
-      'Add the drained pasta to the sauce and toss to coat. If needed, add reserved pasta water a little at a time to reach desired consistency.',
-      'Garnish with chopped parsley and additional parmesan if desired. Serve immediately.'
+      InstructionStep(
+        stepNumber: 1,
+        instruction: 'Gather all ingredients.',
+        imageUrl: 'https://www.allrecipes.com/thmb/zZ7P5hHwPTNfYpYgo9AtYE2pp3A=/750x0/filters:no_upscale():max_bytes(150000):strip_icc():format(webp)/AR-269500-creamy-garlic-pasta-Step-01-a57244d2b85a44bb95bf39bf1e70d51f.jpg',
+      ),
+      InstructionStep(
+        stepNumber: 2,
+        instruction: 'Heat olive oil in a medium pan over medium heat. Add garlic and stir until fragrant, 1 to 2 minutes. Add butter and stir constantly until melted.',
+        imageUrl: 'https://www.allrecipes.com/thmb/4OmdNe6dpIMDCJT_r7iFnjSgYXg=/750x0/filters:no_upscale():max_bytes(150000):strip_icc():format(webp)/AR-269500-creamy-garlic-pasta-Step-03-377d445d11bb4945b11c8bddd4431136.jpg',
+      ),
+      InstructionStep(
+        stepNumber: 3,
+        instruction: 'Pour in 3 cups chicken broth; add pepper and salt. Bring to a boil. Add spaghetti and cook, stirring occasionally, until tender yet firm to the bite, about 12 minutes. Add more chicken broth if pasta starts to stick to the pan.',
+        imageUrl: 'https://www.allrecipes.com/thmb/zMEjrAcqVjsZ75XGsUju1epNYP0=/750x0/filters:no_upscale():max_bytes(150000):strip_icc():format(webp)/AR-269500-creamy-garlic-pasta-Step-05-3a483b939f5f45c6bf67a1d1874f88e4.jpg',
+      ),
+      InstructionStep(
+        stepNumber: 4,
+        instruction: 'Stir in grated parmesan cheese until melted and smooth.',
+        imageUrl: 'https://www.allrecipes.com/thmb/ewwxtD_O9SxwFrbBVa7COYZsVME=/750x0/filters:no_upscale():max_bytes(150000):strip_icc():format(webp)/AR-269500-creamy-garlic-pasta-Beauties-4x3-f404628aad2a435a9985b2cf764209b5.jpg',
+      ),
     ],
     totalTimeMinutes: 25,
     category: 'Dinner',
@@ -51,13 +66,41 @@ final List<Recipe> dummyRecipes = [
       {'name': 'Black pepper', 'amount': '1/2', 'unit': 'tsp'},
     ],
     instructions: [
-      'Preheat oven to 425°F (220°C) and line a baking sheet with foil or parchment paper.',
-      'Pat chicken thighs dry with paper towels. This helps achieve crispy skin.',
-      'In a small bowl, mix together paprika, garlic powder, onion powder, thyme, salt, and pepper.',
-      'Brush chicken thighs with olive oil, then generously rub with the spice mixture on both sides.',
-      'Place chicken thighs skin-side up on the prepared baking sheet, leaving space between each piece.',
-      'Bake for 35-40 minutes, or until skin is crispy and golden, and internal temperature reaches 165°F (74°C).',
-      'Let rest for 5 minutes before serving to allow juices to redistribute.'
+      InstructionStep(
+        stepNumber: 1,
+        instruction: 'Preheat oven to 425°F (220°C) and line a baking sheet with foil or parchment paper.',
+        imageUrl: 'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 2,
+        instruction: 'Pat chicken thighs dry with paper towels. This helps achieve crispy skin.',
+        imageUrl: 'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 3,
+        instruction: 'In a small bowl, mix together paprika, garlic powder, onion powder, thyme, salt, and pepper.',
+        imageUrl: 'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 4,
+        instruction: 'Brush chicken thighs with olive oil, then generously rub with the spice mixture on both sides.',
+        imageUrl: 'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 5,
+        instruction: 'Place chicken thighs skin-side up on the prepared baking sheet, leaving space between each piece.',
+        imageUrl: 'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 6,
+        instruction: 'Bake for 35-40 minutes, or until skin is crispy and golden, and internal temperature reaches 165°F (74°C).',
+        imageUrl: 'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 7,
+        instruction: 'Let rest for 5 minutes before serving to allow juices to redistribute.',
+        imageUrl: 'https://images.unsplash.com/photo-1598515214211-89d3c73ae83b?q=80&w=800',
+      ),
     ],
     totalTimeMinutes: 45,
     category: 'Dinner',
@@ -88,11 +131,31 @@ final List<Recipe> dummyRecipes = [
       {'name': 'Salt and pepper', 'amount': '', 'unit': 'to taste'},
     ],
     instructions: [
-      'Combine cucumber, tomatoes, red onion, bell pepper, and olives in a large bowl.',
-      'In a small bowl, whisk together olive oil, red wine vinegar, oregano, salt, and pepper to make the dressing.',
-      'Pour the dressing over the vegetables and toss gently to combine.',
-      'Place the cubed feta cheese on top of the salad.',
-      'Sprinkle with a little more oregano and serve immediately for maximum freshness.'
+      InstructionStep(
+        stepNumber: 1,
+        instruction: 'Combine cucumber, tomatoes, red onion, bell pepper, and olives in a large bowl.',
+        imageUrl: 'https://images.unsplash.com/photo-1551248429-40975aa4de74?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 2,
+        instruction: 'In a small bowl, whisk together olive oil, red wine vinegar, oregano, salt, and pepper to make the dressing.',
+        imageUrl: 'https://images.unsplash.com/photo-1551248429-40975aa4de74?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 3,
+        instruction: 'Pour the dressing over the vegetables and toss gently to combine.',
+        imageUrl: 'https://images.unsplash.com/photo-1551248429-40975aa4de74?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 4,
+        instruction: 'Place the cubed feta cheese on top of the salad.',
+        imageUrl: 'https://images.unsplash.com/photo-1551248429-40975aa4de74?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 5,
+        instruction: 'Sprinkle with a little more oregano and serve immediately for maximum freshness.',
+        imageUrl: 'https://images.unsplash.com/photo-1551248429-40975aa4de74?q=80&w=800',
+      ),
     ],
     totalTimeMinutes: 15,
     category: 'Side Dish',
@@ -124,15 +187,51 @@ final List<Recipe> dummyRecipes = [
       {'name': 'Maple syrup', 'amount': '', 'unit': 'for serving'},
     ],
     instructions: [
-      'In a large bowl, whisk together flour, baking powder, baking soda, salt, and sugar.',
-      'In another bowl, whisk eggs, then add buttermilk, vanilla, and melted butter.',
-      'Pour the wet ingredients into the dry ingredients and stir just until combined. Do not overmix - some lumps are fine.',
-      'Gently fold in 1 cup of the blueberries.',
-      'Heat a griddle or skillet over medium heat and lightly grease.',
-      'Scoop about 1/4 cup of batter for each pancake onto the hot griddle.',
-      'Sprinkle a few of the remaining blueberries on top of each pancake.',
-      'Cook until bubbles form on the surface, then flip and cook until golden brown, about 2-3 minutes per side.',
-      'Serve warm with maple syrup.'
+      InstructionStep(
+        stepNumber: 1,
+        instruction: 'In a large bowl, whisk together flour, baking powder, baking soda, salt, and sugar.',
+        imageUrl: 'https://images.unsplash.com/photo-1558401552-2e247774bd18?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 2,
+        instruction: 'In another bowl, whisk eggs, then add buttermilk, vanilla, and melted butter.',
+        imageUrl: 'https://images.unsplash.com/photo-1558401552-2e247774bd18?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 3,
+        instruction: 'Pour the wet ingredients into the dry ingredients and stir just until combined. Do not overmix - some lumps are fine.',
+        imageUrl: 'https://images.unsplash.com/photo-1558401552-2e247774bd18?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 4,
+        instruction: 'Gently fold in 1 cup of the blueberries.',
+        imageUrl: 'https://images.unsplash.com/photo-1558401552-2e247774bd18?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 5,
+        instruction: 'Heat a griddle or skillet over medium heat and lightly grease.',
+        imageUrl: 'https://images.unsplash.com/photo-1558401552-2e247774bd18?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 6,
+        instruction: 'Scoop about 1/4 cup of batter for each pancake onto the hot griddle.',
+        imageUrl: 'https://images.unsplash.com/photo-1558401552-2e247774bd18?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 7,
+        instruction: 'Sprinkle a few of the remaining blueberries on top of each pancake.',
+        imageUrl: 'https://images.unsplash.com/photo-1558401552-2e247774bd18?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 8,
+        instruction: 'Cook until bubbles form on the surface, then flip and cook until golden brown, about 2-3 minutes per side.',
+        imageUrl: 'https://images.unsplash.com/photo-1558401552-2e247774bd18?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 9,
+        instruction: 'Serve warm with maple syrup.',
+        imageUrl: 'https://images.unsplash.com/photo-1558401552-2e247774bd18?q=80&w=800',
+      ),
     ],
     totalTimeMinutes: 30,
     category: 'Breakfast',
@@ -166,14 +265,46 @@ final List<Recipe> dummyRecipes = [
       {'name': 'Hot sauce', 'amount': '', 'unit': 'to taste'},
     ],
     instructions: [
-      'Heat olive oil in a large skillet over medium heat. Add onion and sauté for 5 minutes until softened.',
-      'Add garlic and cook for 1 minute until fragrant.',
-      'Stir in black beans, cumin, and chili powder. Mash about half the beans with a fork or potato masher.',
-      'Cook for 5-7 minutes, stirring occasionally, until mixture is heated through and flavors combine.',
-      'Meanwhile, prepare lime crema by mixing sour cream with lime juice and zest.',
-      'Warm tortillas according to package directions.',
-      'Assemble tacos: add a spoonful of bean mixture to each tortilla, top with shredded cabbage, avocado slices, and cilantro.',
-      'Drizzle with lime crema and hot sauce if desired.'
+      InstructionStep(
+        stepNumber: 1,
+        instruction: 'Heat olive oil in a large skillet over medium heat. Add onion and sauté for 5 minutes until softened.',
+        imageUrl: 'https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 2,
+        instruction: 'Add garlic and cook for 1 minute until fragrant.',
+        imageUrl: 'https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 3,
+        instruction: 'Stir in black beans, cumin, and chili powder. Mash about half the beans with a fork or potato masher.',
+        imageUrl: 'https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 4,
+        instruction: 'Cook for 5-7 minutes, stirring occasionally, until mixture is heated through and flavors combine.',
+        imageUrl: 'https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 5,
+        instruction: 'Meanwhile, prepare lime crema by mixing sour cream with lime juice and zest.',
+        imageUrl: 'https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 6,
+        instruction: 'Warm tortillas according to package directions.',
+        imageUrl: 'https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 7,
+        instruction: 'Assemble tacos: add a spoonful of bean mixture to each tortilla, top with shredded cabbage, avocado slices, and cilantro.',
+        imageUrl: 'https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 8,
+        instruction: 'Drizzle with lime crema and hot sauce if desired.',
+        imageUrl: 'https://images.unsplash.com/photo-1551504734-5ee1c4a1479b?q=80&w=800',
+      ),
     ],
     totalTimeMinutes: 25,
     category: 'Dinner',
@@ -202,13 +333,41 @@ final List<Recipe> dummyRecipes = [
       {'name': 'Lemon slices', 'amount': '1', 'unit': 'for garnish'},
     ],
     instructions: [
-      'Preheat oven to 400°F (200°C). Line a baking sheet with parchment paper or aluminum foil.',
-      'In a small bowl, mix melted butter, minced garlic, lemon juice, lemon zest, and dill.',
-      'Place salmon fillets on the prepared baking sheet, skin side down. Season with salt and pepper.',
-      'Pour the lemon garlic butter mixture evenly over the salmon fillets.',
-      'Bake for 12-15 minutes, or until salmon is cooked through and flakes easily with a fork.',
-      'Garnish with lemon slices and additional fresh dill if desired.',
-      'Serve immediately with your favorite sides.'
+      InstructionStep(
+        stepNumber: 1,
+        instruction: 'Preheat oven to 400°F (200°C). Line a baking sheet with parchment paper or aluminum foil.',
+        imageUrl: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 2,
+        instruction: 'In a small bowl, mix melted butter, minced garlic, lemon juice, lemon zest, and dill.',
+        imageUrl: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 3,
+        instruction: 'Place salmon fillets on the prepared baking sheet, skin side down. Season with salt and pepper.',
+        imageUrl: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 4,
+        instruction: 'Pour the lemon garlic butter mixture evenly over the salmon fillets.',
+        imageUrl: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 5,
+        instruction: 'Bake for 12-15 minutes, or until salmon is cooked through and flakes easily with a fork.',
+        imageUrl: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 6,
+        instruction: 'Garnish with lemon slices and additional fresh dill if desired.',
+        imageUrl: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 7,
+        instruction: 'Serve immediately with your favorite sides.',
+        imageUrl: 'https://images.unsplash.com/photo-1519708227418-c8fd9a32b7a2?q=80&w=800',
+      ),
     ],
     totalTimeMinutes: 25,
     category: 'Dinner',
@@ -239,15 +398,51 @@ final List<Recipe> dummyRecipes = [
       {'name': 'Walnuts', 'amount': '1', 'unit': 'cup, chopped (optional)'},
     ],
     instructions: [
-      'Preheat oven to 375°F (190°C). Line baking sheets with parchment paper.',
-      'In a small bowl, whisk together flour, baking soda, and salt.',
-      'In a large bowl, beat softened butter, brown sugar, and granulated sugar until creamy.',
-      'Add vanilla and eggs to the butter mixture, one at a time, beating well after each addition.',
-      'Gradually add flour mixture to wet ingredients and mix until just combined.',
-      'Stir in chocolate chips and nuts (if using).',
-      'Drop tablespoon-sized balls of dough onto the prepared baking sheets, spacing them about 2 inches apart.',
-      'Bake for 9-11 minutes or until golden brown around the edges but still soft in the center.',
-      'Let cool on baking sheets for 2 minutes, then transfer to wire racks to cool completely.'
+      InstructionStep(
+        stepNumber: 1,
+        instruction: 'Preheat oven to 375°F (190°C). Line baking sheets with parchment paper.',
+        imageUrl: 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 2,
+        instruction: 'In a small bowl, whisk together flour, baking soda, and salt.',
+        imageUrl: 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 3,
+        instruction: 'In a large bowl, beat softened butter, brown sugar, and granulated sugar until creamy.',
+        imageUrl: 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 4,
+        instruction: 'Add vanilla and eggs to the butter mixture, one at a time, beating well after each addition.',
+        imageUrl: 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 5,
+        instruction: 'Gradually add flour mixture to wet ingredients and mix until just combined.',
+        imageUrl: 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 6,
+        instruction: 'Stir in chocolate chips and nuts (if using).',
+        imageUrl: 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 7,
+        instruction: 'Drop tablespoon-sized balls of dough onto the prepared baking sheets, spacing them about 2 inches apart.',
+        imageUrl: 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 8,
+        instruction: 'Bake for 9-11 minutes or until golden brown around the edges but still soft in the center.',
+        imageUrl: 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 9,
+        instruction: 'Let cool on baking sheets for 2 minutes, then transfer to wire racks to cool completely.',
+        imageUrl: 'https://images.unsplash.com/photo-1499636136210-6f4ee915583e?q=80&w=800',
+      ),
     ],
     totalTimeMinutes: 30,
     category: 'Desserts',
@@ -284,14 +479,46 @@ final List<Recipe> dummyRecipes = [
       {'name': 'Frozen peas', 'amount': '1', 'unit': 'cup'},
     ],
     instructions: [
-      'Toss beef cubes with flour, salt, and pepper until evenly coated.',
-      'Heat olive oil in a large Dutch oven over medium-high heat. Working in batches, brown the beef on all sides. Transfer to a plate.',
-      'In the same pot, add onions and cook until softened, about 3 minutes. Add garlic and cook for 30 seconds more.',
-      'Add carrots and celery, cook for 5 minutes, stirring occasionally.',
-      'Return beef to the pot. Add potatoes, beef broth, tomato paste, Worcestershire sauce, bay leaves, thyme, and rosemary.',
-      'Bring to a boil, then reduce heat to low. Cover and simmer for 2-2.5 hours, until meat is very tender.',
-      'Add frozen peas during the last 5 minutes of cooking.',
-      'Remove bay leaves, adjust seasoning to taste, and serve hot.'
+      InstructionStep(
+        stepNumber: 1,
+        instruction: 'Toss beef cubes with flour, salt, and pepper until evenly coated.',
+        imageUrl: 'https://images.unsplash.com/photo-1608500218890-c4cea7eaec0d?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 2,
+        instruction: 'Heat olive oil in a large Dutch oven over medium-high heat. Working in batches, brown the beef on all sides. Transfer to a plate.',
+        imageUrl: 'https://images.unsplash.com/photo-1608500218890-c4cea7eaec0d?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 3,
+        instruction: 'In the same pot, add onions and cook until softened, about 3 minutes. Add garlic and cook for 30 seconds more.',
+        imageUrl: 'https://images.unsplash.com/photo-1608500218890-c4cea7eaec0d?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 4,
+        instruction: 'Add carrots and celery, cook for 5 minutes, stirring occasionally.',
+        imageUrl: 'https://images.unsplash.com/photo-1608500218890-c4cea7eaec0d?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 5,
+        instruction: 'Return beef to the pot. Add potatoes, beef broth, tomato paste, Worcestershire sauce, bay leaves, thyme, and rosemary.',
+        imageUrl: 'https://images.unsplash.com/photo-1608500218890-c4cea7eaec0d?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 6,
+        instruction: 'Bring to a boil, then reduce heat to low. Cover and simmer for 2-2.5 hours, until meat is very tender.',
+        imageUrl: 'https://images.unsplash.com/photo-1608500218890-c4cea7eaec0d?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 7,
+        instruction: 'Add frozen peas during the last 5 minutes of cooking.',
+        imageUrl: 'https://images.unsplash.com/photo-1608500218890-c4cea7eaec0d?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 8,
+        instruction: 'Remove bay leaves, adjust seasoning to taste, and serve hot.',
+        imageUrl: 'https://images.unsplash.com/photo-1608500218890-c4cea7eaec0d?q=80&w=800',
+      ),
     ],
     totalTimeMinutes: 180,
     category: 'Dinner',
@@ -320,11 +547,31 @@ final List<Recipe> dummyRecipes = [
       {'name': 'Black pepper', 'amount': '1/8', 'unit': 'tsp'},
     ],
     instructions: [
-      'Combine diced mango, bell pepper, red onion, and jalapeño in a medium bowl.',
-      'Add chopped cilantro, lime juice, salt, and pepper.',
-      'Gently toss to combine all ingredients.',
-      'For best flavor, refrigerate for at least 1 hour before serving to allow flavors to meld.',
-      'Serve with tortilla chips or as a topping for grilled fish or tacos.'
+      InstructionStep(
+        stepNumber: 1,
+        instruction: 'Combine diced mango, bell pepper, red onion, and jalapeño in a medium bowl.',
+        imageUrl: 'https://images.unsplash.com/photo-1600213903598-25be92abde40?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 2,
+        instruction: 'Add chopped cilantro, lime juice, salt, and pepper.',
+        imageUrl: 'https://images.unsplash.com/photo-1600213903598-25be92abde40?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 3,
+        instruction: 'Gently toss to combine all ingredients.',
+        imageUrl: 'https://images.unsplash.com/photo-1600213903598-25be92abde40?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 4,
+        instruction: 'For best flavor, refrigerate for at least 1 hour before serving to allow flavors to meld.',
+        imageUrl: 'https://images.unsplash.com/photo-1600213903598-25be92abde40?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 5,
+        instruction: 'Serve with tortilla chips or as a topping for grilled fish or tacos.',
+        imageUrl: 'https://images.unsplash.com/photo-1600213903598-25be92abde40?q=80&w=800',
+      ),
     ],
     totalTimeMinutes: 15,
     category: 'Condiment',
@@ -357,15 +604,51 @@ final List<Recipe> dummyRecipes = [
       {'name': 'Cornmeal', 'amount': '2', 'unit': 'tbsp (for dusting)'},
     ],
     instructions: [
-      'Preheat oven to 475°F (245°C). If using a pizza stone, place it in the oven while preheating.',
-      'Roll out pizza dough on a floured surface to your desired thickness.',
-      'Sprinkle a pizza peel or inverted baking sheet with cornmeal and transfer dough onto it.',
-      'Spread pizza sauce evenly over dough, leaving a small border for the crust.',
-      'Sprinkle half of the cheese over the sauce.',
-      'Arrange vegetables on top and sprinkle with remaining cheese and oregano.',
-      'Drizzle with olive oil and carefully transfer to the preheated oven or pizza stone.',
-      'Bake for 12-15 minutes until crust is golden and cheese is bubbly.',
-      'Top with fresh basil leaves before serving.'
+      InstructionStep(
+        stepNumber: 1,
+        instruction: 'Preheat oven to 475°F (245°C). If using a pizza stone, place it in the oven while preheating.',
+        imageUrl: 'https://images.unsplash.com/photo-1604917877934-07d8d248d396?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 2,
+        instruction: 'Roll out pizza dough on a floured surface to your desired thickness.',
+        imageUrl: 'https://images.unsplash.com/photo-1604917877934-07d8d248d396?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 3,
+        instruction: 'Sprinkle a pizza peel or inverted baking sheet with cornmeal and transfer dough onto it.',
+        imageUrl: 'https://images.unsplash.com/photo-1604917877934-07d8d248d396?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 4,
+        instruction: 'Spread pizza sauce evenly over dough, leaving a small border for the crust.',
+        imageUrl: 'https://images.unsplash.com/photo-1604917877934-07d8d248d396?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 5,
+        instruction: 'Sprinkle half of the cheese over the sauce.',
+        imageUrl: 'https://images.unsplash.com/photo-1604917877934-07d8d248d396?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 6,
+        instruction: 'Arrange vegetables on top and sprinkle with remaining cheese and oregano.',
+        imageUrl: 'https://images.unsplash.com/photo-1604917877934-07d8d248d396?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 7,
+        instruction: 'Drizzle with olive oil and carefully transfer to the preheated oven or pizza stone.',
+        imageUrl: 'https://images.unsplash.com/photo-1604917877934-07d8d248d396?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 8,
+        instruction: 'Bake for 12-15 minutes until crust is golden and cheese is bubbly.',
+        imageUrl: 'https://images.unsplash.com/photo-1604917877934-07d8d248d396?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 9,
+        instruction: 'Top with fresh basil leaves before serving.',
+        imageUrl: 'https://images.unsplash.com/photo-1604917877934-07d8d248d396?q=80&w=800',
+      ),
     ],
     totalTimeMinutes: 40,
     category: 'Dinner',
@@ -394,11 +677,31 @@ final List<Recipe> dummyRecipes = [
       {'name': 'Ice cubes', 'amount': '4-5', 'unit': '(optional)'},
     ],
     instructions: [
-      'Place all ingredients in a blender in the order listed.',
-      'Blend on high speed until smooth and creamy, about 1 minute.',
-      'If smoothie is too thick, add more milk; if too thin, add more ice or frozen banana.',
-      'Taste and adjust sweetness if needed.',
-      'Pour into a glass and enjoy immediately.'
+      InstructionStep(
+        stepNumber: 1,
+        instruction: 'Place all ingredients in a blender in the order listed.',
+        imageUrl: 'https://images.unsplash.com/photo-1553530666-ba11a90a0875?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 2,
+        instruction: 'Blend on high speed until smooth and creamy, about 1 minute.',
+        imageUrl: 'https://images.unsplash.com/photo-1553530666-ba11a90a0875?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 3,
+        instruction: 'If smoothie is too thick, add more milk; if too thin, add more ice or frozen banana.',
+        imageUrl: 'https://images.unsplash.com/photo-1553530666-ba11a90a0875?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 4,
+        instruction: 'Taste and adjust sweetness if needed.',
+        imageUrl: 'https://images.unsplash.com/photo-1553530666-ba11a90a0875?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 5,
+        instruction: 'Pour into a glass and enjoy immediately.',
+        imageUrl: 'https://images.unsplash.com/photo-1553530666-ba11a90a0875?q=80&w=800',
+      ),
     ],
     totalTimeMinutes: 5,
     category: 'Breakfast',
@@ -428,12 +731,36 @@ final List<Recipe> dummyRecipes = [
       {'name': 'Ground cumin', 'amount': '1/8', 'unit': 'tsp (optional)'},
     ],
     instructions: [
-      'Cut avocados in half, remove pits, and scoop flesh into a medium bowl.',
-      'Mash avocados with a fork, leaving some chunks for texture.',
-      'Add lime juice and mix gently to combine (this prevents browning).',
-      'Stir in red onion, cilantro, jalapeño, garlic, and salt. Add tomato and cumin if using.',
-      'Taste and adjust seasoning as needed.',
-      'Serve immediately with tortilla chips, or place plastic wrap directly on the surface of the guacamole and refrigerate up to 2 hours.'
+      InstructionStep(
+        stepNumber: 1,
+        instruction: 'Cut avocados in half, remove pits, and scoop flesh into a medium bowl.',
+        imageUrl: 'https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 2,
+        instruction: 'Mash avocados with a fork, leaving some chunks for texture.',
+        imageUrl: 'https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 3,
+        instruction: 'Add lime juice and mix gently to combine (this prevents browning).',
+        imageUrl: 'https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 4,
+        instruction: 'Stir in red onion, cilantro, jalapeño, garlic, and salt. Add tomato and cumin if using.',
+        imageUrl: 'https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 5,
+        instruction: 'Taste and adjust seasoning as needed.',
+        imageUrl: 'https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?q=80&w=800',
+      ),
+      InstructionStep(
+        stepNumber: 6,
+        instruction: 'Serve immediately with tortilla chips, or place plastic wrap directly on the surface of the guacamole and refrigerate up to 2 hours.',
+        imageUrl: 'https://images.unsplash.com/photo-1588166524941-3bf61a9c41db?q=80&w=800',
+      ),
     ],
     totalTimeMinutes: 15,
     category: 'Condiment',

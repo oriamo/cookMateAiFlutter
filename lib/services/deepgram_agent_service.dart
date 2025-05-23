@@ -183,7 +183,19 @@ class DeepgramAgentService {
       return false;
     }
   }
-  
+
+  /// Toggle speakerphone output on native side
+  Future<bool> setSpeakerphoneEnabled(bool enabled) async {
+    try {
+      debugPrint('🌓 DEEPGRAM: Invoking native setSpeakerphoneOn: $enabled');
+      final result = await _audioChannel.invokeMethod<bool>('setSpeakerphoneOn', {'enabled': enabled});
+      return result ?? false;
+    } catch (e) {
+      debugPrint('🔴 DEEPGRAM: Error invoking setSpeakerphoneOn: $e');
+      return false;
+    }
+  }
+
   /// Stop native audio streaming
   Future<bool> _stopAudioStream() async {
     if (!_isAudioStreamInitialized) return true;
@@ -614,20 +626,20 @@ class DeepgramAgentService {
             "type": "open_ai"
           },
           "model": "gpt-4o-mini",
-          "instructions": "You are Chef, a helpful cooking assistant that can provide recipes, cooking tips, answer cooking-related questions, set cooking timers, and assist with shopping lists.\n\n" +
+          "instructions": "Your name is Chef , a helpful cooking assistant that can provide recipes, cooking tips, answer cooking-related questions, set cooking timers, and assist with shopping lists.\n\n" +
           "TIMER FUNCTIONALITY:\n" +
           "1. When a user asks you to set a timer, respond with EXACTLY this format: 'alright let me set up a timer for X minutes' where X is the number of minutes.\n" +
-          "2. For recipe steps: Guide users through steps one at a time. If a step requires waiting, ask if they'd like you to set a timer. If they say yes, respond with the exact timer format.\n" +
+          "2. For recipe steps: Guide users through steps one at a time. If a step requires waiting, respond with the exact timer format.\n" +
           "3. Always keep track of what each timer is for and mention it in your response (e.g., 'alright let me set up a timer for 5 minutes for the pasta').\n" +
           "4. Use only whole numbers of minutes for timers (1-180 minutes).\n\n" +
           "RECIPE INSTRUCTIONS:\n" +
           "- When giving cooking instructions, list them step by step.\n" +
           "- Ask for progress updates on the previous step before moving to the next step.\n" +
           "- For steps requiring waiting, ask if the user wants a timer.\n" +
-          "- Be concise but informative in your responses."
+          "- Be concise but informative in your responses. and never add formating to the text.\n" 
         },
         "speak": {
-          "model": "aura-zeus-en"
+          "model": "aura-2-thalia-en"
         }
       }
     };
@@ -1279,7 +1291,6 @@ class DeepgramAgentService {
     packet[7] = sequenceNumber & 0xFF;
     
     // Add some low-level non-zero random noise in the remaining bytes
-    final random = math.Random();
     for (int i = 8; i < packet.length; i += 2) {
       // Low amplitude sine wave pattern (values between -10 and 10)
       final noise = (math.sin(i * 0.1) * 10).toInt();

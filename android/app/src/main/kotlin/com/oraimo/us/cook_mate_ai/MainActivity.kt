@@ -88,6 +88,14 @@ class MainActivity: FlutterActivity() {
                     }
                     result.success(true)
                 }
+                "setSpeakerphoneOn" -> {
+                    val enabled = call.argument<Boolean>("enabled") ?: false
+                    Log.d(TAG, "Native: Setting speakerphone output: $enabled")
+                    // Keep comm mode for full duplex
+                    audioManager?.mode = AudioManager.MODE_IN_COMMUNICATION
+                    audioManager?.isSpeakerphoneOn = enabled
+                    result.success(true)
+                }
                 else -> {
                     Log.w(TAG, "Method not implemented: ${call.method}")
                     result.notImplemented()
@@ -221,12 +229,8 @@ class MainActivity: FlutterActivity() {
                     .build()
             } else {
                 Log.d(TAG, "Using legacy AudioTrack API")
-                // Use STREAM_VOICE_CALL instead of STREAM_MUSIC for communication mode
-                val streamType = if (isSpeakerphoneOn) {
-                    AudioManager.STREAM_VOICE_CALL
-                } else {
-                    AudioManager.STREAM_MUSIC
-                }
+                // Use VOICE_CALL stream for duplex communication; speakerphone determines output
+                val streamType = AudioManager.STREAM_VOICE_CALL
                 
                 AudioTrack(
                     streamType,

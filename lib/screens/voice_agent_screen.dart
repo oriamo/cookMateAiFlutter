@@ -263,6 +263,23 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
               ),
             ],
           ),
+          // Toggle speakerphone/earphone output
+          IconButton(
+            icon: Icon(
+              provider.isSpeakerphoneEnabled
+                  ? Icons.volume_up
+                  : Icons.headset,
+              color: provider.isSpeakerphoneEnabled
+                  ? Colors.green
+                  : Colors.grey,
+            ),
+            tooltip: provider.isSpeakerphoneEnabled
+                ? 'Use Earphones'
+                : 'Use Loudspeaker',
+            onPressed: () {
+              provider.toggleSpeakerphone();
+            },
+          ),
           // Clear chat history
           IconButton(
             icon: const Icon(Icons.delete_outline),
