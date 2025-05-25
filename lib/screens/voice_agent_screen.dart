@@ -10,7 +10,7 @@ import '../widgets/cooking_timer_widget.dart';
 import '../providers/timer_provider.dart';
 import '../services/message_processor.dart';
 import '../services/cooking_session_service.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import '../providers/generated_image_provider.dart';
 
 class VoiceAgentScreen extends ConsumerStatefulWidget {
   const VoiceAgentScreen({Key? key}) : super(key: key);
@@ -28,6 +28,29 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+
+  /// Generate image for cooking instruction using Gemini
+  void _generateImageForInstruction(String instruction) {
+    // Check if this looks like a cooking instruction
+    final cookingKeywords = [
+      'step', 'cook', 'heat', 'add', 'mix', 'stir', 'chop', 'dice', 
+      'slice', 'bake', 'fry', 'boil', 'simmer', 'season', 'serve',
+      'prepare', 'combine', 'blend', 'whisk', 'sauté', 'roast'
+    ];
+    
+    final lowerInstruction = instruction.toLowerCase();
+    final isCookingInstruction = cookingKeywords.any((keyword) => 
+      lowerInstruction.contains(keyword)
+    );
+    
+    if (isCookingInstruction && instruction.length > 10) {
+      final recipeContext = ref.read(recipeContextProvider);
+      ref.read(generatedImageProvider.notifier).generateImageForInstruction(
+        instruction: instruction,
+        recipeContext: recipeContext,
+      );
+    }
   }
 
   @override
@@ -74,6 +97,11 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
           for (final msg in newMsgs) {
             if (msg.type != DeepgramAgentMessageType.agent) continue;
             final content = msg.content.toLowerCase();
+            final originalContent = msg.content;
+            
+            // Generate image for cooking instructions
+            _generateImageForInstruction(originalContent);
+            
             // Jump to a specific step: 'step X'
             // Explicit step number commands
             // Patterns: "step X", "move on to step X", "start with step X" etc.
@@ -368,24 +396,86 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
               return ActiveTimersPanel();
             },
           ),
-          // Current step image (updates on CookingSession changes)
-          if (ref.watch(cookingSessionProvider)?.currentStep != null) ...[
-            Padding(
-              padding:
-                  const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-              child: CachedNetworkImage(
-                imageUrl:
-                    ref.watch(cookingSessionProvider)!.currentStep!.imageUrl,
-                placeholder: (context, url) =>
-                    const Center(child: CircularProgressIndicator()),
-                errorWidget: (context, url, error) =>
-                    const Icon(Icons.broken_image, size: 48),
-                height: 200,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
-            ),
-          ],
+          // Generated cooking instruction image
+          Consumer(
+            builder: (context, ref, child) {
+              final imageState = ref.watch(generatedImageProvider);
+              
+              if (imageState.isLoading) {
+                return Container(
+                  height: 200,
+                  margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(),
+                        SizedBox(height: 12),
+                        Text('Generating cooking image...'),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              
+              if (imageState.imageData != null) {
+                return Container(
+                  height: 200,
+                  margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.1),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.memory(
+                      imageState.imageData!,
+                      height: 200,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                );
+              }
+              
+              if (imageState.error != null) {
+                return Container(
+                  height: 120,
+                  margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline, color: Colors.red, size: 32),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Failed to generate image',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              
+              // No image to show
+              return const SizedBox.shrink();
+            },
+          ),
 
           // Voice visualization (main component)
           Expanded(
