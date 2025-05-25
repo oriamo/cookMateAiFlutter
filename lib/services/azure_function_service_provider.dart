@@ -25,12 +25,13 @@ class AzureFunctionServiceMock implements AzureFunctionService {
   }
 
   @override
-  Future<dynamic> callAzureFunction(String functionName, Map<String, dynamic> body,
+  Future<dynamic> callAzureFunction(
+      String functionName, Map<String, dynamic> body,
       {bool? returnRawResponse}) async {
     // Mock implementation - returns an empty response
     return {};
   }
-  
+
   @override
   Future<Map<String, dynamic>> createMeal({
     required String name,
@@ -45,12 +46,13 @@ class AzureFunctionServiceMock implements AzureFunctionService {
     // Mock implementation for demo mode
     return {'id': 'mock-id-${DateTime.now().millisecondsSinceEpoch}'};
   }
-  
+
   @override
   Future<List<String>> getCategories() async {
     // Mock implementation for demo mode
     return [];
   }
+
   @override
   Future<Recipe> getMeal(String id) async {
     // Mock implementation for demo mode

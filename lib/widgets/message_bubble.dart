@@ -99,14 +99,14 @@ class MessageBubble extends StatelessWidget {
   }
 
   Widget _buildBubble(
-      BuildContext context, {
-        required String message,
-        required bool isInterim,
-        required AlignmentGeometry alignment,
-        required Color color,
-        required Color textColor,
-        required IconData icon,
-      }) {
+    BuildContext context, {
+    required String message,
+    required bool isInterim,
+    required AlignmentGeometry alignment,
+    required Color color,
+    required Color textColor,
+    required IconData icon,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4.0),
       child: Align(
@@ -146,9 +146,9 @@ class MessageBubble extends StatelessWidget {
                       child: isInterim
                           ? _buildInterimText(message, textColor)
                           : Text(
-                        message,
-                        style: TextStyle(color: textColor),
-                      ),
+                              message,
+                              style: TextStyle(color: textColor),
+                            ),
                     ),
                   ],
                 ),
@@ -182,7 +182,7 @@ class MessageBubble extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: List.generate(
           3,
-              (index) => _buildDot(index, color),
+          (index) => _buildDot(index, color),
         ),
       ),
     );

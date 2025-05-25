@@ -18,7 +18,8 @@ class SttService {
   Timer? _listenTimeout;
 
   // Controllers for streams
-  final _resultController = StreamController<SpeechRecognitionResult>.broadcast();
+  final _resultController =
+      StreamController<SpeechRecognitionResult>.broadcast();
   final _errorController = StreamController<SpeechRecognitionError>.broadcast();
   final _statusController = StreamController<String>.broadcast();
 
@@ -50,11 +51,12 @@ class SttService {
 
       // Log available speech recognition engines
       debugPrint('STT_DEBUG: Initializing speech recognition engine');
-      
+
       // Initialize the speech to text engine with detailed logs
       _isInitialized = await _speechToText.initialize(
         onError: (error) {
-          debugPrint('STT_DEBUG: Error from speech recognition: ${error.errorMsg} (${error.permanent})');
+          debugPrint(
+              'STT_DEBUG: Error from speech recognition: ${error.errorMsg} (${error.permanent})');
           _errorController.add(error);
         },
         onStatus: (status) {
@@ -66,14 +68,16 @@ class SttService {
 
       if (_isInitialized) {
         debugPrint('STT_DEBUG: Speech recognition initialized successfully');
-        
+
         // Check if device has speech recognition capability
         final isAvailable = await _speechToText.initialize();
-        debugPrint('STT_DEBUG: Device has speech recognition capability: $isAvailable');
-        
+        debugPrint(
+            'STT_DEBUG: Device has speech recognition capability: $isAvailable');
+
         // Get available locales for debugging
         final locales = await _speechToText.locales();
-        debugPrint('STT_DEBUG: Available locales: ${locales.map((l) => "${l.localeId} (${l.name})").join(", ")}');
+        debugPrint(
+            'STT_DEBUG: Available locales: ${locales.map((l) => "${l.localeId} (${l.name})").join(", ")}');
       } else {
         debugPrint('STT_DEBUG: Failed to initialize speech recognition');
       }
@@ -105,7 +109,8 @@ class SttService {
     bool partialResults = true,
   }) async {
     if (!_isInitialized) {
-      debugPrint('STT_DEBUG: Start listening - not initialized, initializing first');
+      debugPrint(
+          'STT_DEBUG: Start listening - not initialized, initializing first');
       final initialized = await initialize();
       if (!initialized) {
         debugPrint('STT_DEBUG: Initialization failed, cannot start listening');
@@ -122,25 +127,28 @@ class SttService {
     _listenTimeout?.cancel();
 
     try {
-      debugPrint('STT_DEBUG: Starting to listen with params: localeId=$localeId, listenFor=${listenFor.inSeconds}s, pauseFor=${pauseFor.inSeconds}s, onDevice=$onDevice, partialResults=$partialResults');
-      
+      debugPrint(
+          'STT_DEBUG: Starting to listen with params: localeId=$localeId, listenFor=${listenFor.inSeconds}s, pauseFor=${pauseFor.inSeconds}s, onDevice=$onDevice, partialResults=$partialResults');
+
       // Use the default locale if none provided
       final selectedLocale = localeId ?? '';
-      
+
       _isListening = await _speechToText.listen(
         onResult: (result) {
-          debugPrint('STT_DEBUG: Result received - words: "${result.recognizedWords}", final: ${result.finalResult}, confidence: ${result.confidence}');
-          
+          debugPrint(
+              'STT_DEBUG: Result received - words: "${result.recognizedWords}", final: ${result.finalResult}, confidence: ${result.confidence}');
+
           // Only process results that have actual content
           if (result.recognizedWords.isNotEmpty) {
             _resultController.add(result);
           } else {
             debugPrint('STT_DEBUG: Received empty result, ignoring');
           }
-          
+
           // If we got a final result, ensure we stop listening after a timeout
           if (result.finalResult) {
-            debugPrint('STT_DEBUG: Final result received, will stop listening soon');
+            debugPrint(
+                'STT_DEBUG: Final result received, will stop listening soon');
             _setupAutoStop();
           }
         },
@@ -149,18 +157,19 @@ class SttService {
         pauseFor: pauseFor,
         onDevice: onDevice,
         partialResults: partialResults,
-        listenMode: ListenMode.confirmation, // This mode waits for a pause before returning final result
+        listenMode: ListenMode
+            .confirmation, // This mode waits for a pause before returning final result
       );
 
       debugPrint('STT_DEBUG: Listen method returned: $_isListening');
-      
+
       if (_isListening) {
         // Set up a timeout to stop listening if nothing happens
         _setupListenTimeout(listenFor);
       } else {
         debugPrint('STT_DEBUG: Listening failed to start');
       }
-      
+
       return _isListening;
     } catch (e) {
       debugPrint('STT_DEBUG: Exception during startListening: $e');
@@ -172,7 +181,8 @@ class SttService {
   void _setupListenTimeout(Duration duration) {
     _listenTimeout?.cancel();
     _listenTimeout = Timer(duration, () {
-      debugPrint('STT_DEBUG: Listen timeout reached after ${duration.inSeconds}s, stopping');
+      debugPrint(
+          'STT_DEBUG: Listen timeout reached after ${duration.inSeconds}s, stopping');
       stopListening();
     });
   }
@@ -254,7 +264,7 @@ STT_DEBUG: Speech status:
   void dispose() {
     debugPrint('STT_DEBUG: Disposing STT service');
     _listenTimeout?.cancel();
-    
+
     if (_isListening) {
       _speechToText.cancel();
     }

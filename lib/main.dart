@@ -17,15 +17,16 @@ void main() async {
   try {
     // Load environment variables from .env file - needed for AI services
     await dotenv.load();
-    
+
     // Initialize Gemini with API key from .env (needed for AI features)
     final apiKey = dotenv.env['GEMINI_API_KEY'] ?? '';
     if (apiKey.isNotEmpty) {
       Gemini.init(apiKey: apiKey);
     }
-    
+
     if (isDemoMode) {
-      print('Running in PARTIAL DEMO MODE - Using dummy data for UI, real services for AI features');
+      print(
+          'Running in PARTIAL DEMO MODE - Using dummy data for UI, real services for AI features');
     }
 
     // Initialize TimerService

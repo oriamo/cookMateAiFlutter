@@ -3,9 +3,9 @@ import 'package:go_router/go_router.dart';
 
 class AppScaffold extends StatelessWidget {
   final Widget child;
-  
+
   const AppScaffold({
-    super.key, 
+    super.key,
     required this.child,
   });
 
@@ -47,10 +47,10 @@ class AppScaffold extends StatelessWidget {
       ),
     );
   }
-  
+
   int _calculateSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).uri.path;
-    
+
     if (location.startsWith('/')) {
       if (location == '/') return 0;
       if (location.startsWith('/explore')) return 1;
@@ -58,10 +58,10 @@ class AppScaffold extends StatelessWidget {
       if (location.startsWith('/ai-chat')) return 3;
       if (location.startsWith('/profile')) return 4;
     }
-    
+
     return 0;
   }
-  
+
   void _onItemTapped(int index, BuildContext context) {
     switch (index) {
       case 0:

@@ -3,7 +3,7 @@ import 'package:shimmer/shimmer.dart';
 
 class RecipeCardShimmer extends StatelessWidget {
   final bool isHorizontal;
-  
+
   const RecipeCardShimmer({
     super.key,
     this.isHorizontal = false,
@@ -20,11 +20,12 @@ class RecipeCardShimmer extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
         ),
         clipBehavior: Clip.antiAlias,
-        child: isHorizontal ? _buildHorizontalShimmer() : _buildVerticalShimmer(),
+        child:
+            isHorizontal ? _buildHorizontalShimmer() : _buildVerticalShimmer(),
       ),
     );
   }
-  
+
   Widget _buildVerticalShimmer() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -34,7 +35,7 @@ class RecipeCardShimmer extends StatelessWidget {
           height: 140,
           color: Colors.white,
         ),
-        
+
         // Content placeholders
         Padding(
           padding: const EdgeInsets.all(12),
@@ -54,7 +55,7 @@ class RecipeCardShimmer extends StatelessWidget {
                 color: Colors.white,
               ),
               const SizedBox(height: 12),
-              
+
               // Bottom row
               Row(
                 children: [
@@ -82,7 +83,7 @@ class RecipeCardShimmer extends StatelessWidget {
       ],
     );
   }
-  
+
   Widget _buildHorizontalShimmer() {
     return Row(
       children: [
@@ -92,7 +93,7 @@ class RecipeCardShimmer extends StatelessWidget {
           height: 120,
           color: Colors.white,
         ),
-        
+
         // Content placeholders
         Expanded(
           child: Padding(
@@ -114,7 +115,7 @@ class RecipeCardShimmer extends StatelessWidget {
                   color: Colors.white,
                 ),
                 const SizedBox(height: 12),
-                
+
                 // Bottom row
                 Row(
                   children: [

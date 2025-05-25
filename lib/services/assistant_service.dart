@@ -109,8 +109,11 @@ class AssistantService {
       final videoInitialized = await _videoService.initialize();
 
       // Check if all services are initialized
-      _isInitialized = vadInitialized && sttInitialized &&
-          llmInitialized && ttsInitialized && videoInitialized;
+      _isInitialized = vadInitialized &&
+          sttInitialized &&
+          llmInitialized &&
+          ttsInitialized &&
+          videoInitialized;
 
       if (!_isInitialized) {
         _errorController.add('Failed to initialize one or more services');
@@ -125,8 +128,7 @@ class AssistantService {
 
       // Add system message
       _addSystemMessage(
-          'Alloy is ready. You can speak or type to interact with me.'
-      );
+          'Alloy is ready. You can speak or type to interact with me.');
 
       // Change state to idle
       _updateState(AssistantState.idle);
@@ -237,16 +239,17 @@ class AssistantService {
     try {
       // Log status before starting
       _sttService.logSpeechStatus();
-      
+
       // Start STT with more specific parameters
       final sttStarted = await _sttService.startListening(
         partialResults: true,
-        pauseFor: const Duration(seconds: 1), // Shorter pause to be more responsive
+        pauseFor:
+            const Duration(seconds: 1), // Shorter pause to be more responsive
         listenFor: const Duration(seconds: 15), // Reasonable timeout
       );
-      
+
       debugPrint('ASSISTANT_DEBUG: STT start result: $sttStarted');
-      
+
       if (!sttStarted) {
         debugPrint('ASSISTANT_DEBUG: Failed to start STT, will try again');
         // Try once more after a short delay
@@ -282,16 +285,18 @@ class AssistantService {
 
       // Stop STT
       await _sttService.stopListening();
-      
-      debugPrint('ASSISTANT_DEBUG: Current interim message: ${_currentInterimMessage?.content}');
+
+      debugPrint(
+          'ASSISTANT_DEBUG: Current interim message: ${_currentInterimMessage?.content}');
 
       // Finalize current message if it exists and has content
       if (_currentInterimMessage != null) {
         final content = _currentInterimMessage!.content.trim();
-        
+
         if (content.isNotEmpty) {
-          debugPrint('ASSISTANT_DEBUG: Creating final message with content: "$content"');
-          
+          debugPrint(
+              'ASSISTANT_DEBUG: Creating final message with content: "$content"');
+
           final finalMessage = AssistantMessage(
             content: content,
             type: MessageType.user,
@@ -304,11 +309,13 @@ class AssistantService {
           // Process the message
           _processUserMessage(finalMessage);
         } else {
-          debugPrint('ASSISTANT_DEBUG: No content in interim message, not processing');
+          debugPrint(
+              'ASSISTANT_DEBUG: No content in interim message, not processing');
           _updateState(AssistantState.idle);
         }
       } else {
-        debugPrint('ASSISTANT_DEBUG: No interim message exists, nothing to process');
+        debugPrint(
+            'ASSISTANT_DEBUG: No interim message exists, nothing to process');
         _updateState(AssistantState.idle);
       }
 
@@ -324,15 +331,16 @@ class AssistantService {
   void _handleSttResult(SpeechRecognitionResult result) {
     final recognizedWords = result.recognizedWords.trim();
     final confidence = result.confidence;
-    
-    debugPrint('ASSISTANT_DEBUG: STT result received - words: "${recognizedWords}", final: ${result.finalResult}, confidence: $confidence');
+
+    debugPrint(
+        'ASSISTANT_DEBUG: STT result received - words: "${recognizedWords}", final: ${result.finalResult}, confidence: $confidence');
 
     // Skip empty results or very low confidence results
     if (recognizedWords.isEmpty) {
       debugPrint('ASSISTANT_DEBUG: Empty speech result, ignoring');
       return;
     }
-    
+
     if (confidence < 0.1 && result.finalResult) {
       debugPrint('ASSISTANT_DEBUG: Very low confidence final result, ignoring');
       return;
@@ -341,8 +349,9 @@ class AssistantService {
     try {
       // Update interim message
       if (_currentInterimMessage != null) {
-        debugPrint('ASSISTANT_DEBUG: Updating interim message from "${_currentInterimMessage!.content}" to "$recognizedWords"');
-        
+        debugPrint(
+            'ASSISTANT_DEBUG: Updating interim message from "${_currentInterimMessage!.content}" to "$recognizedWords"');
+
         final updatedMessage = AssistantMessage(
           content: recognizedWords,
           type: MessageType.user,
@@ -351,22 +360,24 @@ class AssistantService {
 
         _currentInterimMessage = updatedMessage;
         _messageController.add(updatedMessage);
-        
+
         // Log speech recognition status after updating message
         _sttService.logSpeechStatus();
-        
+
         // If this is the final result, process it immediately
         // This helps in case the VAD speech end event doesn't trigger properly
         if (result.finalResult) {
-          debugPrint('ASSISTANT_DEBUG: Processing final speech result directly from STT');
-          
+          debugPrint(
+              'ASSISTANT_DEBUG: Processing final speech result directly from STT');
+
           // Use a slight delay to avoid race conditions with other events
           Future.delayed(const Duration(milliseconds: 100), () {
             _handleSpeechEnd();
           });
         }
       } else {
-        debugPrint('ASSISTANT_DEBUG: Received STT result but no interim message exists');
+        debugPrint(
+            'ASSISTANT_DEBUG: Received STT result but no interim message exists');
       }
     } catch (e) {
       debugPrint('ASSISTANT_DEBUG: Error in _handleSttResult: $e');
@@ -387,10 +398,12 @@ class AssistantService {
       String response;
       if (needsImage) {
         // Capture a frame if not already provided
-        Uint8List? imageData = message.image ?? await _videoService.captureFrame();
+        Uint8List? imageData =
+            message.image ?? await _videoService.captureFrame();
 
         if (imageData == null || imageData.isEmpty) {
-          response = "I'd like to see what you're referring to, but I'm having trouble accessing the camera.";
+          response =
+              "I'd like to see what you're referring to, but I'm having trouble accessing the camera.";
         } else {
           response = await _llmService.generateMultimodalResponse(
             message.content,
@@ -411,8 +424,7 @@ class AssistantService {
 
       // Add error message
       _addAssistantMessage(
-          'Sorry, I encountered a problem processing your request. Please try again.'
-      );
+          'Sorry, I encountered a problem processing your request. Please try again.');
 
       _updateState(AssistantState.idle);
     }
@@ -480,9 +492,19 @@ class AssistantService {
   /// Check if a message contains keywords related to images
   bool _checkForImageKeywords(String message) {
     final imageKeywords = [
-      'see', 'look', 'image', 'picture', 'photo', 'camera',
-      'show', 'display', 'view', 'screen', 'what is this',
-      'what do you see', 'can you see'
+      'see',
+      'look',
+      'image',
+      'picture',
+      'photo',
+      'camera',
+      'show',
+      'display',
+      'view',
+      'screen',
+      'what is this',
+      'what do you see',
+      'can you see'
     ];
 
     final lowerMessage = message.toLowerCase();

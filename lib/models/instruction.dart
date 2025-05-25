@@ -39,11 +39,14 @@ class InstructionStep {
   /// Create an InstructionStep from JSON, supporting both 'instruction' and 'description' keys
   factory InstructionStep.fromJson(Map<String, dynamic> json) {
     return InstructionStep(
-      instruction: json['instruction'] as String? ?? json['description'] as String? ?? '',
+      instruction: json['instruction'] as String? ??
+          json['description'] as String? ??
+          '',
       imageUrl: json['imageUrl'] as String? ?? '',
       subSteps: (json['subSteps'] as List<dynamic>?)
-          ?.map((step) => SubStep.fromJson(Map<String, dynamic>.from(step)))
-          .toList() ?? [],
+              ?.map((step) => SubStep.fromJson(Map<String, dynamic>.from(step)))
+              .toList() ??
+          [],
     );
   }
 
@@ -52,7 +55,8 @@ class InstructionStep {
     return {
       'description': description,
       'imageUrl': imageUrl,
-      if (subSteps.isNotEmpty) 'subSteps': subSteps.map((step) => step.toJson()).toList(),
+      if (subSteps.isNotEmpty)
+        'subSteps': subSteps.map((step) => step.toJson()).toList(),
     };
   }
 }

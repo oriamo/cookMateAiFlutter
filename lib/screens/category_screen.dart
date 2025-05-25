@@ -6,7 +6,8 @@ import '../widgets/recipe_card.dart';
 import '../widgets/shimmers/recipe_card_shimmer.dart';
 
 // Define a provider to get recipes by category
-final recipesByCategoryProvider = Provider.family<List<Recipe>, String>((ref, categoryId) {
+final recipesByCategoryProvider =
+    Provider.family<List<Recipe>, String>((ref, categoryId) {
   // This would normally fetch from a repository or API
   // For now, we return an empty list
   return [];
@@ -15,9 +16,9 @@ final recipesByCategoryProvider = Provider.family<List<Recipe>, String>((ref, ca
 class CategoryScreen extends ConsumerWidget {
   final String categoryId;
   final String categoryName;
-  
+
   const CategoryScreen({
-    super.key, 
+    super.key,
     required this.categoryId,
     required this.categoryName,
   });
@@ -25,7 +26,7 @@ class CategoryScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final recipes = ref.watch(recipesByCategoryProvider(categoryId));
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Text(categoryName),
@@ -43,8 +44,8 @@ class CategoryScreen extends ConsumerWidget {
                 Text(
                   'Explore $categoryName Recipes',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -57,7 +58,7 @@ class CategoryScreen extends ConsumerWidget {
               ],
             ),
           ),
-          
+
           // Filter chips
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -71,9 +72,9 @@ class CategoryScreen extends ConsumerWidget {
               ],
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Results count
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -85,9 +86,9 @@ class CategoryScreen extends ConsumerWidget {
               ),
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Recipe grid
           Expanded(
             child: recipes.isEmpty
@@ -98,7 +99,7 @@ class CategoryScreen extends ConsumerWidget {
       ),
     );
   }
-  
+
   Widget _buildFilterChip(BuildContext context, String label, bool isSelected) {
     return FilterChip(
       label: Text(label),
@@ -107,8 +108,8 @@ class CategoryScreen extends ConsumerWidget {
       selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
       checkmarkColor: Theme.of(context).colorScheme.primary,
       labelStyle: TextStyle(
-        color: isSelected 
-            ? Theme.of(context).colorScheme.primary 
+        color: isSelected
+            ? Theme.of(context).colorScheme.primary
             : Colors.grey.shade800,
         fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
       ),
@@ -117,7 +118,7 @@ class CategoryScreen extends ConsumerWidget {
       },
     );
   }
-  
+
   Widget _buildRecipeGrid(List<Recipe> recipes) {
     return GridView.builder(
       padding: const EdgeInsets.all(16),
@@ -136,7 +137,7 @@ class CategoryScreen extends ConsumerWidget {
       },
     );
   }
-  
+
   Widget _buildRecipeShimmers() {
     return GridView.builder(
       padding: const EdgeInsets.all(16),

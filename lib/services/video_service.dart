@@ -66,7 +66,7 @@ class VideoService {
         _errorController.add('Failed to get available cameras: $e');
         return false;
       }
-      
+
       if (_cameras.isEmpty) {
         _errorController.add('No cameras available');
         return false;
@@ -74,7 +74,7 @@ class VideoService {
 
       // Select camera based on preferred direction
       _currentCamera = _cameras.firstWhere(
-            (camera) => camera.lensDirection == preferredLensDirection,
+        (camera) => camera.lensDirection == preferredLensDirection,
         orElse: () => _cameras.first,
       );
 

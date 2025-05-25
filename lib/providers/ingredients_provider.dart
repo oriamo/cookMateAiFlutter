@@ -20,11 +20,11 @@ class IngredientsNotifier extends StateNotifier<List<Ingredient>> {
       if (!_isInitialDataLoaded) {
         state = List<Ingredient>.from(dummyIngredients);
         _isInitialDataLoaded = true;
-        
+
         // Save to SharedPreferences for persistence
         await _saveIngredients();
       }
-      
+
       // Try to load from SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       final ingredientsJson = prefs.getString(_storageKey);

@@ -12,18 +12,18 @@ class FavoritesScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final favoriteRecipes = ref.watch(favoriteRecipesProvider);
-    
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Favorite Recipes'),
         elevation: 0,
       ),
-      body: favoriteRecipes.isEmpty 
+      body: favoriteRecipes.isEmpty
           ? _buildEmptyState(context)
           : _buildFavoritesList(context, favoriteRecipes),
     );
   }
-  
+
   Widget _buildEmptyState(BuildContext context) {
     return Center(
       child: Column(
@@ -67,7 +67,7 @@ class FavoritesScreen extends ConsumerWidget {
       ),
     );
   }
-  
+
   Widget _buildFavoritesList(BuildContext context, List<Recipe> recipes) {
     return CustomScrollView(
       slivers: [
@@ -81,8 +81,8 @@ class FavoritesScreen extends ConsumerWidget {
                 Text(
                   '${recipes.length} Favorites',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -96,7 +96,7 @@ class FavoritesScreen extends ConsumerWidget {
             ),
           ),
         ),
-        
+
         // Sort options
         SliverToBoxAdapter(
           child: Padding(
@@ -113,8 +113,12 @@ class FavoritesScreen extends ConsumerWidget {
                 const SizedBox(width: 8),
                 DropdownButton<String>(
                   value: 'Date Added',
-                  items: ['Date Added', 'Rating', 'Cooking Time', 'Alphabetical']
-                      .map((String value) {
+                  items: [
+                    'Date Added',
+                    'Rating',
+                    'Cooking Time',
+                    'Alphabetical'
+                  ].map((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
                       child: Text(value),
@@ -138,7 +142,7 @@ class FavoritesScreen extends ConsumerWidget {
             ),
           ),
         ),
-        
+
         SliverPadding(
           padding: const EdgeInsets.all(16),
           sliver: SliverGrid(

@@ -8,27 +8,28 @@ import '../services/azure_function_service_provider.dart';
 class RecipeNotifier extends StateNotifier<AsyncValue<Map<String, dynamic>>> {
   final AzureFunctionService _azureFunctionService;
 
-  RecipeNotifier(this._azureFunctionService) : super(const AsyncValue.loading()) {
+  RecipeNotifier(this._azureFunctionService)
+      : super(const AsyncValue.loading()) {
     loadInitialRecipes();
   }
 
   Future<void> loadInitialRecipes() async {
     try {
       state = const AsyncValue.loading();
-      
+
       // Use dummy data for demonstration
       final recipes = List<Recipe>.from(dummyRecipes);
-      
+
       // Extract categories from dummy categories
       final categoryNames = dummyCategories.map((cat) => cat.name).toList();
       final categories = ['All Recipes', ...categoryNames];
-      
+
       state = AsyncValue.data({
         'recipes': recipes,
         'categories': categories,
         'continuationToken': null, // No pagination in demo mode
       });
-      
+
       // Also try the real API in the background
       try {
         final data = await _azureFunctionService.getPaginatedMeals();
@@ -46,14 +47,16 @@ class RecipeNotifier extends StateNotifier<AsyncValue<Map<String, dynamic>>> {
   Future<void> changeCategory(String category) async {
     try {
       state = const AsyncValue.loading();
-      
+
       // Use dummy data filtered by category
       final allRecipes = List<Recipe>.from(dummyRecipes);
-      final filteredRecipes = category == 'All Recipes' 
-          ? allRecipes 
-          : allRecipes.where((recipe) => 
-              recipe.category.toLowerCase() == category.toLowerCase()).toList();
-      
+      final filteredRecipes = category == 'All Recipes'
+          ? allRecipes
+          : allRecipes
+              .where((recipe) =>
+                  recipe.category.toLowerCase() == category.toLowerCase())
+              .toList();
+
       // Create new state with filtered recipes but keep categories
       state.whenData((currentData) {
         state = AsyncValue.data({
@@ -72,7 +75,8 @@ class RecipeNotifier extends StateNotifier<AsyncValue<Map<String, dynamic>>> {
     try {
       // In demo mode, we just update local state
       state.whenData((currentData) {
-        final recipes = List<Recipe>.from(currentData['recipes'] as List<Recipe>);
+        final recipes =
+            List<Recipe>.from(currentData['recipes'] as List<Recipe>);
         final index = recipes.indexWhere((recipe) => recipe.id == recipeId);
         if (index != -1) {
           recipes[index] = recipes[index].copyWith(
@@ -85,7 +89,7 @@ class RecipeNotifier extends StateNotifier<AsyncValue<Map<String, dynamic>>> {
           });
         }
       });
-      
+
       // Try API call in background (will be mocked in demo mode)
       try {
         await _azureFunctionService.toggleFavorite(recipeId);
@@ -108,7 +112,8 @@ class RecipeNotifier extends StateNotifier<AsyncValue<Map<String, dynamic>>> {
 }
 
 final recipeProvider =
-    StateNotifierProvider<RecipeNotifier, AsyncValue<Map<String, dynamic>>>((ref) {
+    StateNotifierProvider<RecipeNotifier, AsyncValue<Map<String, dynamic>>>(
+        (ref) {
   final azureFunctionService = ref.watch(azureFunctionServiceProvider);
   return RecipeNotifier(azureFunctionService);
 });

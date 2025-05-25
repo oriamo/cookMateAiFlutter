@@ -7,7 +7,7 @@ import '../dummy_data/dummy_user_profile.dart';
 class UserProfileNotifier extends StateNotifier<UserProfile> {
   static const String _storageKey = 'user_profile_data';
   bool _isInitialDataLoaded = false;
-  
+
   UserProfileNotifier() : super(UserProfile.empty()) {
     _loadUserProfile();
   }
@@ -18,11 +18,11 @@ class UserProfileNotifier extends StateNotifier<UserProfile> {
       if (!_isInitialDataLoaded) {
         state = dummyUserProfile;
         _isInitialDataLoaded = true;
-        
+
         // Save to SharedPreferences for persistence
         await _saveUserProfile();
       }
-      
+
       // Try to load from SharedPreferences
       final prefs = await SharedPreferences.getInstance();
       final profileJson = prefs.getString(_storageKey);

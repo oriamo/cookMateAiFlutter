@@ -4,20 +4,21 @@ import 'package:flutter/material.dart';
 // A pulsing dot widget for the animated mic button
 class PulsingDot extends StatefulWidget {
   final Color color;
-  
+
   const PulsingDot({
     Key? key,
     required this.color,
   }) : super(key: key);
-  
+
   @override
   State<PulsingDot> createState() => _PulsingDotState();
 }
 
-class _PulsingDotState extends State<PulsingDot> with SingleTickerProviderStateMixin {
+class _PulsingDotState extends State<PulsingDot>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
-  
+
   @override
   void initState() {
     super.initState();
@@ -25,7 +26,7 @@ class _PulsingDotState extends State<PulsingDot> with SingleTickerProviderStateM
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     )..repeat(reverse: true);
-    
+
     _animation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
@@ -33,13 +34,13 @@ class _PulsingDotState extends State<PulsingDot> with SingleTickerProviderStateM
       ),
     );
   }
-  
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(

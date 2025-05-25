@@ -155,7 +155,8 @@ class Recipe {
                 .toList() ??
             [],
         instructions: (json['instructions'] as List<dynamic>?)
-                ?.map((i) => InstructionStep.fromJson(Map<String, dynamic>.from(i)))
+                ?.map((i) =>
+                    InstructionStep.fromJson(Map<String, dynamic>.from(i)))
                 .toList() ??
             [],
         totalTimeMinutes:
@@ -197,9 +198,7 @@ class Recipe {
       'description': description,
       'imageUrl': imageUrl,
       'ingredients': ingredients,
-      'instructions': instructions
-          .map((step) => step.toJson())
-          .toList(),
+      'instructions': instructions.map((step) => step.toJson()).toList(),
       'totalTimeMinutes': totalTimeMinutes,
       'category': category,
       'rating': rating,

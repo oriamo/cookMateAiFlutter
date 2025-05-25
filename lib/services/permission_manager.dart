@@ -16,7 +16,7 @@ class PermissionManager {
     if (_permissionCache.containsKey(permission)) {
       return _permissionCache[permission]!.isGranted;
     }
-    
+
     final status = await permission.status;
     _permissionCache[permission] = status;
     return status.isGranted;
@@ -30,14 +30,15 @@ class PermissionManager {
   }
 
   /// Request multiple permissions at once
-  Future<Map<Permission, bool>> requestPermissions(List<Permission> permissions) async {
+  Future<Map<Permission, bool>> requestPermissions(
+      List<Permission> permissions) async {
     final result = <Permission, bool>{};
-    
+
     for (final permission in permissions) {
       final granted = await requestPermission(permission);
       result[permission] = granted;
     }
-    
+
     return result;
   }
 
@@ -55,7 +56,8 @@ class PermissionManager {
   /// Request storage permissions based on Android version
   Future<bool> requestStoragePermission() async {
     if (await _isAndroid13OrHigher()) {
-      final results = await requestPermissions([Permission.photos, Permission.videos]);
+      final results =
+          await requestPermissions([Permission.photos, Permission.videos]);
       return results.values.every((granted) => granted);
     } else {
       return await requestPermission(Permission.storage);
@@ -74,8 +76,10 @@ class PermissionManager {
 
   /// Check if device is running Android 13 or higher
   Future<bool> _isAndroid13OrHigher() async {
-    return await Permission.photos.status.isGranted != await Permission.storage.status.isGranted ||
-           await Permission.videos.status.isGranted != await Permission.storage.status.isGranted;
+    return await Permission.photos.status.isGranted !=
+            await Permission.storage.status.isGranted ||
+        await Permission.videos.status.isGranted !=
+            await Permission.storage.status.isGranted;
   }
 
   /// Show a permission request dialog with explanation
@@ -105,7 +109,7 @@ class PermissionManager {
         ],
       ),
     );
-    
+
     return result ?? false;
   }
 

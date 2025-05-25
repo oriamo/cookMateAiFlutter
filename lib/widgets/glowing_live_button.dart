@@ -6,7 +6,7 @@ class GlowingLiveButton extends StatefulWidget {
   final VoidCallback onPressed;
   final Color? baseColor;
   final Color? glowColor;
-  
+
   const GlowingLiveButton({
     Key? key,
     required this.onPressed,
@@ -18,10 +18,11 @@ class GlowingLiveButton extends StatefulWidget {
   State<GlowingLiveButton> createState() => _GlowingLiveButtonState();
 }
 
-class _GlowingLiveButtonState extends State<GlowingLiveButton> with SingleTickerProviderStateMixin {
+class _GlowingLiveButtonState extends State<GlowingLiveButton>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _glowAnimation;
-  
+
   @override
   void initState() {
     super.initState();
@@ -29,7 +30,7 @@ class _GlowingLiveButtonState extends State<GlowingLiveButton> with SingleTicker
       duration: const Duration(milliseconds: 2000),
       vsync: this,
     )..repeat(reverse: true);
-    
+
     _glowAnimation = Tween<double>(begin: 1.0, end: 1.8).animate(
       CurvedAnimation(
         parent: _controller,
@@ -37,18 +38,18 @@ class _GlowingLiveButtonState extends State<GlowingLiveButton> with SingleTicker
       ),
     );
   }
-  
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final baseColor = widget.baseColor ?? Colors.deepPurple;
     final glowColor = widget.glowColor ?? Colors.purple.withOpacity(0.5);
-    
+
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {

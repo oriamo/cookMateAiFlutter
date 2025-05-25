@@ -8,7 +8,7 @@ class AnimatedMicButton extends StatefulWidget {
   final bool isActive;
   final Color? baseColor;
   final Color? activeColor;
-  
+
   const AnimatedMicButton({
     Key? key,
     required this.onPressed,
@@ -21,7 +21,8 @@ class AnimatedMicButton extends StatefulWidget {
   State<AnimatedMicButton> createState() => _AnimatedMicButtonState();
 }
 
-class _AnimatedMicButtonState extends State<AnimatedMicButton> with SingleTickerProviderStateMixin {
+class _AnimatedMicButtonState extends State<AnimatedMicButton>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _rotationAnimation;
   late Animation<double> _pulseAnimation;
@@ -33,7 +34,7 @@ class _AnimatedMicButtonState extends State<AnimatedMicButton> with SingleTicker
     Colors.teal.shade700,
     Colors.orange.shade800,
   ];
-  
+
   @override
   void initState() {
     super.initState();
@@ -41,21 +42,21 @@ class _AnimatedMicButtonState extends State<AnimatedMicButton> with SingleTicker
       duration: const Duration(milliseconds: 2000),
       vsync: this,
     )..repeat();
-    
+
     _rotationAnimation = Tween<double>(begin: 0, end: 2 * math.pi).animate(
       CurvedAnimation(
         parent: _controller,
         curve: Curves.easeInOut,
       ),
     );
-    
+
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
       CurvedAnimation(
         parent: _controller,
         curve: Curves.easeInOut,
       ),
     );
-    
+
     _scaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
       CurvedAnimation(
         parent: _controller,
@@ -63,19 +64,19 @@ class _AnimatedMicButtonState extends State<AnimatedMicButton> with SingleTicker
       ),
     );
   }
-  
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final baseColor = widget.baseColor ?? Colors.deepPurple;
     final activeColor = widget.activeColor ?? Colors.green;
     final currentColor = widget.isActive ? activeColor : baseColor;
-    
+
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, child) {
@@ -91,7 +92,8 @@ class _AnimatedMicButtonState extends State<AnimatedMicButton> with SingleTicker
                 gradient: LinearGradient(
                   colors: [
                     currentColor,
-                    currentColor.withBlue((currentColor.blue + 40).clamp(0, 255)),
+                    currentColor
+                        .withBlue((currentColor.blue + 40).clamp(0, 255)),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -99,8 +101,10 @@ class _AnimatedMicButtonState extends State<AnimatedMicButton> with SingleTicker
                 boxShadow: [
                   BoxShadow(
                     color: currentColor.withOpacity(0.5),
-                    blurRadius: 12 * (widget.isActive ? _pulseAnimation.value : 1.0),
-                    spreadRadius: 3 * (widget.isActive ? _pulseAnimation.value : 1.0),
+                    blurRadius:
+                        12 * (widget.isActive ? _pulseAnimation.value : 1.0),
+                    spreadRadius:
+                        3 * (widget.isActive ? _pulseAnimation.value : 1.0),
                   ),
                 ],
               ),
@@ -112,19 +116,27 @@ class _AnimatedMicButtonState extends State<AnimatedMicButton> with SingleTicker
                     ...List.generate(8, (index) {
                       final random = math.Random(index);
                       final randomAngle = random.nextDouble() * math.pi * 2;
-                      final randomDistance = (40.0 + (random.nextDouble() * 20.0)) * _pulseAnimation.value;
-                      final randomColor = _randomColors[index % _randomColors.length];
+                      final randomDistance =
+                          (40.0 + (random.nextDouble() * 20.0)) *
+                              _pulseAnimation.value;
+                      final randomColor =
+                          _randomColors[index % _randomColors.length];
                       final randomSize = 6.0 + (random.nextDouble() * 4.0);
                       final speedMultiplier = 0.8 + (random.nextDouble() * 0.4);
-                      
+
                       // Calculate initial position
                       final baseX = 80 + math.cos(randomAngle) * randomDistance;
-                      final baseY = 30 + math.sin(randomAngle) * randomDistance / 2;
-                      
+                      final baseY =
+                          30 + math.sin(randomAngle) * randomDistance / 2;
+
                       // Add some wobble movement
-                      final wobbleX = math.sin(_rotationAnimation.value * speedMultiplier * 2) * 5;
-                      final wobbleY = math.cos(_rotationAnimation.value * speedMultiplier * 2) * 3;
-                      
+                      final wobbleX = math.sin(
+                              _rotationAnimation.value * speedMultiplier * 2) *
+                          5;
+                      final wobbleY = math.cos(
+                              _rotationAnimation.value * speedMultiplier * 2) *
+                          3;
+
                       return Positioned(
                         left: baseX + wobbleX,
                         top: baseY + wobbleY,
@@ -165,7 +177,7 @@ class _AnimatedMicButtonState extends State<AnimatedMicButton> with SingleTicker
                         ),
                       );
                     }),
-                  
+
                   // Enhanced rotating gradient overlay for active state
                   if (widget.isActive)
                     ClipRRect(
@@ -192,7 +204,8 @@ class _AnimatedMicButtonState extends State<AnimatedMicButton> with SingleTicker
                           ),
                           // Additional shimmer effect
                           Transform.rotate(
-                            angle: -_rotationAnimation.value * 0.7, // Rotate in opposite direction
+                            angle: -_rotationAnimation.value *
+                                0.7, // Rotate in opposite direction
                             child: Opacity(
                               opacity: 0.4,
                               child: Container(
@@ -216,7 +229,7 @@ class _AnimatedMicButtonState extends State<AnimatedMicButton> with SingleTicker
                         ],
                       ),
                     ),
-                  
+
                   // Enhanced button content with animated icon and text effects
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -228,7 +241,8 @@ class _AnimatedMicButtonState extends State<AnimatedMicButton> with SingleTicker
                         width: widget.isActive ? 28 : 24,
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 300),
-                          transitionBuilder: (Widget child, Animation<double> animation) {
+                          transitionBuilder:
+                              (Widget child, Animation<double> animation) {
                             return ScaleTransition(
                               scale: animation,
                               child: FadeTransition(
@@ -249,7 +263,8 @@ class _AnimatedMicButtonState extends State<AnimatedMicButton> with SingleTicker
                       // Animated text with transitions
                       AnimatedSwitcher(
                         duration: const Duration(milliseconds: 300),
-                        transitionBuilder: (Widget child, Animation<double> animation) {
+                        transitionBuilder:
+                            (Widget child, Animation<double> animation) {
                           return FadeTransition(
                             opacity: animation,
                             child: SlideTransition(
@@ -271,7 +286,8 @@ class _AnimatedMicButtonState extends State<AnimatedMicButton> with SingleTicker
                             letterSpacing: 0.5,
                             shadows: [
                               Shadow(
-                                color: Colors.black.withOpacity(widget.isActive ? 0.4 : 0.2),
+                                color: Colors.black
+                                    .withOpacity(widget.isActive ? 0.4 : 0.2),
                                 blurRadius: widget.isActive ? 4 : 2,
                                 offset: Offset(0, widget.isActive ? 2 : 1),
                               ),
@@ -287,7 +303,7 @@ class _AnimatedMicButtonState extends State<AnimatedMicButton> with SingleTicker
                         ),
                     ],
                   ),
-                  
+
                   // Subtle border overlay
                   Container(
                     width: 160,

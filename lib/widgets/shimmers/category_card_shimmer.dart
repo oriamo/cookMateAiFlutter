@@ -3,7 +3,7 @@ import 'package:shimmer/shimmer.dart';
 
 class CategoryCardShimmer extends StatelessWidget {
   final bool isFeatured;
-  
+
   const CategoryCardShimmer({
     super.key,
     this.isFeatured = false,

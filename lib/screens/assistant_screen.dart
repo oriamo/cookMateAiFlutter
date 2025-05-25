@@ -22,17 +22,17 @@ class AssistantScreen extends ConsumerStatefulWidget {
 class _AssistantScreenState extends ConsumerState<AssistantScreen> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  
+
   // Flag to track if camera is showing
   bool _showCamera = true;
-  
+
   @override
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
-  
+
   void _scrollToBottom() {
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
@@ -42,48 +42,49 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
       );
     }
   }
-  
+
   // Send a text message
   void _sendMessage() {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
-    
+
     // Get the assistant provider
     final provider = ref.read(assistantProvider);
-    
+
     // Send the message
     provider.sendTextMessage(text);
-    
+
     // Clear the input field
     _messageController.clear();
-    
+
     // Scroll to bottom after a short delay to ensure the new message is rendered
     Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
   }
-  
+
   // Toggle camera visibility
   void _toggleCamera() {
     setState(() {
       _showCamera = !_showCamera;
     });
   }
-  
+
   // Capture image and send with message
   void _captureAndSendImage() async {
     final provider = ref.read(assistantProvider);
     final text = _messageController.text.trim();
-    final promptText = text.isNotEmpty ? text : "What can you tell me about this?";
-    
+    final promptText =
+        text.isNotEmpty ? text : "What can you tell me about this?";
+
     // Try to capture a frame
     final frame = await provider.assistantService.videoService.captureFrame();
-    
+
     if (frame != null) {
       // Send the image with the message
       provider.sendImageMessage(promptText, frame);
-      
+
       // Clear the input field
       _messageController.clear();
-      
+
       // Scroll to bottom after a short delay
       Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
     } else {
@@ -93,7 +94,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
       );
     }
   }
-  
+
   // Navigate to voice agent screen and start conversation automatically
   void _navigateToVoiceAgentAndStart() {
     context.push('/voice-agent').then((_) {
@@ -104,30 +105,28 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
       }
     });
   }
-  
+
   @override
   Widget build(BuildContext context) {
     // Access the assistant provider
     final provider = ref.watch(assistantProvider);
-    
+
     // Listen for changes in the provider
-    ref.listen<AssistantProvider>(
-      assistantProvider, 
-      (previous, next) {
-        if (previous == null || previous.messages.length != next.messages.length) {
-          Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
-        }
+    ref.listen<AssistantProvider>(assistantProvider, (previous, next) {
+      if (previous == null ||
+          previous.messages.length != next.messages.length) {
+        Future.delayed(const Duration(milliseconds: 100), _scrollToBottom);
       }
-    );
-    
+    });
+
     // Get the current state of the assistant
     final isListening = provider.state == AssistantState.listening;
     final isProcessing = provider.state == AssistantState.processing;
     final isSpeaking = provider.state == AssistantState.speaking;
-    
+
     // Get the camera controller for the camera preview
     final cameraController = provider.assistantService.cameraController;
-    
+
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -156,7 +155,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
             onPressed: _toggleCamera,
             tooltip: _showCamera ? 'Hide Camera' : 'Show Camera',
           ),
-          
+
           // Clear history button
           IconButton(
             icon: const Icon(Icons.delete_outline),
@@ -178,13 +177,12 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
                 child: CameraPreview(cameraController),
               ),
             ),
-          
-          
+
           // Chat messages
           Expanded(
             child: _buildMessageList(provider.messages),
           ),
-          
+
           // Input area
           _buildInputArea(
             isListening: isListening,
@@ -192,19 +190,19 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
             isSpeaking: isSpeaking,
             provider: provider,
           ),
-          
+
           // Bottom padding for safe area
           SizedBox(height: MediaQuery.of(context).padding.bottom),
         ],
       ),
     );
   }
-  
+
   // Build the status indicator based on the assistant state
   Widget _buildStatusIndicator(AssistantState state) {
     IconData icon;
     Color color;
-    
+
     switch (state) {
       case AssistantState.idle:
         icon = Icons.circle_outlined;
@@ -223,16 +221,16 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
         color = Colors.lightBlue;
         break;
     }
-    
+
     return Icon(icon, color: color, size: 16);
   }
-  
+
   // Build the message list
   Widget _buildMessageList(List<AssistantMessage> messages) {
     if (messages.isEmpty) {
       return _buildEmptyState();
     }
-    
+
     return ListView.builder(
       controller: _scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -250,7 +248,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
       },
     );
   }
-  
+
   // Build empty state when there are no messages
   Widget _buildEmptyState() {
     return Center(
@@ -266,15 +264,15 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
           Text(
             'Hello, I\'m Alloy',
             style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           const SizedBox(height: 12),
           Text(
             'Ask me anything about cooking or recipes',
             style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Colors.grey.shade600,
-            ),
+                  color: Colors.grey.shade600,
+                ),
           ),
           const SizedBox(height: 24),
           Padding(
@@ -283,9 +281,12 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildSuggestionChip('What can I cook with chicken and pasta?'),
-                _buildSuggestionChip('Give me a recipe for chocolate chip cookies'),
-                _buildSuggestionChip('How do I know when fish is cooked properly?'),
-                _buildSuggestionChip('What\'s a good substitute for eggs in baking?'),
+                _buildSuggestionChip(
+                    'Give me a recipe for chocolate chip cookies'),
+                _buildSuggestionChip(
+                    'How do I know when fish is cooked properly?'),
+                _buildSuggestionChip(
+                    'What\'s a good substitute for eggs in baking?'),
               ],
             ),
           ),
@@ -293,7 +294,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
       ),
     );
   }
-  
+
   // Build suggestion chips for the empty state
   Widget _buildSuggestionChip(String text) {
     return GestureDetector(
@@ -324,7 +325,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
       ),
     );
   }
-  
+
   // Build input area with text field and buttons
   Widget _buildInputArea({
     required bool isListening,
@@ -333,7 +334,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
     required AssistantProvider provider,
   }) {
     final isInputDisabled = isProcessing || isSpeaking;
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       decoration: BoxDecoration(
@@ -357,7 +358,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
               glowColor: Colors.purple.withOpacity(0.6),
             ),
           ),
-          
+
           // Text input field
           Expanded(
             child: TextField(
@@ -382,7 +383,7 @@ class _AssistantScreenState extends ConsumerState<AssistantScreen> {
               maxLines: null,
             ),
           ),
-          
+
           // Send button
           IconButton(
             icon: const Icon(Icons.send),

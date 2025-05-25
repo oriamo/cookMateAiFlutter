@@ -29,22 +29,23 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
     _scrollController.dispose();
     super.dispose();
   }
-  
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    
+
     // Check if we should auto-start the conversation
     // Use a post-frame callback to ensure this runs after the build is complete
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = ref.read(deepgramAgentProvider);
       // Only auto-start if navigated to and not already running
       if (!_isConversationActive && provider.state == DeepgramAgentState.idle) {
-        debugPrint('VoiceAgentScreen: Auto-starting conversation with continuous listening enabled');
-        
+        debugPrint(
+            'VoiceAgentScreen: Auto-starting conversation with continuous listening enabled');
+
         // Ensure continuous listening is enabled for the most stable experience
         provider.setContinuousListening(true);
-        
+
         // Start conversation with a short delay to ensure screen is fully rendered
         Future.delayed(Duration(milliseconds: 300), () {
           if (mounted) {
@@ -78,7 +79,9 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
             // Patterns: "step X", "move on to step X", "start with step X" etc.
             // Patterns for explicit step instructions, including "let's move on to step X", "go to step X", etc.
             final stepPatterns = [
-              RegExp(r"(?:let'?s\s*)?(?:move on to|start with|begin with|go to)\s*step\s+(\d+)", caseSensitive: false),
+              RegExp(
+                  r"(?:let'?s\s*)?(?:move on to|start with|begin with|go to)\s*step\s+(\d+)",
+                  caseSensitive: false),
               RegExp(r'step\s+(\d+)', caseSensitive: false),
             ];
             bool jumped = false;
@@ -102,7 +105,8 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
               continue;
             }
             // Handle 'previous step' directive
-            if (content.contains('previous step') || content.contains('last step')) {
+            if (content.contains('previous step') ||
+                content.contains('last step')) {
               debugPrint('Detected "previous step" command from AI');
               ref.read(cookingSessionProvider.notifier).previousStep();
               continue;
@@ -113,7 +117,7 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
       );
     }
     final provider = ref.watch(deepgramAgentProvider);
-    
+
     // Show loading screen if initializing
     if (provider.isInitializing) {
       return _buildLoadingScreen();
@@ -169,7 +173,8 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
                 // Reload the screen
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (context) => const VoiceAgentScreen()),
+                  MaterialPageRoute(
+                      builder: (context) => const VoiceAgentScreen()),
                 );
               },
               child: const Text('Retry'),
@@ -187,7 +192,7 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
 
     // Set the conversation state
     _isConversationActive = provider.state != DeepgramAgentState.idle;
-    
+
     // Determine the visualization state
     VisualizationState visualizationState;
     if (isListening) {
@@ -216,7 +221,8 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
               switch (value) {
                 case 'toggleInterruptions':
                   // Toggle interruptions
-                  provider.setDisableInterruptions(!provider.disableInterruptionsEnabled);
+                  provider.setDisableInterruptions(
+                      !provider.disableInterruptionsEnabled);
                   break;
                 case 'lowNoise':
                   // Set low noise tolerance for quiet environments
@@ -268,7 +274,9 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
                 child: Row(
                   children: [
                     Icon(Icons.volume_down,
-                        color: provider.noiseTolerance <= 15 ? Colors.green : Colors.grey),
+                        color: provider.noiseTolerance <= 15
+                            ? Colors.green
+                            : Colors.grey),
                     const SizedBox(width: 10),
                     const Text('Quiet Environment'),
                   ],
@@ -320,12 +328,9 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
           // Toggle speakerphone/earphone output
           IconButton(
             icon: Icon(
-              provider.isSpeakerphoneEnabled
-                  ? Icons.volume_up
-                  : Icons.headset,
-              color: provider.isSpeakerphoneEnabled
-                  ? Colors.green
-                  : Colors.grey,
+              provider.isSpeakerphoneEnabled ? Icons.volume_up : Icons.headset,
+              color:
+                  provider.isSpeakerphoneEnabled ? Colors.green : Colors.grey,
             ),
             tooltip: provider.isSpeakerphoneEnabled
                 ? 'Use Earphones'
@@ -349,9 +354,10 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
             height: 120,
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: messages.isNotEmpty 
-              ? _buildRecentMessages(messages)
-              : const Center(child: Text('Start speaking to begin a conversation')),
+            child: messages.isNotEmpty
+                ? _buildRecentMessages(messages)
+                : const Center(
+                    child: Text('Start speaking to begin a conversation')),
           ),
 
           // Active Timers display (shows only when timers are active)
@@ -365,18 +371,22 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
           // Current step image (updates on CookingSession changes)
           if (ref.watch(cookingSessionProvider)?.currentStep != null) ...[
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+              padding:
+                  const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
               child: CachedNetworkImage(
-                imageUrl: ref.watch(cookingSessionProvider)!.currentStep!.imageUrl,
-                placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
-                errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 48),
+                imageUrl:
+                    ref.watch(cookingSessionProvider)!.currentStep!.imageUrl,
+                placeholder: (context, url) =>
+                    const Center(child: CircularProgressIndicator()),
+                errorWidget: (context, url, error) =>
+                    const Icon(Icons.broken_image, size: 48),
                 height: 200,
                 width: double.infinity,
                 fit: BoxFit.cover,
               ),
             ),
           ],
-          
+
           // Voice visualization (main component)
           Expanded(
             child: VoiceVisualization(
@@ -387,64 +397,65 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
           // Control buttons
           Container(
             padding: const EdgeInsets.all(20),
-            child: _isConversationActive 
-              ? Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Pause button 
-                    IconButton(
-                      icon: const Icon(Icons.pause_circle_outline),
-                      onPressed: () {
-                        provider.pauseConversation();
-                      },
-                      tooltip: 'Pause conversation',
-                      iconSize: 40,
-                      color: Colors.deepPurple,
-                    ),
-                    const SizedBox(width: 20),
-                    
-                    // Stop button
-                    IconButton(
-                      icon: const Icon(Icons.cancel_outlined),
-                      onPressed: () {
-                        provider.stopConversation();
-                      },
-                      tooltip: 'End conversation',
-                      iconSize: 40,
-                      color: Colors.redAccent,
-                    ),
-                  ],
-                )
-              : AnimatedMicButton(
-                  onPressed: () {
-                    debugPrint('VoiceAgentScreen: User pressed mic button to start conversation');
-                    // Always ensure continuous listening is enabled for stable connections
-                    provider.setContinuousListening(true);
-                    // Start conversation with visual feedback
-                    provider.startConversation();
-                    // Update local state
-                    setState(() {
-                      _isConversationActive = true;
-                    });
-                  },
-                  isActive: false,
-                  baseColor: Colors.deepPurple,
-                ),
+            child: _isConversationActive
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // Pause button
+                      IconButton(
+                        icon: const Icon(Icons.pause_circle_outline),
+                        onPressed: () {
+                          provider.pauseConversation();
+                        },
+                        tooltip: 'Pause conversation',
+                        iconSize: 40,
+                        color: Colors.deepPurple,
+                      ),
+                      const SizedBox(width: 20),
+
+                      // Stop button
+                      IconButton(
+                        icon: const Icon(Icons.cancel_outlined),
+                        onPressed: () {
+                          provider.stopConversation();
+                        },
+                        tooltip: 'End conversation',
+                        iconSize: 40,
+                        color: Colors.redAccent,
+                      ),
+                    ],
+                  )
+                : AnimatedMicButton(
+                    onPressed: () {
+                      debugPrint(
+                          'VoiceAgentScreen: User pressed mic button to start conversation');
+                      // Always ensure continuous listening is enabled for stable connections
+                      provider.setContinuousListening(true);
+                      // Start conversation with visual feedback
+                      provider.startConversation();
+                      // Update local state
+                      setState(() {
+                        _isConversationActive = true;
+                      });
+                    },
+                    isActive: false,
+                    baseColor: Colors.deepPurple,
+                  ),
           ),
-          
+
           // Safe area padding
           SizedBox(height: MediaQuery.of(context).padding.bottom),
         ],
       ),
     );
   }
-  
+
   // Build a limited message list showing only the most recent messages
   Widget _buildRecentMessages(List<DeepgramAgentMessage> messages) {
     // Get the most recent messages (up to 2)
     final int startIndex = messages.length > 2 ? messages.length - 2 : 0;
     final recentMessages = messages.sublist(startIndex);
-    
+
     return ListView.builder(
       padding: EdgeInsets.zero,
       itemCount: recentMessages.length,
@@ -521,7 +532,7 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
   Widget _buildStatusIndicator(DeepgramAgentState state) {
     IconData icon;
     Color color;
-    
+
     switch (state) {
       case DeepgramAgentState.idle:
         icon = Icons.circle;

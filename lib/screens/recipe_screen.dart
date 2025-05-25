@@ -106,9 +106,10 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
   Widget build(BuildContext context) {
     // DEMO MODE: Use dummy data directly
     final recipe = ref.watch(dummyRecipeProvider(widget.recipeId));
-    
+
     // Fallback to the normal provider if needed
-    final recipeAsync = recipe ?? ref.watch(recipeDetailProvider(widget.recipeId));
+    final recipeAsync =
+        recipe ?? ref.watch(recipeDetailProvider(widget.recipeId));
 
     return Scaffold(
       body: recipeAsync == null
@@ -326,13 +327,19 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
                     builder: (_) => const AlertDialog(
                       content: Row(
                         mainAxisSize: MainAxisSize.min,
-                        children: [CircularProgressIndicator(), SizedBox(width:16), Text('Setting up cooking session...')],
+                        children: [
+                          CircularProgressIndicator(),
+                          SizedBox(width: 16),
+                          Text('Setting up cooking session...')
+                        ],
                       ),
                     ),
                   );
                   try {
                     // Start cooking session with voice agent context and greeting
-                    await ref.read(cookingSessionProvider.notifier).startCookingSession(recipeAsync);
+                    await ref
+                        .read(cookingSessionProvider.notifier)
+                        .startCookingSession(recipeAsync);
                     Navigator.of(context, rootNavigator: true).pop();
                     // Navigate to voice agent screen
                     Navigator.of(context).push(MaterialPageRoute(
@@ -345,7 +352,11 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
                       builder: (_) => AlertDialog(
                         title: const Text('Error'),
                         content: Text('Could not start cooking session: $e'),
-                        actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK'))],
+                        actions: [
+                          TextButton(
+                              onPressed: () => Navigator.of(context).pop(),
+                              child: const Text('OK'))
+                        ],
                       ),
                     );
                   }

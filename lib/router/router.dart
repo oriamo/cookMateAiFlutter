@@ -113,7 +113,7 @@ final router = GoRouter(
           name: 'ai-chat',
           builder: (context, state) => const AssistantScreen(),
         ),
-        
+
         // Voice Agent route
         GoRoute(
           path: '/voice-agent',

@@ -35,7 +35,8 @@ $timerInstructionPrompt
   final bool _enableStreaming;
 
   /// Constructor with optional streaming capability
-  LlmService({bool enableStreaming = true}) : _enableStreaming = enableStreaming;
+  LlmService({bool enableStreaming = true})
+      : _enableStreaming = enableStreaming;
 
   /// Initialize the LLM service with API key
   Future<bool> initialize() async {
@@ -49,7 +50,7 @@ $timerInstructionPrompt
 
       // Initialize Gemini - use the singleton that was already initialized in main.dart
       _gemini = Gemini.instance;
-      
+
       // Initialize GenerativeModel for more advanced features
       _generativeModel = genai.GenerativeModel(
         model: 'gemini-2.0-flash',
@@ -57,10 +58,7 @@ $timerInstructionPrompt
       );
 
       // Add system prompt to chat history
-      _chatHistory.add({
-        'role': 'system',
-        'content': _systemPrompt
-      });
+      _chatHistory.add({'role': 'system', 'content': _systemPrompt});
 
       return true;
     } catch (e) {
@@ -88,7 +86,8 @@ $timerInstructionPrompt
   }
 
   /// Generate a response using both text and image
-  Future<String> generateMultimodalResponse(String prompt, List<Uint8List> images) async {
+  Future<String> generateMultimodalResponse(
+      String prompt, List<Uint8List> images) async {
     try {
       // Add user prompt to chat history
       _addUserMessage(prompt);
@@ -130,7 +129,7 @@ $timerInstructionPrompt
 
       // Process streaming response
       responseStream.listen(
-            (chunk) {
+        (chunk) {
           final text = chunk.text ?? '';
           buffer.write(text);
           _responseController.add(text);
@@ -215,7 +214,7 @@ $timerInstructionPrompt
   /// Clear chat history except for the system prompt
   void clearChatHistory() {
     final systemPrompt = _chatHistory.firstWhere(
-          (message) => message['role'] == 'system',
+      (message) => message['role'] == 'system',
       orElse: () => {'role': 'system', 'content': _systemPrompt},
     );
 

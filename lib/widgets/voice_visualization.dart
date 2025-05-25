@@ -12,9 +12,9 @@ enum VisualizationState {
 
 class VoiceVisualization extends StatefulWidget {
   final VisualizationState state;
-  
+
   const VoiceVisualization({
-    Key? key, 
+    Key? key,
     required this.state,
   }) : super(key: key);
 
@@ -22,7 +22,8 @@ class VoiceVisualization extends StatefulWidget {
   State<VoiceVisualization> createState() => _VoiceVisualizationState();
 }
 
-class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProviderStateMixin {
+class _VoiceVisualizationState extends State<VoiceVisualization>
+    with TickerProviderStateMixin {
   late AnimationController _animationController;
   late AnimationController _pulseController;
   late AnimationController _rotateController;
@@ -31,68 +32,66 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
   late Animation<double> _rotateAnimation;
   VideoPlayerController? _videoController;
   bool _isVideoInitialized = false;
-  
+
   // For advanced animation
   final int _barCount = 18; // Increased for smoother visualization
   final List<double> _barHeights = [];
   final List<Color> _barColors = [];
   final List<Particle> _particles = []; // For particle effect
-  
+
   @override
   void initState() {
     super.initState();
-    
+
     // Primary animation controller for bar animations
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
-    
+
     // Pulse animation for the background circle
     _pulseController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 2000),
     )..repeat(reverse: true);
     _pulseAnimation = Tween<double>(begin: 0.9, end: 1.1).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut)
-    );
-    
+        CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut));
+
     // Rotation animation for the outer ring
     _rotateController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 8000),
     )..repeat();
     _rotateAnimation = Tween<double>(begin: 0, end: 2 * math.pi).animate(
-      CurvedAnimation(parent: _rotateController, curve: Curves.linear)
-    );
-    
+        CurvedAnimation(parent: _rotateController, curve: Curves.linear));
+
     // Particle animation controller (faster refresh rate)
     _particleController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 50),
     )..addListener(_updateParticles);
-    
+
     // Initialize random bar heights and colors
     _initializeBarValues();
-    
+
     // Start bar animation if needed
     if (widget.state != VisualizationState.idle) {
       _startBarAnimation();
       _particleController.repeat();
     }
-    
+
     // Initialize video based on initial state
     _initializeVideo();
   }
-  
+
   void _initializeBarValues() {
     final random = math.Random();
-    
+
     // Generate random heights for bars
     for (int i = 0; i < _barCount; i++) {
       _barHeights.add(0.3 + random.nextDouble() * 0.2);
     }
-    
+
     // Generate colors from a gradient
     final List<Color> gradientColors = [
       Colors.blue.shade400,
@@ -101,27 +100,27 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
       Colors.orange.shade400,
       Colors.green.shade400,
     ];
-    
+
     for (int i = 0; i < _barCount; i++) {
       final colorIndex = i % gradientColors.length;
       final nextColorIndex = (i + 1) % gradientColors.length;
       final mixFactor = (i % 1.0);
-      
+
       // Mix colors for smoother gradient
       final Color color = Color.lerp(
         gradientColors[colorIndex],
         gradientColors[nextColorIndex],
         mixFactor,
       )!;
-      
+
       _barColors.add(color);
     }
   }
-  
+
   void _startBarAnimation() {
     // Reset animation controller
     _animationController.reset();
-    
+
     // Define behavior for animation update
     _animationController.addListener(() {
       if (mounted) {
@@ -135,52 +134,56 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
               // In active states, bars should randomly fluctuate
               final random = math.Random();
               final changeAmount = (random.nextDouble() - 0.5) * 0.3;
-              
+
               if (widget.state == VisualizationState.userSpeaking) {
                 // User speaking - more active, higher bars
-                _barHeights[i] = (_barHeights[i] + changeAmount).clamp(0.3, 0.9);
+                _barHeights[i] =
+                    (_barHeights[i] + changeAmount).clamp(0.3, 0.9);
               } else if (widget.state == VisualizationState.aiSpeaking) {
                 // AI speaking - medium activity
-                _barHeights[i] = (_barHeights[i] + changeAmount * 0.8).clamp(0.2, 0.7);
+                _barHeights[i] =
+                    (_barHeights[i] + changeAmount * 0.8).clamp(0.2, 0.7);
               }
             }
           }
         });
       }
     });
-    
+
     // Start animation with repeat
     _animationController.repeat(period: const Duration(milliseconds: 150));
   }
-  
+
   // Update particles and generate new ones based on state
   void _updateParticles() {
     if (!mounted) return;
-    
+
     // Update existing particles
     for (int i = _particles.length - 1; i >= 0; i--) {
       _particles[i].update();
-      
+
       // Remove particles that are too small or transparent
       if (_particles[i].size < 0.5 || _particles[i].opacity < 0.05) {
         _particles.removeAt(i);
       }
     }
-    
+
     // Generate new particles based on state
     if (widget.state != VisualizationState.idle) {
       final random = math.Random();
       final centerX = MediaQuery.of(context).size.width / 2;
       final centerY = MediaQuery.of(context).size.height / 2;
-      
+
       // Determine how many particles to generate based on state
       int particlesToGenerate = 0;
       if (widget.state == VisualizationState.userSpeaking) {
-        particlesToGenerate = random.nextInt(3); // More particles during user speech
+        particlesToGenerate =
+            random.nextInt(3); // More particles during user speech
       } else if (widget.state == VisualizationState.aiSpeaking) {
-        particlesToGenerate = random.nextInt(2); // Fewer particles during AI speech
+        particlesToGenerate =
+            random.nextInt(2); // Fewer particles during AI speech
       }
-      
+
       // Generate particles
       for (int i = 0; i < particlesToGenerate; i++) {
         // Generate random position near the center
@@ -188,10 +191,10 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
         final angle = random.nextDouble() * 2 * math.pi;
         final posX = centerX + math.cos(angle) * radius;
         final posY = centerY + math.sin(angle) * radius;
-        
+
         // Get a color from the bar colors
         final colorIndex = random.nextInt(_barColors.length);
-        
+
         // Create a new particle
         _particles.add(Particle(
           position: Offset(posX, posY),
@@ -203,7 +206,7 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
         ));
       }
     }
-    
+
     // Update UI
     setState(() {});
   }
@@ -217,15 +220,15 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
     _videoController?.dispose();
     super.dispose();
   }
-  
+
   @override
   void didUpdateWidget(VoiceVisualization oldWidget) {
     super.didUpdateWidget(oldWidget);
-    
+
     // Update video when visualization state changes
     if (widget.state != oldWidget.state) {
       _updateVideoState();
-      
+
       // Update animation state based on new state
       if (widget.state == VisualizationState.idle) {
         // Gradually fade out animation
@@ -236,7 +239,7 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
         // Start animations if coming from idle
         _startBarAnimation();
         _particleController.repeat();
-        
+
         // Add a burst of particles for visual feedback
         _addParticleBurst();
       } else {
@@ -246,20 +249,20 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
       }
     }
   }
-  
+
   // Add a burst of particles for visual feedback on state changes
   void _addParticleBurst({int count = 10}) {
     if (!mounted) return;
-    
+
     final random = math.Random();
     final centerX = MediaQuery.of(context).size.width / 2;
     final centerY = MediaQuery.of(context).size.height / 2;
-    
+
     // Generate a burst of particles from center
     for (int i = 0; i < count; i++) {
       final angle = random.nextDouble() * 2 * math.pi;
       final speed = 1.0 + random.nextDouble() * 3.0;
-      
+
       // Use color based on state
       Color particleColor;
       if (widget.state == VisualizationState.userSpeaking) {
@@ -269,7 +272,7 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
       } else {
         particleColor = _barColors[random.nextInt(_barColors.length)];
       }
-      
+
       _particles.add(Particle(
         position: Offset(centerX, centerY),
         size: 3.0 + random.nextDouble() * 6.0,
@@ -279,34 +282,35 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
         opacity: 0.7 + random.nextDouble() * 0.3,
       ));
     }
-    
+
     // Force UI update
     setState(() {});
   }
-  
+
   Future<void> _initializeVideo() async {
     // Select appropriate video based on state
     final String videoAsset = widget.state == VisualizationState.aiSpeaking
         ? 'assets/mov/talking.mov'
         : 'assets/mov/listening.mov';
-    
-    developer.log('Initializing video: $videoAsset', name: 'VoiceVisualization');
-    
+
+    developer.log('Initializing video: $videoAsset',
+        name: 'VoiceVisualization');
+
     try {
       // Dispose of old controller if it exists
       await _videoController?.dispose();
-      
+
       // Create and initialize new controller
       _videoController = VideoPlayerController.asset(videoAsset);
       await _videoController!.initialize();
-      
+
       // Set to loop and update state
       _videoController!.setLooping(true);
       _isVideoInitialized = true;
-      
+
       // Start/stop video based on current state
       _updateVideoState();
-      
+
       // Force UI update
       if (mounted) {
         setState(() {});
@@ -319,20 +323,22 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
       }
     }
   }
-  
+
   void _updateVideoState() {
     if (_videoController == null || !_isVideoInitialized) {
       _initializeVideo();
       return;
     }
-    
+
     // Check if we need to switch videos
-    if ((_videoController!.dataSource.contains('talking.mov') && widget.state != VisualizationState.aiSpeaking) ||
-        (_videoController!.dataSource.contains('listening.mov') && widget.state == VisualizationState.aiSpeaking)) {
+    if ((_videoController!.dataSource.contains('talking.mov') &&
+            widget.state != VisualizationState.aiSpeaking) ||
+        (_videoController!.dataSource.contains('listening.mov') &&
+            widget.state == VisualizationState.aiSpeaking)) {
       _initializeVideo();
       return;
     }
-    
+
     // Otherwise just play/pause current video
     switch (widget.state) {
       case VisualizationState.idle:
@@ -346,13 +352,14 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
         break;
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final size = math.min(constraints.maxWidth, constraints.maxHeight) * 0.85;
-        
+        final size =
+            math.min(constraints.maxWidth, constraints.maxHeight) * 0.85;
+
         return Center(
           child: Stack(
             alignment: Alignment.center,
@@ -383,7 +390,7 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
                   );
                 },
               ),
-              
+
               // Circular mask for the ring
               Container(
                 width: size * 1.07,
@@ -393,7 +400,7 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
                   color: Theme.of(context).scaffoldBackgroundColor,
                 ),
               ),
-              
+
               // Background pulsing circle
               AnimatedBuilder(
                 animation: _pulseAnimation,
@@ -411,9 +418,11 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
                       bgColor = Colors.purple.shade100;
                       break;
                   }
-                  
+
                   return Transform.scale(
-                    scale: widget.state == VisualizationState.idle ? 1.0 : _pulseAnimation.value,
+                    scale: widget.state == VisualizationState.idle
+                        ? 1.0
+                        : _pulseAnimation.value,
                     child: Container(
                       width: size,
                       height: size,
@@ -432,7 +441,7 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
                   );
                 },
               ),
-              
+
               // Main content (video or animation)
               Container(
                 width: size * 0.9,
@@ -452,7 +461,7 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
                   child: _buildVideoPlayer(),
                 ),
               ),
-              
+
               // Visualization bars (will show around the edge when video is not available)
               Positioned.fill(
                 child: AnimatedOpacity(
@@ -461,13 +470,14 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
                   child: _buildBars(size),
                 ),
               ),
-              
+
               // Improved status indicator with animation
               Positioned(
                 bottom: 10,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   decoration: BoxDecoration(
                     color: _getStatusColor(),
                     borderRadius: BorderRadius.circular(20),
@@ -475,7 +485,8 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
                       BoxShadow(
                         color: _getStatusColor().withOpacity(0.3),
                         blurRadius: 8,
-                        spreadRadius: widget.state == VisualizationState.idle ? 1 : 3,
+                        spreadRadius:
+                            widget.state == VisualizationState.idle ? 1 : 3,
                       ),
                     ],
                     border: Border.all(
@@ -489,7 +500,8 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
                       // Animated icon
                       AnimatedSwitcher(
                         duration: const Duration(milliseconds: 300),
-                        transitionBuilder: (Widget child, Animation<double> animation) {
+                        transitionBuilder:
+                            (Widget child, Animation<double> animation) {
                           return ScaleTransition(
                             scale: animation,
                             child: FadeTransition(
@@ -509,7 +521,8 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
                       // Status text with animation
                       AnimatedSwitcher(
                         duration: const Duration(milliseconds: 300),
-                        transitionBuilder: (Widget child, Animation<double> animation) {
+                        transitionBuilder:
+                            (Widget child, Animation<double> animation) {
                           return SlideTransition(
                             position: Tween<Offset>(
                               begin: const Offset(0.3, 0.0),
@@ -547,7 +560,7 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
       },
     );
   }
-  
+
   Widget _buildBars(double size) {
     return CustomPaint(
       size: Size(size, size),
@@ -560,7 +573,7 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
       ),
     );
   }
-  
+
   Widget _buildVideoPlayer() {
     if (_videoController != null && _isVideoInitialized) {
       // Return the video player when initialized
@@ -573,11 +586,11 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
       return _buildPlaceholderAnimation();
     }
   }
-  
+
   Widget _buildPlaceholderAnimation() {
     // Ultimate fallback if video fails to load
     developer.log('Using placeholder animation', name: 'VoiceVisualization');
-    
+
     // Choose icon based on state
     IconData icon;
     switch (widget.state) {
@@ -591,13 +604,15 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
         icon = Icons.volume_up;
         break;
     }
-    
+
     return Center(
       child: AnimatedBuilder(
         animation: _pulseAnimation,
         builder: (context, child) {
           return Transform.scale(
-            scale: widget.state == VisualizationState.idle ? 1.0 : _pulseAnimation.value,
+            scale: widget.state == VisualizationState.idle
+                ? 1.0
+                : _pulseAnimation.value,
             child: Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
@@ -621,7 +636,7 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
       ),
     );
   }
-  
+
   Color _getStatusColor() {
     switch (widget.state) {
       case VisualizationState.idle:
@@ -632,7 +647,7 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
         return Colors.purple.shade600;
     }
   }
-  
+
   IconData _getStatusIcon() {
     switch (widget.state) {
       case VisualizationState.idle:
@@ -643,7 +658,7 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
         return Icons.volume_up;
     }
   }
-  
+
   String _getStatusText() {
     switch (widget.state) {
       case VisualizationState.idle:
@@ -654,13 +669,13 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
         return 'Speaking';
     }
   }
-  
+
   // Build animated dots for active states (listening/speaking)
   Widget _buildAnimatedDots() {
     return SizedBox(
       width: 24,
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.end, 
+        mainAxisAlignment: MainAxisAlignment.end,
         children: List.generate(3, (index) {
           // Use different delays for each dot
           return Padding(
@@ -678,20 +693,21 @@ class _VoiceVisualizationState extends State<VoiceVisualization> with TickerProv
 // Separated animated dot widget for cleaner animation cycles
 class _AnimatedDot extends StatefulWidget {
   final double delay;
-  
+
   const _AnimatedDot({
     Key? key,
     required this.delay,
   }) : super(key: key);
-  
+
   @override
   State<_AnimatedDot> createState() => _AnimatedDotState();
 }
 
-class _AnimatedDotState extends State<_AnimatedDot> with SingleTickerProviderStateMixin {
+class _AnimatedDotState extends State<_AnimatedDot>
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
-  
+
   @override
   void initState() {
     super.initState();
@@ -699,15 +715,16 @@ class _AnimatedDotState extends State<_AnimatedDot> with SingleTickerProviderSta
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     );
-    
+
     // Create delayed, repeating animation
     _animation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _controller,
-        curve: Interval(widget.delay, widget.delay + 0.5, curve: Curves.easeInOut),
+        curve:
+            Interval(widget.delay, widget.delay + 0.5, curve: Curves.easeInOut),
       ),
     );
-    
+
     // Start with delay based on index
     Future.delayed(Duration(milliseconds: (widget.delay * 300).toInt()), () {
       if (mounted) {
@@ -715,13 +732,13 @@ class _AnimatedDotState extends State<_AnimatedDot> with SingleTickerProviderSta
       }
     });
   }
-  
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
-  
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -729,7 +746,7 @@ class _AnimatedDotState extends State<_AnimatedDot> with SingleTickerProviderSta
       builder: (context, child) {
         // Calculate current value with pulse effect
         final pulseValue = math.sin(_animation.value * math.pi);
-        
+
         return Transform.scale(
           scale: 0.5 + (pulseValue * 0.5),
           child: Opacity(
@@ -757,7 +774,7 @@ class Particle {
   double speed;
   double angle;
   double opacity;
-  
+
   Particle({
     required this.position,
     required this.size,
@@ -766,17 +783,15 @@ class Particle {
     required this.angle,
     required this.opacity,
   });
-  
+
   void update() {
     // Move particle based on angle and speed
-    position = Offset(
-      position.dx + math.cos(angle) * speed,
-      position.dy + math.sin(angle) * speed
-    );
-    
+    position = Offset(position.dx + math.cos(angle) * speed,
+        position.dy + math.sin(angle) * speed);
+
     // Gradually decrease opacity
     opacity = (opacity * 0.98).clamp(0.0, 1.0);
-    
+
     // Gradually decrease size
     size = size * 0.97;
   }
@@ -789,7 +804,7 @@ class BarVisualizer extends CustomPainter {
   final List<Color> barColors;
   final VisualizationState state;
   final List<Particle> particles;
-  
+
   BarVisualizer({
     required this.barCount,
     required this.barHeights,
@@ -797,12 +812,12 @@ class BarVisualizer extends CustomPainter {
     required this.state,
     this.particles = const [],
   });
-  
+
   @override
   void paint(Canvas canvas, Size size) {
     final center = Offset(size.width / 2, size.height / 2);
     final radius = size.width / 2;
-    
+
     // Draw the subtle background glow effect
     if (state != VisualizationState.idle) {
       final glowPaint = Paint()
@@ -817,61 +832,68 @@ class BarVisualizer extends CustomPainter {
 
       canvas.drawCircle(center, radius * 0.9, glowPaint);
     }
-    
+
     // Draw bars around the circle
     for (int i = 0; i < barCount; i++) {
       final angle = 2 * math.pi * i / barCount;
-      
+
       // Calculate bar dimensions - use smoother variation with sine wave
       final double barHeight = barHeights[i] * radius * 0.4;
       final double barWidth = state == VisualizationState.idle ? 8 : 10;
-      
+
       // Calculate bar position with slight outward offset
       final double outwardOffset = state == VisualizationState.idle ? 0 : 5;
-      final double startX = center.dx + math.cos(angle) * (radius - barHeight - outwardOffset);
-      final double startY = center.dy + math.sin(angle) * (radius - barHeight - outwardOffset);
-      final double endX = center.dx + math.cos(angle) * (radius + outwardOffset);
-      final double endY = center.dy + math.sin(angle) * (radius + outwardOffset);
-      
+      final double startX =
+          center.dx + math.cos(angle) * (radius - barHeight - outwardOffset);
+      final double startY =
+          center.dy + math.sin(angle) * (radius - barHeight - outwardOffset);
+      final double endX =
+          center.dx + math.cos(angle) * (radius + outwardOffset);
+      final double endY =
+          center.dy + math.sin(angle) * (radius + outwardOffset);
+
       // Draw bar with gradient
       final paint = Paint()
         ..shader = LinearGradient(
           colors: [
-            barColors[i].withOpacity(state == VisualizationState.idle ? 0.3 : 0.7),
-            barColors[i].withOpacity(state == VisualizationState.idle ? 0.5 : 1.0),
+            barColors[i]
+                .withOpacity(state == VisualizationState.idle ? 0.3 : 0.7),
+            barColors[i]
+                .withOpacity(state == VisualizationState.idle ? 0.5 : 1.0),
           ],
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-        ).createShader(Rect.fromPoints(Offset(startX, startY), Offset(endX, endY)))
+        ).createShader(
+            Rect.fromPoints(Offset(startX, startY), Offset(endX, endY)))
         ..strokeWidth = barWidth
         ..strokeCap = StrokeCap.round;
-      
+
       canvas.drawLine(
         Offset(startX, startY),
         Offset(endX, endY),
         paint,
       );
     }
-    
+
     // Draw particles
     for (final particle in particles) {
       final particlePaint = Paint()
         ..color = particle.color.withOpacity(particle.opacity)
         ..style = PaintingStyle.fill;
-      
+
       canvas.drawCircle(
         particle.position,
         particle.size,
         particlePaint,
       );
-      
+
       // Draw glow effect for larger particles
       if (particle.size > 3) {
         final glowPaint = Paint()
           ..color = particle.color.withOpacity(particle.opacity * 0.3)
           ..style = PaintingStyle.fill
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-        
+
         canvas.drawCircle(
           particle.position,
           particle.size * 1.8,
@@ -880,11 +902,11 @@ class BarVisualizer extends CustomPainter {
       }
     }
   }
-  
+
   @override
   bool shouldRepaint(BarVisualizer oldDelegate) {
-    return oldDelegate.barHeights != barHeights || 
-           oldDelegate.state != state || 
-           oldDelegate.particles.length != particles.length; // Consider particles
+    return oldDelegate.barHeights != barHeights ||
+        oldDelegate.state != state ||
+        oldDelegate.particles.length != particles.length; // Consider particles
   }
 }

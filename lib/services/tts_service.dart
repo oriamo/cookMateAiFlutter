@@ -109,7 +109,8 @@ class TtsService {
     try {
       // On iOS and macOS, we can use the voice identifier
       if (identifier != null) {
-        await _flutterTts.setVoice({"name": voiceName, "locale": "en-US", "identifier": identifier});
+        await _flutterTts.setVoice(
+            {"name": voiceName, "locale": "en-US", "identifier": identifier});
       } else {
         await _flutterTts.setVoice({"name": voiceName, "locale": "en-US"});
       }
@@ -152,14 +153,16 @@ class TtsService {
       // Priority list of voice names that might sound similar to "alloy"
       // These are common voices that have a neutral, clear sound
       final priorityVoices = [
-        'Karen', 'Samantha', 'Daniel', 'Alex', 'Moira',  // English voices on iOS
-        'en-us-x-tpd-network', 'en-us-x-tpf-local',      // Android voices
+        'Karen', 'Samantha', 'Daniel', 'Alex', 'Moira', // English voices on iOS
+        'en-us-x-tpd-network', 'en-us-x-tpf-local', // Android voices
       ];
 
       // Try to find a voice from our priority list
       for (final voiceName in priorityVoices) {
         final voice = voices.firstWhere(
-              (v) => v['name']?.toLowerCase().contains(voiceName.toLowerCase()) ?? false,
+          (v) =>
+              v['name']?.toLowerCase().contains(voiceName.toLowerCase()) ??
+              false,
           orElse: () => {},
         );
 

@@ -8,7 +8,7 @@ import '../services/timer_service.dart';
 /// Widget that displays a single timer
 class CookingTimerItem extends ConsumerWidget {
   final CookingTimer timer;
-  
+
   const CookingTimerItem({
     Key? key,
     required this.timer,
@@ -17,17 +17,17 @@ class CookingTimerItem extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final timerService = ref.watch(timerServiceProvider);
-    
+
     // Format remaining time
     final remaining = timer.remaining;
     final minutes = remaining.inMinutes;
     final seconds = remaining.inSeconds % 60;
     final timeString = '$minutes:${seconds.toString().padLeft(2, '0')}';
-    
+
     // Determine color based on remaining time
     final progress = timer.progress;
     Color timerColor;
-    
+
     if (progress < 0.5) {
       // More than half time remaining - use normal purple
       timerColor = Colors.deepPurple;
@@ -38,7 +38,7 @@ class CookingTimerItem extends ConsumerWidget {
       // Last quarter - use red for urgency
       timerColor = Colors.red;
     }
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
@@ -78,9 +78,9 @@ class CookingTimerItem extends ConsumerWidget {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 8),
-          
+
           // Progress bar
           LinearProgressIndicator(
             value: timer.progress,
@@ -90,9 +90,9 @@ class CookingTimerItem extends ConsumerWidget {
             ),
             borderRadius: BorderRadius.circular(4),
           ),
-          
+
           const SizedBox(height: 8),
-          
+
           // Controls
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
@@ -116,7 +116,7 @@ class CookingTimerItem extends ConsumerWidget {
                   constraints: BoxConstraints.tight(Size(32, 32)),
                   padding: EdgeInsets.zero,
                 ),
-                
+
               // Cancel button
               IconButton(
                 icon: Icon(Icons.cancel_outlined),
@@ -141,19 +141,19 @@ class ActiveTimersPanel extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final timersAsync = ref.watch(activeTimersProvider);
-    
+
     return timersAsync.when(
       data: (timers) {
         if (timers.isEmpty) {
-          return SizedBox.shrink();  // No timers, no display
+          return SizedBox.shrink(); // No timers, no display
         }
-        
+
         // Calculate available width
         final screenWidth = MediaQuery.of(context).size.width;
-        
+
         return Container(
           constraints: BoxConstraints(
-            maxHeight: 120, // Limit height
+            maxHeight: 140, // Increased height to accommodate timer content
           ),
           width: screenWidth,
           child: ListView.separated(
