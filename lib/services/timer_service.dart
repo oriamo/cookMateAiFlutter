@@ -156,7 +156,21 @@ class TimerService {
     return timer;
   }
   
-  /// Start a timer (internal)
+  /// Start a timer with a specific duration and label, returns the timer ID
+  Future<String> startTimer({
+    required String label,
+    required Duration duration,
+  }) async {
+    await init();
+    final timerObj = CookingTimer(label: label, duration: duration);
+    _activeTimers[timerObj.id] = timerObj;
+    _startTimer(timerObj);
+    _scheduleNotification(timerObj);
+    _timerController.add(activeTimers);
+    return timerObj.id;
+  }
+
+  /// Start timer (internal)
   void _startTimer(CookingTimer timerObj) {
     // Cancel any existing timer first
     timerObj.timer?.cancel();

@@ -4,10 +4,11 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:animate_do/animate_do.dart';
 import 'package:share_plus/share_plus.dart';
 import '../providers/recipe_provider.dart';
-import '../providers/user_provider.dart';
 import '../models/recipe.dart';
 import 'package:flutter/rendering.dart';
 import '../dummy_data/dummy_recipes.dart';
+import '../services/cooking_session_service.dart';
+import 'voice_agent_screen.dart';
 
 class RecipeScreen extends ConsumerStatefulWidget {
   final String recipeId;
@@ -316,7 +317,39 @@ class _RecipeScreenState extends ConsumerState<RecipeScreen> {
           ? FadeInUp(
               duration: const Duration(milliseconds: 300),
               child: FloatingActionButton.extended(
-                onPressed: () {},
+                onPressed: () async {
+                  // Show setup dialog
+                  showDialog(
+                    context: context,
+                    useRootNavigator: true,
+                    barrierDismissible: false,
+                    builder: (_) => const AlertDialog(
+                      content: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [CircularProgressIndicator(), SizedBox(width:16), Text('Setting up cooking session...')],
+                      ),
+                    ),
+                  );
+                  try {
+                    // Start cooking session with voice agent context and greeting
+                    await ref.read(cookingSessionProvider.notifier).startCookingSession(recipeAsync);
+                    Navigator.of(context, rootNavigator: true).pop();
+                    // Navigate to voice agent screen
+                    Navigator.of(context).push(MaterialPageRoute(
+                      builder: (_) => const VoiceAgentScreen(),
+                    ));
+                  } catch (e) {
+                    Navigator.of(context, rootNavigator: true).pop();
+                    showDialog(
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        title: const Text('Error'),
+                        content: Text('Could not start cooking session: $e'),
+                        actions: [TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('OK'))],
+                      ),
+                    );
+                  }
+                },
                 icon: const Icon(Icons.lunch_dining),
                 label: const Text('Start Cooking'),
                 backgroundColor: Theme.of(context).colorScheme.primary,

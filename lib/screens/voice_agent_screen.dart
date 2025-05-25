@@ -9,6 +9,8 @@ import '../widgets/message_bubble.dart';
 import '../widgets/cooking_timer_widget.dart';
 import '../providers/timer_provider.dart';
 import '../services/message_processor.dart';
+import '../services/cooking_session_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class VoiceAgentScreen extends ConsumerStatefulWidget {
   const VoiceAgentScreen({Key? key}) : super(key: key);
@@ -20,6 +22,7 @@ class VoiceAgentScreen extends ConsumerStatefulWidget {
 class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isConversationActive = false;
+  bool _stepListenerAttached = false;
 
   @override
   void dispose() {
@@ -57,6 +60,58 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Force rebuild on cooking session changes
+    ref.watch(cookingSessionProvider);
+    // Attach step navigation listener once
+    if (!_stepListenerAttached) {
+      _stepListenerAttached = true;
+      ref.listen<List<DeepgramAgentMessage>>(
+        deepgramAgentProvider.select((p) => p.messages),
+        (previous, next) {
+          if (previous == null || next.length <= previous.length) return;
+          final newMsgs = next.sublist(previous.length);
+          for (final msg in newMsgs) {
+            if (msg.type != DeepgramAgentMessageType.agent) continue;
+            final content = msg.content.toLowerCase();
+            // Jump to a specific step: 'step X'
+            // Explicit step number commands
+            // Patterns: "step X", "move on to step X", "start with step X" etc.
+            // Patterns for explicit step instructions, including "let's move on to step X", "go to step X", etc.
+            final stepPatterns = [
+              RegExp(r"(?:let'?s\s*)?(?:move on to|start with|begin with|go to)\s*step\s+(\d+)", caseSensitive: false),
+              RegExp(r'step\s+(\d+)', caseSensitive: false),
+            ];
+            bool jumped = false;
+            for (final pattern in stepPatterns) {
+              final m = pattern.firstMatch(content);
+              if (m != null && m.groupCount >= 1) {
+                final stepIndex = int.tryParse(m.group(1)!);
+                if (stepIndex != null) {
+                  debugPrint('AI -> Jumping to step $stepIndex');
+                  ref.read(cookingSessionProvider.notifier).goToStep(stepIndex);
+                  jumped = true;
+                  break;
+                }
+              }
+            }
+            if (jumped) continue;
+            // Handle 'next step' directive
+            if (content.contains('next step')) {
+              debugPrint('Detected "next step" command from AI');
+              ref.read(cookingSessionProvider.notifier).nextStep();
+              continue;
+            }
+            // Handle 'previous step' directive
+            if (content.contains('previous step') || content.contains('last step')) {
+              debugPrint('Detected "previous step" command from AI');
+              ref.read(cookingSessionProvider.notifier).previousStep();
+              continue;
+            }
+          }
+          // Debugging: log that AI navigation parsing completed for msg: ${msg.content}
+        },
+      );
+    }
     final provider = ref.watch(deepgramAgentProvider);
     
     // Show loading screen if initializing
@@ -128,7 +183,6 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
   Widget _buildMainScreen(DeepgramAgentProvider provider) {
     final messages = provider.messages;
     final isListening = provider.state == DeepgramAgentState.listening;
-    final isProcessing = provider.state == DeepgramAgentState.processing;
     final isSpeaking = provider.state == DeepgramAgentState.speaking;
 
     // Set the conversation state
@@ -303,13 +357,25 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
           // Active Timers display (shows only when timers are active)
           Consumer(
             builder: (context, ref, child) {
-              // Watch for active timers
               final hasTimers = ref.watch(hasActiveTimersProvider);
               if (!hasTimers) return const SizedBox.shrink();
-              
               return ActiveTimersPanel();
             },
           ),
+          // Current step image (updates on CookingSession changes)
+          if (ref.watch(cookingSessionProvider)?.currentStep != null) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+              child: CachedNetworkImage(
+                imageUrl: ref.watch(cookingSessionProvider)!.currentStep!.imageUrl,
+                placeholder: (context, url) => const Center(child: CircularProgressIndicator()),
+                errorWidget: (context, url, error) => const Icon(Icons.broken_image, size: 48),
+                height: 200,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
+            ),
+          ],
           
           // Voice visualization (main component)
           Expanded(

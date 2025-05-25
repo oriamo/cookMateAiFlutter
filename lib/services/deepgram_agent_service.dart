@@ -269,7 +269,38 @@ class DeepgramAgentService {
       
       // Send data to native audio player
       if (_isAudioStreamInitialized) {
-        debugPrint('🔊 DEEPGRAM: Sending ${audioData.length} bytes to native audio player');
+
+
+
+
+
+
+        //debugPrint('🔊 DEEPGRAM: Sending ${audioData.length} bytes to native audio player');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
         try {
           await _audioChannel.invokeMethod<bool>('writeAudioData', {
             'data': audioData,
@@ -396,8 +427,29 @@ class DeepgramAgentService {
           
           // Check if this is a binary message (audio from the server)
           if (message is List<int>) {
+
+
+
+
             // Handle binary audio response from the agent
-            debugPrint('🔵 DEEPGRAM: Received binary audio data: ${message.length} bytes');
+            //debugPrint('🔵 DEEPGRAM: Received binary audio data: ${message.length} bytes');
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+            
             
             // Process audio data with native audio player
             final audioData = Uint8List.fromList(message);
@@ -594,16 +646,26 @@ class DeepgramAgentService {
     }
   }
   
+  // Dynamic instructions to include in config
+  String? _dynamicInstructions;
+
+  /// Update agent context (e.g. recipe context) and resend config if connected
+  Future<void> updateAgentContext(String instructions) async {
+    _dynamicInstructions = instructions;
+    if (_isConnected) {
+      _sendAgentConfig();
+    }
+  }
+
   /// Send agent configuration to Deepgram
   void _sendAgentConfig() {
     if (_channel == null) {
       debugPrint('🔴 DEEPGRAM: Cannot send agent config - channel is null');
       return;
     }
-    
     debugPrint('🔵 DEEPGRAM: Preparing agent configuration');
-    
-    // Follow the documented format from Deepgram docs
+
+    // Default configuration as per documentation
     final config = {
       "type": "SettingsConfiguration",
       "audio": {
@@ -643,12 +705,16 @@ class DeepgramAgentService {
         }
       }
     };
-    
+
+    // Merge dynamic instructions if provided
+    if (_dynamicInstructions != null) {
+      final base = (config['agent'] as Map)[ 'think'] as Map;
+      final inst = base['instructions'] as String? ?? '';
+      base['instructions'] = '$inst\n\n${_dynamicInstructions!}';
+    }
+
     try {
       final configJson = json.encode(config);
-      debugPrint('🔵 DEEPGRAM: Sending SettingsConfiguration: ${configJson.substring(0, math.min(100, configJson.length))}...');
-      
-      // Send the configuration to the currently established connection
       _channel!.sink.add(configJson);
       debugPrint('🟢 DEEPGRAM: SettingsConfiguration sent successfully');
     } catch (e) {
@@ -1206,7 +1272,7 @@ class DeepgramAgentService {
         _disconnect();
         
         // Notify user that connection was closed due to inactivity
-        _messageController.add("Voice connection closed due to inactivity. Tap the mic to start a new conversation.");
+        //_messageController.add("Voice connection closed due to inactivity. Tap the mic to start a new conversation.");
       }
     });
   }
@@ -1221,12 +1287,10 @@ class DeepgramAgentService {
         return;
       }
       
-      // Send heartbeats regardless of state to ensure connection stays alive
-      debugPrint('🔵 DEEPGRAM: Sending heartbeat to keep connection alive');
+      // _sendHeartbeat without logging
       _sendHeartbeat();
     });
-    
-    debugPrint('🔵 DEEPGRAM: Heartbeat timer started (interval: $_heartbeatIntervalSeconds seconds)');
+    // debugPrint('🔵 DEEPGRAM: Heartbeat timer started (interval: $_heartbeatIntervalSeconds seconds)');
   }
   
   /// Stop the heartbeat timer
@@ -1257,7 +1321,7 @@ class DeepgramAgentService {
       _lastHeartbeatTimestamp = now.millisecondsSinceEpoch;
       
       // Log with sequence number for tracking
-      debugPrint('❤️ DEEPGRAM: Heartbeat #$_heartbeatCount sent successfully (${heartbeatData.length} bytes, ${timeSinceLastHeartbeat}ms since last)');
+      // debugPrint('❤️ DEEPGRAM: Heartbeat #$_heartbeatCount sent successfully (${heartbeatData.length} bytes, ${timeSinceLastHeartbeat}ms since last)');
       
       // Reset inactivity timer since we just sent data
       _resetInactivityTimer();
@@ -1407,7 +1471,7 @@ class DeepgramAgentService {
   /// Resets the inactivity timer - call this on user activity
   void _resetInactivityTimer() {
     if (_isConnected) {
-      debugPrint('🔵 DEEPGRAM: Resetting inactivity timer due to user activity');
+      //debugPrint('🔵 DEEPGRAM: Resetting inactivity timer due to user activity');
       _startInactivityTimer();
     }
   }
@@ -1636,6 +1700,7 @@ class DeepgramAgentService {
     debugPrint('Deepgram Agent state changed to: $_state');
   }
 }
+
 
 /// States for the Deepgram Agent
 enum DeepgramAgentState {

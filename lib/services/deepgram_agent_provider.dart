@@ -297,8 +297,7 @@ class DeepgramAgentProvider extends ChangeNotifier {
     try {
       // First, check if the message matches the expected timer format
       if (content.toLowerCase().contains('set up a timer for') || 
-          content.toLowerCase().contains('timer for') ||
-          content.toLowerCase().contains('minutes')) {
+          content.toLowerCase().contains('timer for')) {
         
         debugPrint('🕒 DEEPGRAM PROVIDER: Potential timer request detected: "${content.substring(0, Math.min(50, content.length))}..."');
         
@@ -395,7 +394,38 @@ class DeepgramAgentProvider extends ChangeNotifier {
       debugPrint('Error toggling speakerphone: $e');
     }
   }
-  
+  // Set system context for cooking guidance
+  Future<void> setSystemContext(String context) async {
+    try {
+      // Add as a system message in UI
+      _addSystemMessage('Cooking Context: $context');
+
+      // Send as dynamic instructions to Deepgram service
+      await _deepgramAgentService.updateAgentContext(context);
+    } catch (e) {
+      debugPrint('Error setting system context: $e');
+      _addErrorMessage('Failed to set cooking context: $e');
+    }
+    notifyListeners();
+  }
+
+  // Speak a message through the voice agent
+  Future<void> speak(String message) async {
+    try {
+      // Add the message as an agent message so it appears in the chat
+      _addAgentMessage(message);
+      
+      // Send the message through the text interface which will trigger TTS
+      if (_isInitialized) {
+        await _deepgramAgentService.sendTextMessage(message);
+      }
+    } catch (e) {
+      debugPrint('Error speaking message: $e');
+      _addErrorMessage('Failed to speak message: $e');
+    }
+    notifyListeners();
+  }
+
   // Clear chat history
   void clearHistory() {
     _messages.clear();
