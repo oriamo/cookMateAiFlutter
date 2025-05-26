@@ -41,11 +41,16 @@ class GeneratedImageNotifier extends StateNotifier<GeneratedImageState> {
     required String instruction,
     required String recipeContext,
   }) async {
+    debugPrint('GeneratedImageProvider: Generating image for instruction: "$instruction"');
+    debugPrint('GeneratedImageProvider: Recipe context: "$recipeContext"');
+    
     // Don't regenerate if it's the same instruction
     if (state.lastInstruction == instruction && state.imageData != null) {
+      debugPrint('GeneratedImageProvider: Skipping generation - same instruction already generated');
       return;
     }
 
+    debugPrint('GeneratedImageProvider: Starting image generation...');
     state = state.copyWith(
       isLoading: true,
       error: null,
@@ -59,19 +64,22 @@ class GeneratedImageNotifier extends StateNotifier<GeneratedImageState> {
       );
 
       if (imageData != null) {
+        debugPrint('GeneratedImageProvider: Image generated successfully! Size: ${imageData.length} bytes');
         state = state.copyWith(
           imageData: imageData,
           isLoading: false,
           error: null,
         );
       } else {
+        debugPrint('GeneratedImageProvider: Image generation returned null');
         state = state.copyWith(
           isLoading: false,
-          error: 'Failed to generate image',
+          error: 'Failed to generate image - API returned no data',
         );
       }
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('GeneratedImageProvider: Error generating image: $e');
+      debugPrint('GeneratedImageProvider: Stack trace: $stackTrace');
       state = state.copyWith(
         isLoading: false,
         error: 'Error generating image: $e',

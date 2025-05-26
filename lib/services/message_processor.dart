@@ -94,6 +94,8 @@ class MessageProcessor {
 
   /// Process message for image generation
   void _processImageGeneration(String message, String recipeContext) {
+    debugPrint('🖼️ MESSAGE PROCESSOR: Processing message for image generation: "${message.substring(0, message.length > 50 ? 50 : message.length)}..."');
+    
     // Check if this looks like a cooking instruction
     final cookingKeywords = [
       'step', 'cook', 'heat', 'add', 'mix', 'stir', 'chop', 'dice', 
@@ -103,15 +105,22 @@ class MessageProcessor {
     ];
     
     final lowerMessage = message.toLowerCase();
-    final isCookingInstruction = cookingKeywords.any((keyword) => 
+    final foundKeywords = cookingKeywords.where((keyword) => 
       lowerMessage.contains(keyword)
-    );
+    ).toList();
+    
+    debugPrint('🖼️ MESSAGE PROCESSOR: Found cooking keywords: $foundKeywords');
+    
+    final isCookingInstruction = foundKeywords.isNotEmpty;
     
     if (isCookingInstruction && message.length > 10) {
-      debugPrint('🖼️ MESSAGE PROCESSOR: Detected cooking instruction for image generation: "${message.substring(0, message.length > 50 ? 50 : message.length)}..."');
+      debugPrint('🖼️ MESSAGE PROCESSOR: ✅ Detected cooking instruction for image generation!');
+      debugPrint('🖼️ MESSAGE PROCESSOR: Recipe context: "$recipeContext"');
       
       // Call the image generation callback
       _onImageGenerationRequest?.call(message, recipeContext);
+    } else {
+      debugPrint('🖼️ MESSAGE PROCESSOR: ❌ Not a cooking instruction (keywords: $foundKeywords, length: ${message.length})');
     }
   }
 }
