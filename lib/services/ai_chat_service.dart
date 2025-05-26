@@ -3,7 +3,9 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import '../models/chat_message.dart';
+import '../providers/tts_provider.dart';
 
 enum AIServiceError {
   network,
@@ -51,10 +53,11 @@ class AIChatService {
 
 class ChatNotifier extends StateNotifier<List<ChatMessage>> {
   final AIChatService _aiService;
+  final Ref _ref;
   final Uuid _uuid = const Uuid();
   static const String _storageKey = 'cook_mate_chat_history';
 
-  ChatNotifier(this._aiService)
+  ChatNotifier(this._aiService, this._ref)
       : super([
           ChatMessage(
             id: 'welcome-message',
@@ -101,6 +104,15 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
   Future<void> sendMessage(String content) async {
     if (content.trim().isEmpty) return;
 
+    // Stop any ongoing TTS when a new message is sent
+    try {
+      final ttsNotifier = _ref.read(ttsProvider.notifier);
+      await ttsNotifier.stop();
+      debugPrint('🔇 AI CHAT: Stopped TTS due to new message');
+    } catch (e) {
+      debugPrint('Error stopping TTS: $e');
+    }
+
     // Add user message
     final userMessage = ChatMessage(
       id: _uuid.v4(),
@@ -126,20 +138,36 @@ class ChatNotifier extends StateNotifier<List<ChatMessage>> {
 
     // Replace loading message with actual response
     state = state.where((message) => message.id != loadingMessageId).toList();
-    state = [
-      ...state,
-      ChatMessage(
-        id: _uuid.v4(),
-        content: response,
-        role: MessageRole.assistant,
-      )
-    ];
+    final assistantMessage = ChatMessage(
+      id: _uuid.v4(),
+      content: response,
+      role: MessageRole.assistant,
+    );
+    state = [...state, assistantMessage];
 
     // Save chat history
     await _saveChatHistory();
+
+    // Speak the AI response using TTS
+    try {
+      final ttsNotifier = _ref.read(ttsProvider.notifier);
+      await ttsNotifier.speak(response);
+      debugPrint('🔊 AI CHAT: Started TTS for AI response');
+    } catch (e) {
+      debugPrint('Error starting TTS: $e');
+    }
   }
 
   void clearChat() {
+    // Stop any ongoing TTS when clearing chat
+    try {
+      final ttsNotifier = _ref.read(ttsProvider.notifier);
+      ttsNotifier.stop();
+      debugPrint('🔇 AI CHAT: Stopped TTS due to chat clear');
+    } catch (e) {
+      debugPrint('Error stopping TTS during clear: $e');
+    }
+
     _aiService.resetChat();
     state = [
       ChatMessage(
@@ -162,5 +190,5 @@ final aiServiceProvider = Provider<AIChatService>((ref) {
 final chatMessagesProvider =
     StateNotifierProvider<ChatNotifier, List<ChatMessage>>((ref) {
   final aiService = ref.watch(aiServiceProvider);
-  return ChatNotifier(aiService);
+  return ChatNotifier(aiService, ref);
 });

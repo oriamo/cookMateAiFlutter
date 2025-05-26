@@ -4,6 +4,8 @@ import 'package:animate_do/animate_do.dart';
 import '../models/chat_message.dart';
 import '../services/ai_chat_service.dart';
 import '../providers/user_provider.dart';
+import '../providers/tts_provider.dart';
+import '../services/tts_service.dart';
 
 class AIChatScreen extends ConsumerStatefulWidget {
   const AIChatScreen({super.key});
@@ -134,6 +136,34 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
         backgroundColor: Colors.green,
         foregroundColor: Colors.white,
         actions: [
+          // TTS control button
+          Consumer(
+            builder: (context, ref, child) {
+              final ttsState = ref.watch(ttsProvider);
+              final isSpeaking = ttsState.state == TtsState.playing;
+              
+              return IconButton(
+                icon: Icon(isSpeaking ? Icons.volume_off : Icons.volume_up),
+                onPressed: () async {
+                  if (isSpeaking) {
+                    await ref.read(ttsProvider.notifier).stop();
+                  } else {
+                    // If not speaking and there are messages, speak the last AI message
+                    final messages = ref.read(chatMessagesProvider);
+                    final lastAIMessage = messages.reversed.firstWhere(
+                      (msg) => msg.role == MessageRole.assistant && msg.content != '...',
+                      orElse: () => ChatMessage(id: '', content: '', role: MessageRole.assistant),
+                    );
+                    if (lastAIMessage.content.isNotEmpty) {
+                      await ref.read(ttsProvider.notifier).speak(lastAIMessage.content);
+                    }
+                  }
+                },
+                tooltip: isSpeaking ? 'Stop Speech' : 'Repeat Last Message',
+                color: isSpeaking ? Colors.red : Colors.white,
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _clearChat,
@@ -200,6 +230,40 @@ class _AIChatScreenState extends ConsumerState<AIChatScreen> {
                 ],
               ),
             ),
+
+          // TTS indicator
+          Consumer(
+            builder: (context, ref, child) {
+              final ttsState = ref.watch(ttsProvider);
+              if (ttsState.state != TtsState.playing) return const SizedBox.shrink();
+              
+              return Container(
+                padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                color: Colors.green.withOpacity(0.1),
+                child: Row(
+                  children: [
+                    Icon(Icons.volume_up, size: 16, color: Colors.green.shade700),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Speaking: ${ttsState.currentSpeakingText?.substring(0, ttsState.currentSpeakingText!.length > 50 ? 50 : ttsState.currentSpeakingText!.length) ?? ""}${(ttsState.currentSpeakingText?.length ?? 0) > 50 ? "..." : ""}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.green.shade700,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () => ref.read(ttsProvider.notifier).stop(),
+                      child: const Text('Stop', style: TextStyle(fontSize: 12)),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
 
           // Suggestion chips - now using user's recent searches
           if (messages.length <= 2)
