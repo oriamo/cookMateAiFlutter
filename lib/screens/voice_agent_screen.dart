@@ -5,10 +5,8 @@ import '../services/deepgram_agent_provider.dart';
 import '../services/deepgram_agent_types.dart';
 import '../widgets/voice_visualization.dart';
 import '../widgets/animated_mic_button.dart';
-import '../widgets/message_bubble.dart';
 import '../widgets/cooking_timer_widget.dart';
 import '../providers/timer_provider.dart';
-import '../services/message_processor.dart';
 import '../services/cooking_session_service.dart';
 import '../providers/generated_image_provider.dart';
 
@@ -360,15 +358,49 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
       ),
       body: Column(
         children: [
-          // Recent messages (limited to displaying last 2 messages)
+          // Scrollable messages area (shows all conversation history)
           Container(
             height: 120,
             width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: messages.isNotEmpty
-                ? _buildRecentMessages(messages)
-                : const Center(
-                    child: Text('Start speaking to begin a conversation')),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(
+                  color: Colors.grey.shade200,
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Stack(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: messages.isNotEmpty
+                      ? _buildRecentMessages(messages)
+                      : const Center(
+                          child: Text('Start speaking to begin a conversation')),
+                ),
+                // Scroll indicator
+                if (messages.length > 2)
+                  Positioned(
+                    right: 8,
+                    bottom: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        '${messages.length} messages',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
           ),
 
           // Active Timers display (shows only when timers are active)
@@ -523,19 +555,18 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
     );
   }
 
-  // Build a limited message list showing only the most recent messages
+  // Build a scrollable message list showing all messages
   Widget _buildRecentMessages(List<DeepgramAgentMessage> messages) {
-    // Get the most recent messages (up to 2)
-    final int startIndex = messages.length > 2 ? messages.length - 2 : 0;
-    final recentMessages = messages.sublist(startIndex);
-
     return ListView.builder(
+      controller: _scrollController,
       padding: EdgeInsets.zero,
-      itemCount: recentMessages.length,
+      reverse: true, // Start from bottom (most recent)
+      itemCount: messages.length,
       itemBuilder: (context, index) {
-        final message = recentMessages[index];
+        // Reverse index to show newest at bottom
+        final message = messages[messages.length - 1 - index];
         return Padding(
-          padding: const EdgeInsets.only(bottom: 4),
+          padding: const EdgeInsets.only(bottom: 8),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -558,11 +589,24 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
                     color: _getMessageColor(message.type).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: Text(
-                    message.content,
-                    style: const TextStyle(fontSize: 14),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        message.content,
+                        style: const TextStyle(fontSize: 14),
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _formatMessageTime(message.timestamp),
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -571,6 +615,22 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
         );
       },
     );
+  }
+
+  // Format message timestamp
+  String _formatMessageTime(DateTime timestamp) {
+    final now = DateTime.now();
+    final difference = now.difference(timestamp);
+    
+    if (difference.inMinutes < 1) {
+      return 'Just now';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours}h ago';
+    } else {
+      return '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
+    }
   }
 
   // Get message color based on type
