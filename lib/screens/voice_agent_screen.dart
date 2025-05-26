@@ -6,8 +6,7 @@ import '../services/deepgram_agent_types.dart';
 import '../widgets/waveform_visualization.dart';
 import '../widgets/cooking_timer_widget.dart';
 import '../providers/timer_provider.dart';
-import '../services/cooking_session_service.dart';
-import '../providers/generated_image_provider.dart';\nimport '../models/chat_message.dart';
+import '../providers/generated_image_provider.dart';
 
 class VoiceAgentScreen extends ConsumerStatefulWidget {
   const VoiceAgentScreen({Key? key}) : super(key: key);
@@ -248,7 +247,7 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
     );
   }
 
-  Widget _buildChatOverlay(List<ChatMessage> messages) {
+  Widget _buildChatOverlay(List<DeepgramAgentMessage> messages) {
     if (messages.length <= 1) return const SizedBox.shrink();
     
     return Positioned(
@@ -330,7 +329,7 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
     );
   }
 
-  void _showFullChatHistory(List<ChatMessage> messages) {
+  void _showFullChatHistory(List<DeepgramAgentMessage> messages) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -373,17 +372,17 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
                       margin: const EdgeInsets.only(bottom: 12),
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: message.isUser ? Colors.blue.shade50 : Colors.grey.shade50,
+                        color: message.type == DeepgramAgentMessageType.user ? Colors.blue.shade50 : Colors.grey.shade50,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            message.isUser ? 'You' : 'Assistant',
+                            message.type == DeepgramAgentMessageType.user ? 'You' : 'Assistant',
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
-                              color: message.isUser ? Colors.blue : Colors.grey.shade700,
+                              color: message.type == DeepgramAgentMessageType.user ? Colors.blue : Colors.grey.shade700,
                             ),
                           ),
                           const SizedBox(height: 4),
