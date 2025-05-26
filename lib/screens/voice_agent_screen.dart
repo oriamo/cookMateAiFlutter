@@ -3,12 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/deepgram_agent_provider.dart';
 import '../services/deepgram_agent_types.dart';
-import '../widgets/voice_visualization.dart';
-import '../widgets/animated_mic_button.dart';
+import '../widgets/waveform_visualization.dart';
 import '../widgets/cooking_timer_widget.dart';
 import '../providers/timer_provider.dart';
 import '../services/cooking_session_service.dart';
-import '../providers/generated_image_provider.dart';
+import '../providers/generated_image_provider.dart';\nimport '../models/chat_message.dart';
 
 class VoiceAgentScreen extends ConsumerStatefulWidget {
   const VoiceAgentScreen({Key? key}) : super(key: key);
@@ -20,7 +19,6 @@ class VoiceAgentScreen extends ConsumerStatefulWidget {
 class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isConversationActive = false;
-  bool _stepListenerAttached = false;
   bool _imageGenerationEnabled = false; // Disabled by default
 
   @override
@@ -58,167 +56,47 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
       if (!_isConversationActive && provider.state == DeepgramAgentState.idle) {
         debugPrint(
             'VoiceAgentScreen: Auto-starting conversation with continuous listening enabled');
-
-        // Ensure continuous listening is enabled for the most stable experience
-        provider.setContinuousListening(true);
-
-        // Start conversation with a short delay to ensure screen is fully rendered
-        Future.delayed(Duration(milliseconds: 300), () {
-          if (mounted) {
-            provider.startConversation();
-            setState(() {
-              _isConversationActive = true;
-            });
-          }
-        });
+        provider.startConversation();
       }
     });
   }
 
-  @override
-  Widget build(BuildContext context) {
-    // Force rebuild on cooking session changes
-    ref.watch(cookingSessionProvider);
-    // Attach step navigation listener once
-    if (!_stepListenerAttached) {
-      _stepListenerAttached = true;
-      ref.listen<List<DeepgramAgentMessage>>(
-        deepgramAgentProvider.select((p) => p.messages),
-        (previous, next) {
-          if (previous == null || next.length <= previous.length) return;
-          final newMsgs = next.sublist(previous.length);
-          for (final msg in newMsgs) {
-            if (msg.type != DeepgramAgentMessageType.agent) continue;
-            final content = msg.content.toLowerCase();
-            
-            // Jump to a specific step: 'step X'
-            // Explicit step number commands
-            // Patterns: "step X", "move on to step X", "start with step X" etc.
-            // Patterns for explicit step instructions, including "let's move on to step X", "go to step X", etc.
-            final stepPatterns = [
-              RegExp(
-                  r"(?:let'?s\s*)?(?:move on to|start with|begin with|go to)\s*step\s+(\d+)",
-                  caseSensitive: false),
-              RegExp(r'step\s+(\d+)', caseSensitive: false),
-            ];
-            bool jumped = false;
-            for (final pattern in stepPatterns) {
-              final m = pattern.firstMatch(content);
-              if (m != null && m.groupCount >= 1) {
-                final stepIndex = int.tryParse(m.group(1)!);
-                if (stepIndex != null) {
-                  debugPrint('AI -> Jumping to step $stepIndex');
-                  ref.read(cookingSessionProvider.notifier).goToStep(stepIndex);
-                  jumped = true;
-                  break;
-                }
-              }
-            }
-            if (jumped) continue;
-            // Handle 'next step' directive
-            if (content.contains('next step')) {
-              debugPrint('Detected "next step" command from AI');
-              ref.read(cookingSessionProvider.notifier).nextStep();
-              continue;
-            }
-            // Handle 'previous step' directive
-            if (content.contains('previous step') ||
-                content.contains('last step')) {
-              debugPrint('Detected "previous step" command from AI');
-              ref.read(cookingSessionProvider.notifier).previousStep();
-              continue;
-            }
-          }
-          // Debugging: log that AI navigation parsing completed for msg: ${msg.content}
-        },
-      );
+  WaveformState _mapToWaveformState(DeepgramAgentState state) {
+    switch (state) {
+      case DeepgramAgentState.listening:
+        return WaveformState.listening;
+      case DeepgramAgentState.speaking:
+        return WaveformState.speaking;
+      case DeepgramAgentState.processing:
+        return WaveformState.processing;
+      default:
+        return WaveformState.idle;
     }
-    final provider = ref.watch(deepgramAgentProvider);
-
-    // Show loading screen if initializing
-    if (provider.isInitializing) {
-      return _buildLoadingScreen();
-    }
-
-    // Show error screen if there was an error
-    if (provider.error != null && !provider.isInitialized) {
-      return _buildErrorScreen(provider.error!);
-    }
-
-    // Main screen
-    return _buildMainScreen(provider);
   }
 
-  Widget _buildLoadingScreen() {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Live Voice Conversation'),
-      ),
-      body: const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 20),
-            Text('Initializing Voice Agent...'),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildErrorScreen(String error) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Live Voice Conversation'),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.red),
-            const SizedBox(height: 20),
-            const Text(
-              'Failed to initialize Voice Agent',
-              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 10),
-            Text(error),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: () {
-                // Reload the screen
-                Navigator.pushReplacement(
-                  context,
-                  MaterialPageRoute(
-                      builder: (context) => const VoiceAgentScreen()),
-                );
-              },
-              child: const Text('Retry'),
-            ),
-          ],
-        ),
-      ),
-    );
+  String _getStatusText(DeepgramAgentState state) {
+    switch (state) {
+      case DeepgramAgentState.listening:
+        return 'Listening...';
+      case DeepgramAgentState.speaking:
+        return 'Speaking';
+      case DeepgramAgentState.processing:
+        return 'Processing...';
+      case DeepgramAgentState.connecting:
+        return 'Connecting...';
+      case DeepgramAgentState.idle:
+        return 'Ready';
+      default:
+        return 'Ready';
+    }
   }
 
   Widget _buildMainScreen(DeepgramAgentProvider provider) {
     final messages = provider.messages;
-    final isListening = provider.state == DeepgramAgentState.listening;
-    final isSpeaking = provider.state == DeepgramAgentState.speaking;
+    final currentMessage = messages.isNotEmpty ? messages.last : null;
 
     // Set the conversation state
     _isConversationActive = provider.state != DeepgramAgentState.idle;
-
-    // Determine the visualization state
-    VisualizationState visualizationState;
-    if (isListening) {
-      visualizationState = VisualizationState.userSpeaking;
-    } else if (isSpeaking) {
-      visualizationState = VisualizationState.aiSpeaking;
-    } else {
-      visualizationState = VisualizationState.idle;
-    }
 
     return Scaffold(
       appBar: AppBar(
@@ -240,326 +118,304 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
         ],
       ),
       endDrawer: _buildSettingsDrawer(provider),
-      body: Column(
+      body: Stack(
         children: [
-          // Scrollable messages area (shows all conversation history)
-          Container(
-            height: 120,
-            width: double.infinity,
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: Colors.grey.shade200,
-                  width: 1,
-                ),
-              ),
-            ),
-            child: Stack(
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: messages.isNotEmpty
-                      ? _buildRecentMessages(messages)
-                      : const Center(
-                          child: Text('Start speaking to begin a conversation')),
-                ),
-                // Scroll indicator
-                if (messages.length > 2)
-                  Positioned(
-                    right: 8,
-                    bottom: 8,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '${messages.length} messages',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-
-          // Active Timers display (shows only when timers are active)
-          Consumer(
-            builder: (context, ref, child) {
-              final hasTimers = ref.watch(hasActiveTimersProvider);
-              if (!hasTimers) return const SizedBox.shrink();
-              return ActiveTimersPanel();
-            },
-          ),
-          // Generated cooking instruction image
-          Consumer(
-            builder: (context, ref, child) {
-              // If image generation is disabled, show nothing
-              if (!_imageGenerationEnabled) {
-                return const SizedBox.shrink();
-              }
-              
-              final imageState = ref.watch(generatedImageProvider);
-              
-              if (imageState.isLoading) {
-                return Container(
-                  height: 200,
-                  margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 12),
-                        Text('Generating cooking image...'),
-                      ],
-                    ),
-                  ),
-                );
-              }
-              
-              if (imageState.imageData != null) {
-                return Container(
-                  height: 200,
-                  margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.memory(
-                      imageState.imageData!,
-                      height: 200,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                );
-              }
-              
-              if (imageState.error != null) {
-                return Container(
-                  height: 120,
-                  margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(Icons.error_outline, color: Colors.red, size: 32),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Failed to generate image',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
-              
-              // No image to show
-              return const SizedBox.shrink();
-            },
-          ),
-
-          // Voice visualization (main component)
-          Expanded(
-            child: VoiceVisualization(
-              state: visualizationState,
-            ),
-          ),
-
-          // Control buttons
-          Container(
-            padding: const EdgeInsets.all(20),
-            child: _isConversationActive
-                ? Row(
+          // Main content area
+          Column(
+            children: [
+              // Main waveform visualization area
+              Expanded(
+                flex: 3,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Pause button
-                      IconButton(
-                        icon: const Icon(Icons.pause_circle_outline),
-                        onPressed: () {
-                          provider.pauseConversation();
-                        },
-                        tooltip: 'Pause conversation',
-                        iconSize: 40,
-                        color: Colors.deepPurple,
+                      // Status text
+                      Text(
+                        _getStatusText(provider.state),
+                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w300,
+                        ),
                       ),
-                      const SizedBox(width: 20),
-
-                      // Stop button
-                      IconButton(
-                        icon: const Icon(Icons.cancel_outlined),
-                        onPressed: () {
-                          provider.stopConversation();
-                        },
-                        tooltip: 'End conversation',
-                        iconSize: 40,
-                        color: Colors.redAccent,
+                      const SizedBox(height: 40),
+                      // Main waveform visualization
+                      WaveformVisualization(
+                        state: _mapToWaveformState(provider.state),
                       ),
+                      const SizedBox(height: 40),
+                      // Current message display
+                      if (currentMessage != null)
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          margin: const EdgeInsets.symmetric(horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade50,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Text(
+                            currentMessage.content,
+                            style: Theme.of(context).textTheme.bodyLarge,
+                            textAlign: TextAlign.center,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                     ],
-                  )
-                : AnimatedMicButton(
-                    onPressed: () {
-                      debugPrint(
-                          'VoiceAgentScreen: User pressed mic button to start conversation');
-                      // Always ensure continuous listening is enabled for stable connections
-                      provider.setContinuousListening(true);
-                      // Start conversation with visual feedback
-                      provider.startConversation();
-                      // Update local state
-                      setState(() {
-                        _isConversationActive = true;
-                      });
-                    },
-                    isActive: false,
-                    baseColor: Colors.deepPurple,
                   ),
+                ),
+              ),
+              
+              // Bottom section for timers and controls
+              Expanded(
+                flex: 1,
+                child: Column(
+                  children: [
+                    // Active Timers display (compact)
+                    Consumer(
+                      builder: (context, ref, child) {
+                        final hasTimers = ref.watch(hasActiveTimersProvider);
+                        if (!hasTimers) return const SizedBox.shrink();
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                          child: const ActiveTimersPanel(),
+                        );
+                      },
+                    ),
+                    
+                    // Control buttons
+                    Container(
+                      padding: const EdgeInsets.all(20),
+                      child: _isConversationActive
+                          ? Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // Pause button
+                                IconButton(
+                                  icon: const Icon(Icons.pause_circle_outline),
+                                  onPressed: () {
+                                    provider.pauseConversation();
+                                  },
+                                  tooltip: 'Pause conversation',
+                                  iconSize: 40,
+                                  color: Colors.deepPurple,
+                                ),
+                                const SizedBox(width: 20),
+                                // Stop button
+                                IconButton(
+                                  icon: const Icon(Icons.stop_circle),
+                                  onPressed: () {
+                                    provider.stopConversation();
+                                  },
+                                  tooltip: 'Stop conversation',
+                                  iconSize: 40,
+                                  color: Colors.red,
+                                ),
+                              ],
+                            )
+                          : Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                // Start button
+                                IconButton(
+                                  icon: const Icon(Icons.play_circle_outline),
+                                  onPressed: () {
+                                    provider.startConversation();
+                                  },
+                                  tooltip: 'Start conversation',
+                                  iconSize: 40,
+                                  color: Colors.green,
+                                ),
+                              ],
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-
-          // Safe area padding
-          SizedBox(height: MediaQuery.of(context).padding.bottom),
+          
+          // Chat transcript overlay (minimally visible)
+          _buildChatOverlay(messages),
+          
+          // Generated image overlay (when available)
+          _buildImageOverlay(),
         ],
       ),
     );
   }
 
-  // Build a scrollable message list showing all messages
-  Widget _buildRecentMessages(List<DeepgramAgentMessage> messages) {
-    return ListView.builder(
-      controller: _scrollController,
-      padding: EdgeInsets.zero,
-      reverse: true, // Start from bottom (most recent)
-      itemCount: messages.length,
-      itemBuilder: (context, index) {
-        // Reverse index to show newest at bottom
-        final message = messages[messages.length - 1 - index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 8),
+  Widget _buildChatOverlay(List<ChatMessage> messages) {
+    if (messages.length <= 1) return const SizedBox.shrink();
+    
+    return Positioned(
+      bottom: 100,
+      right: 16,
+      child: GestureDetector(
+        onTap: () => _showFullChatHistory(messages),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.black.withOpacity(0.7),
+            borderRadius: BorderRadius.circular(20),
+          ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // Avatar or icon
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: _getMessageColor(message.type),
-                child: Icon(
-                  _getMessageIcon(message.type),
-                  color: Colors.white,
-                  size: 16,
-                ),
-              ),
+              const Icon(Icons.chat_bubble_outline, color: Colors.white, size: 16),
               const SizedBox(width: 8),
-              // Message text
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: _getMessageColor(message.type).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        message.content,
-                        style: const TextStyle(fontSize: 14),
-                        maxLines: 3,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _formatMessageTime(message.timestamp),
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Colors.grey.shade600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+              Text(
+                '${messages.length} messages',
+                style: const TextStyle(color: Colors.white, fontSize: 12),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImageOverlay() {
+    return Consumer(
+      builder: (context, ref, child) {
+        if (!_imageGenerationEnabled) return const SizedBox.shrink();
+        
+        final imageState = ref.watch(generatedImageProvider);
+        
+        if (imageState.imageData == null && !imageState.isLoading) {
+          return const SizedBox.shrink();
+        }
+        
+        return Positioned(
+          top: 100,
+          right: 16,
+          child: Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: imageState.isLoading
+                  ? Container(
+                      color: Colors.grey.shade200,
+                      child: const Center(
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : imageState.imageData != null
+                      ? Image.memory(
+                          imageState.imageData!,
+                          fit: BoxFit.cover,
+                        )
+                      : Container(
+                          color: Colors.red.shade100,
+                          child: const Icon(Icons.error, color: Colors.red),
+                        ),
+            ),
           ),
         );
       },
     );
   }
 
-  // Format message timestamp
-  String _formatMessageTime(DateTime timestamp) {
-    final now = DateTime.now();
-    final difference = now.difference(timestamp);
-    
-    if (difference.inMinutes < 1) {
-      return 'Just now';
-    } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes}m ago';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours}h ago';
-    } else {
-      return '${timestamp.hour.toString().padLeft(2, '0')}:${timestamp.minute.toString().padLeft(2, '0')}';
-    }
+  void _showFullChatHistory(List<ChatMessage> messages) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        maxChildSize: 0.9,
+        minChildSize: 0.3,
+        builder: (context, scrollController) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    const Text(
+                      'Conversation History',
+                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: ListView.builder(
+                  controller: scrollController,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final message = messages[index];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: message.isUser ? Colors.blue.shade50 : Colors.grey.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            message.isUser ? 'You' : 'Assistant',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: message.isUser ? Colors.blue : Colors.grey.shade700,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(message.content),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
-  // Get message color based on type
-  Color _getMessageColor(DeepgramAgentMessageType type) {
-    switch (type) {
-      case DeepgramAgentMessageType.user:
-        return Colors.blue;
-      case DeepgramAgentMessageType.agent:
-        return Colors.deepPurple;
-      case DeepgramAgentMessageType.system:
-        return Colors.grey;
-      case DeepgramAgentMessageType.error:
-        return Colors.red;
-    }
+  @override
+  Widget build(BuildContext context) {
+    return Consumer(
+      builder: (context, ref, child) {
+        final provider = ref.watch(deepgramAgentProvider);
+        return _buildMainScreen(provider);
+      },
+    );
   }
 
-  // Get message icon based on type
-  IconData _getMessageIcon(DeepgramAgentMessageType type) {
-    switch (type) {
-      case DeepgramAgentMessageType.user:
-        return Icons.person;
-      case DeepgramAgentMessageType.agent:
-        return Icons.smart_toy;
-      case DeepgramAgentMessageType.system:
-        return Icons.info;
-      case DeepgramAgentMessageType.error:
-        return Icons.error;
-    }
-  }
-
-  // Build a status indicator that shows the current state
   Widget _buildStatusIndicator(DeepgramAgentState state) {
     IconData icon;
     Color color;
 
     switch (state) {
-      case DeepgramAgentState.idle:
-        icon = Icons.circle;
-        color = Colors.grey;
-        break;
       case DeepgramAgentState.listening:
         icon = Icons.mic;
         color = Colors.green;
