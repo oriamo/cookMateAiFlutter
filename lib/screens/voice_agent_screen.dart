@@ -224,164 +224,22 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
       appBar: AppBar(
         title: Row(
           children: [
-            const Text('Live Voice Conversation'),
+            const Text('Live'),
             const SizedBox(width: 10),
             _buildStatusIndicator(provider.state),
           ],
         ),
         actions: [
-          // Noise & Interruption settings
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.settings),
-            tooltip: 'Voice settings',
-            onSelected: (String value) {
-              switch (value) {
-                case 'toggleInterruptions':
-                  // Toggle interruptions
-                  provider.setDisableInterruptions(
-                      !provider.disableInterruptionsEnabled);
-                  break;
-                case 'lowNoise':
-                  // Set low noise tolerance for quiet environments
-                  provider.setNoiseTolerance(15.0);
-                  break;
-                case 'mediumNoise':
-                  // Set medium noise tolerance
-                  provider.setNoiseTolerance(25.0);
-                  break;
-                case 'highNoise':
-                  // Set high noise tolerance for noisy environments
-                  provider.setNoiseTolerance(40.0);
-                  break;
-                case 'veryHighNoise':
-                  // Set very high noise tolerance for extremely noisy environments
-                  provider.setNoiseTolerance(55.0);
-                  break;
-              }
-            },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              PopupMenuItem<String>(
-                value: 'toggleInterruptions',
-                child: Row(
-                  children: [
-                    Icon(
-                      provider.disableInterruptionsEnabled
-                          ? Icons.volume_up
-                          : Icons.mic,
-                      color: provider.disableInterruptionsEnabled
-                          ? Colors.green
-                          : Colors.grey,
-                    ),
-                    const SizedBox(width: 10),
-                    Text(provider.disableInterruptionsEnabled
-                        ? 'Enable Interruptions'
-                        : 'Disable Interruptions'),
-                  ],
-                ),
-              ),
-              const PopupMenuDivider(),
-              const PopupMenuItem<String>(
-                value: '',
-                enabled: false,
-                child: Text('Noise Tolerance:',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
-              ),
-              PopupMenuItem<String>(
-                value: 'lowNoise',
-                child: Row(
-                  children: [
-                    Icon(Icons.volume_down,
-                        color: provider.noiseTolerance <= 15
-                            ? Colors.green
-                            : Colors.grey),
-                    const SizedBox(width: 10),
-                    const Text('Quiet Environment'),
-                  ],
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'mediumNoise',
-                child: Row(
-                  children: [
-                    Icon(Icons.volume_down,
-                        color: provider.noiseTolerance > 15 &&
-                                provider.noiseTolerance <= 25
-                            ? Colors.green
-                            : Colors.grey),
-                    const SizedBox(width: 10),
-                    const Text('Normal Environment'),
-                  ],
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'highNoise',
-                child: Row(
-                  children: [
-                    Icon(Icons.volume_up,
-                        color: provider.noiseTolerance > 25 &&
-                                provider.noiseTolerance <= 40
-                            ? Colors.green
-                            : Colors.grey),
-                    const SizedBox(width: 10),
-                    const Text('Noisy Environment'),
-                  ],
-                ),
-              ),
-              PopupMenuItem<String>(
-                value: 'veryHighNoise',
-                child: Row(
-                  children: [
-                    Icon(Icons.volume_up,
-                        color: provider.noiseTolerance > 40
-                            ? Colors.green
-                            : Colors.grey),
-                    const SizedBox(width: 10),
-                    const Text('Very Noisy Environment'),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          // Toggle speakerphone/earphone output
-          IconButton(
-            icon: Icon(
-              provider.isSpeakerphoneEnabled ? Icons.volume_up : Icons.headset,
-              color:
-                  provider.isSpeakerphoneEnabled ? Colors.green : Colors.grey,
+          Builder(
+            builder: (context) => IconButton(
+              icon: const Icon(Icons.menu),
+              onPressed: () => Scaffold.of(context).openEndDrawer(),
+              tooltip: 'Open settings menu',
             ),
-            tooltip: provider.isSpeakerphoneEnabled
-                ? 'Use Earphones'
-                : 'Use Loudspeaker',
-            onPressed: () {
-              provider.toggleSpeakerphone();
-            },
-          ),
-          // Image generation toggle
-          IconButton(
-            icon: Icon(
-              _imageGenerationEnabled ? Icons.image : Icons.image_not_supported,
-              color: _imageGenerationEnabled ? Colors.green : Colors.grey,
-            ),
-            onPressed: () {
-              setState(() {
-                _imageGenerationEnabled = !_imageGenerationEnabled;
-              });
-              
-              // Clear any existing generated image when disabled
-              if (!_imageGenerationEnabled) {
-                ref.read(generatedImageProvider.notifier).clearImage();
-              }
-            },
-            tooltip: _imageGenerationEnabled ? 'Disable Image Generation' : 'Enable Image Generation',
-          ),
-          // Clear chat history
-          IconButton(
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () => provider.clearHistory(),
-            tooltip: 'Clear chat history',
           ),
         ],
       ),
+      endDrawer: _buildSettingsDrawer(provider),
       body: Column(
         children: [
           // Scrollable messages area (shows all conversation history)
@@ -720,5 +578,146 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
     }
 
     return Icon(icon, color: color, size: 16);
+  }
+
+  Widget _buildSettingsDrawer(DeepgramAgentProvider provider) {
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
+        children: [
+          const DrawerHeader(
+            decoration: BoxDecoration(
+              color: Colors.blue,
+            ),
+            child: Text(
+              'Voice Settings',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+              ),
+            ),
+          ),
+          // Interruptions Toggle
+          ListTile(
+            leading: Icon(
+              provider.disableInterruptionsEnabled ? Icons.volume_up : Icons.mic,
+              color: provider.disableInterruptionsEnabled ? Colors.green : Colors.grey,
+            ),
+            title: Text(provider.disableInterruptionsEnabled 
+                ? 'Enable Interruptions' 
+                : 'Disable Interruptions'),
+            onTap: () {
+              provider.setDisableInterruptions(!provider.disableInterruptionsEnabled);
+              Navigator.pop(context);
+            },
+          ),
+          const Divider(),
+          // Speakerphone Toggle
+          ListTile(
+            leading: Icon(
+              provider.isSpeakerphoneEnabled ? Icons.volume_up : Icons.headset,
+              color: provider.isSpeakerphoneEnabled ? Colors.green : Colors.grey,
+            ),
+            title: Text(provider.isSpeakerphoneEnabled 
+                ? 'Use Earphones' 
+                : 'Use Loudspeaker'),
+            onTap: () {
+              provider.toggleSpeakerphone();
+              Navigator.pop(context);
+            },
+          ),
+          const Divider(),
+          // Image Generation Toggle
+          ListTile(
+            leading: Icon(
+              _imageGenerationEnabled ? Icons.image : Icons.image_not_supported,
+              color: _imageGenerationEnabled ? Colors.green : Colors.grey,
+            ),
+            title: Text(_imageGenerationEnabled 
+                ? 'Disable Image Generation' 
+                : 'Enable Image Generation'),
+            onTap: () {
+              setState(() {
+                _imageGenerationEnabled = !_imageGenerationEnabled;
+              });
+              
+              // Clear any existing generated image when disabled
+              if (!_imageGenerationEnabled) {
+                ref.read(generatedImageProvider.notifier).clearImage();
+              }
+              Navigator.pop(context);
+            },
+          ),
+          const Divider(),
+          // Clear Chat History
+          ListTile(
+            leading: const Icon(Icons.delete_outline, color: Colors.red),
+            title: const Text('Clear Chat History'),
+            onTap: () {
+              provider.clearHistory();
+              Navigator.pop(context);
+            },
+          ),
+          const Divider(),
+          // Noise Tolerance Section
+          const ListTile(
+            title: Text(
+              'Noise Tolerance',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          // Quiet Environment
+          ListTile(
+            leading: Icon(
+              Icons.volume_down,
+              color: provider.noiseTolerance <= 15 ? Colors.green : Colors.grey,
+            ),
+            title: const Text('Quiet Environment'),
+            onTap: () {
+              provider.setNoiseTolerance(15.0);
+              Navigator.pop(context);
+            },
+          ),
+          // Normal Environment
+          ListTile(
+            leading: Icon(
+              Icons.volume_down,
+              color: provider.noiseTolerance > 15 && provider.noiseTolerance <= 25 
+                  ? Colors.green : Colors.grey,
+            ),
+            title: const Text('Normal Environment'),
+            onTap: () {
+              provider.setNoiseTolerance(25.0);
+              Navigator.pop(context);
+            },
+          ),
+          // Noisy Environment
+          ListTile(
+            leading: Icon(
+              Icons.volume_up,
+              color: provider.noiseTolerance > 25 && provider.noiseTolerance <= 40 
+                  ? Colors.green : Colors.grey,
+            ),
+            title: const Text('Noisy Environment'),
+            onTap: () {
+              provider.setNoiseTolerance(40.0);
+              Navigator.pop(context);
+            },
+          ),
+          // Very Noisy Environment
+          ListTile(
+            leading: Icon(
+              Icons.volume_up,
+              color: provider.noiseTolerance > 40 ? Colors.green : Colors.grey,
+            ),
+            title: const Text('Very Noisy Environment'),
+            onTap: () {
+              provider.setNoiseTolerance(55.0);
+              Navigator.pop(context);
+            },
+          ),
+        ],
+      ),
+    );
   }
 }
