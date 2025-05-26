@@ -1,5 +1,6 @@
 // lib/services/cooking_session_service.dart
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/recipe.dart';
 import '../models/instruction.dart';
@@ -112,6 +113,9 @@ class CookingSessionService extends StateNotifier<CookingSession?> {
 
   /// Start a new cooking session
   Future<void> startCookingSession(Recipe recipe) async {
+    debugPrint('🕒 COOKING SESSION: Starting cooking session for "${recipe.title}" - Total time: ${recipe.totalTimeMinutes} minutes');
+    debugPrint('🕒 COOKING SESSION: NO total cooking timer will be created automatically');
+    
     // Start Deepgram voice connection before sending context
     await _voiceAgent.startConversation();
     // Initialize session state
@@ -239,6 +243,8 @@ class CookingSessionService extends StateNotifier<CookingSession?> {
     // Parse timing information (e.g., "1-2 minutes", "30 seconds", "about 5 minutes")
     final duration = _parseTimingDuration(timing);
     if (duration != null) {
+      debugPrint('🕒 COOKING SESSION: Creating timer for sub-step: "${subStep.description}" with duration: ${duration.inMinutes}m ${duration.inSeconds % 60}s');
+      
       final timerId = await _timerService.startTimer(
         label: subStep.description,
         duration: duration,
