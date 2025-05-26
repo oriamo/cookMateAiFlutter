@@ -26,6 +26,7 @@ class GeminiImageService {
   static Future<Uint8List?> generateCookingImage({
     required String instruction,
     required String recipeContext,
+    String? fallbackImageUrl, // Recipe step image URL as fallback
   }) async {
     debugPrint('GeminiImageService: Starting image generation...');
     debugPrint('GeminiImageService: API Key present: ${_apiKey.isNotEmpty}');
@@ -55,11 +56,21 @@ class GeminiImageService {
       
       debugPrint('GeminiImageService: Real image generation failed');
       
-      // Final fallback to mock if real generation fails and mock wasn't used initially
+      // Final fallback to recipe step image if real generation fails
+      if (!_useMockImages && fallbackImageUrl != null && fallbackImageUrl.isNotEmpty) {
+        debugPrint('GeminiImageService: Using recipe step image as fallback: $fallbackImageUrl');
+        final stepImage = await _loadImageFromUrl(fallbackImageUrl);
+        if (stepImage != null) {
+          debugPrint('GeminiImageService: Successfully loaded recipe step image as fallback');
+          return stepImage;
+        }
+      }
+      
+      // Last resort: generate mock image
       if (!_useMockImages) {
         final mockImage = await _generateMockCookingImage(instruction);
         if (mockImage != null) {
-          debugPrint('GeminiImageService: Generated mock image as fallback');
+          debugPrint('GeminiImageService: Generated mock image as last resort');
           return mockImage;
         }
       }
@@ -367,5 +378,25 @@ Create a professional food photography image showing:
 - Clear focus on the cooking action or result
 
 Style: High-quality food photography, professional kitchen lighting, appetizing colors and textures.''';
+  }
+
+  /// Load image from URL (for recipe step images)
+  static Future<Uint8List?> _loadImageFromUrl(String imageUrl) async {
+    try {
+      debugPrint('GeminiImageService: Loading image from URL: $imageUrl');
+      
+      final response = await http.get(Uri.parse(imageUrl));
+      
+      if (response.statusCode == 200) {
+        debugPrint('GeminiImageService: Successfully loaded image from URL, size: ${response.bodyBytes.length} bytes');
+        return response.bodyBytes;
+      } else {
+        debugPrint('GeminiImageService: Failed to load image from URL, status: ${response.statusCode}');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('GeminiImageService: Error loading image from URL: $e');
+      return null;
+    }
   }
 }

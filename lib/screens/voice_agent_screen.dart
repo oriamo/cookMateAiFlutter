@@ -46,9 +46,11 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
         
         debugPrint('🖼️ VOICE AGENT: Received image generation request for: $instruction');
         final actualRecipeContext = ref.read(recipeContextProvider);
+        final currentStepImageUrl = ref.read(currentStepImageUrlProvider);
         ref.read(generatedImageProvider.notifier).generateImageForInstruction(
           instruction: instruction,
           recipeContext: actualRecipeContext,
+          fallbackImageUrl: currentStepImageUrl,
         );
       });
       

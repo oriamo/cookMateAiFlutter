@@ -40,6 +40,7 @@ class GeneratedImageNotifier extends StateNotifier<GeneratedImageState> {
   Future<void> generateImageForInstruction({
     required String instruction,
     required String recipeContext,
+    String? fallbackImageUrl, // Recipe step image URL as fallback
   }) async {
     debugPrint('GeneratedImageProvider: Generating image for instruction: "$instruction"');
     debugPrint('GeneratedImageProvider: Recipe context: "$recipeContext"');
@@ -61,6 +62,7 @@ class GeneratedImageNotifier extends StateNotifier<GeneratedImageState> {
       final imageData = await GeminiImageService.generateCookingImage(
         instruction: instruction,
         recipeContext: recipeContext,
+        fallbackImageUrl: fallbackImageUrl,
       );
 
       if (imageData != null) {
@@ -106,4 +108,19 @@ final recipeContextProvider = Provider<String>((ref) {
   }
   
   return '${cookingSession.recipe.title} - ${cookingSession.recipe.description}';
+});
+
+/// Helper provider to get current step image URL
+final currentStepImageUrlProvider = Provider<String?>((ref) {
+  final cookingSession = ref.watch(cookingSessionProvider);
+  if (cookingSession == null) {
+    return null;
+  }
+  
+  final currentStep = cookingSession.currentStep;
+  if (currentStep == null || currentStep.imageUrl.isEmpty) {
+    return null;
+  }
+  
+  return currentStep.imageUrl;
 });
