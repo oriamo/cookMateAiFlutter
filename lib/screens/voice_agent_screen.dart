@@ -119,54 +119,30 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
       endDrawer: _buildSettingsDrawer(provider),
       body: Stack(
         children: [
-          // Main content area
-          Column(
-            children: [
-              // Main waveform visualization area
-              Expanded(
-                flex: 3,
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // Status text
-                      Text(
-                        _getStatusText(provider.state),
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          color: Colors.grey.shade600,
-                          fontWeight: FontWeight.w300,
-                        ),
-                      ),
-                      const SizedBox(height: 40),
-                      // Main waveform visualization
-                      WaveformVisualization(
-                        state: _mapToWaveformState(provider.state),
-                      ),
-                      const SizedBox(height: 40),
-                      // Current message display
-                      if (currentMessage != null)
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          margin: const EdgeInsets.symmetric(horizontal: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade50,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey.shade200),
-                          ),
-                          child: Text(
-                            currentMessage.content,
-                            style: Theme.of(context).textTheme.bodyLarge,
-                            textAlign: TextAlign.center,
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                    ],
+          // Main content area with dynamic layout
+          Consumer(
+            builder: (context, ref, child) {
+              final imageState = ref.watch(generatedImageProvider);
+              final hasSuccessfulImage = _imageGenerationEnabled && 
+                  imageState.imageData != null && 
+                  imageState.error == null;
+              final hasImageError = _imageGenerationEnabled && 
+                  imageState.error != null && 
+                  imageState.imageData == null;
+
+              return Column(
+                children: [
+                  // Main content area with adaptive layout
+                  Expanded(
+                    flex: 3,
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(24),
+                      child: hasSuccessfulImage
+                          ? _buildImageCenteredLayout(provider, imageState, currentMessage)
+                          : _buildWaveformCenteredLayout(provider, currentMessage),
+                    ),
                   ),
-                ),
-              ),
               
               // Bottom section for timers and controls
               Expanded(
@@ -239,11 +215,137 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
           
           // Chat transcript overlay (minimally visible)
           _buildChatOverlay(messages),
-          
-          // Generated image overlay (when available)
-          _buildImageOverlay(),
         ],
       ),
+    );
+  }
+
+  Widget _buildImageCenteredLayout(DeepgramAgentProvider provider, GeneratedImageState imageState, DeepgramAgentMessage? currentMessage) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Status text (smaller)
+        Text(
+          _getStatusText(provider.state),
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            color: Colors.grey.shade600,
+            fontWeight: FontWeight.w300,
+          ),
+        ),
+        const SizedBox(height: 20),
+        
+        // Main generated image (center of attention)
+        Container(
+          width: 280,
+          height: 280,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2),
+                blurRadius: 12,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(16),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 600),
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: ScaleTransition(
+                    scale: Tween<double>(begin: 0.8, end: 1.0).animate(
+                      CurvedAnimation(parent: animation, curve: Curves.easeOut),
+                    ),
+                    child: child,
+                  ),
+                );
+              },
+              child: Image.memory(
+                imageState.imageData!,
+                key: ValueKey(imageState.lastInstruction),
+                fit: BoxFit.cover,
+              ),
+            ),
+          ),
+        ),
+        
+        const SizedBox(height: 20),
+        
+        // Compact waveform visualization
+        SizedBox(
+          height: 60,
+          child: WaveformVisualization(
+            state: _mapToWaveformState(provider.state),
+          ),
+        ),
+        
+        const SizedBox(height: 20),
+        
+        // Current message display (compact)
+        if (currentMessage != null)
+          Container(
+            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Text(
+              currentMessage.content,
+              style: Theme.of(context).textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildWaveformCenteredLayout(DeepgramAgentProvider provider, DeepgramAgentMessage? currentMessage) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        // Status text
+        Text(
+          _getStatusText(provider.state),
+          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+            color: Colors.grey.shade600,
+            fontWeight: FontWeight.w300,
+          ),
+        ),
+        const SizedBox(height: 40),
+        
+        // Full-size waveform visualization
+        WaveformVisualization(
+          state: _mapToWaveformState(provider.state),
+        ),
+        
+        const SizedBox(height: 40),
+        
+        // Current message display
+        if (currentMessage != null)
+          Container(
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Text(
+              currentMessage.content,
+              style: Theme.of(context).textTheme.bodyLarge,
+              textAlign: TextAlign.center,
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+      ],
     );
   }
 
@@ -274,61 +376,6 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _buildImageOverlay() {
-    return Consumer(
-      builder: (context, ref, child) {
-        if (!_imageGenerationEnabled) return const SizedBox.shrink();
-        
-        final imageState = ref.watch(generatedImageProvider);
-        
-        if (imageState.imageData == null) {
-          return const SizedBox.shrink();
-        }
-        
-        return Positioned(
-          top: 100,
-          right: 16,
-          child: Container(
-            width: 120,
-            height: 120,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 500),
-                transitionBuilder: (Widget child, Animation<double> animation) {
-                  return FadeTransition(
-                    opacity: animation,
-                    child: ScaleTransition(
-                      scale: Tween<double>(begin: 0.8, end: 1.0).animate(
-                        CurvedAnimation(parent: animation, curve: Curves.easeOut),
-                      ),
-                      child: child,
-                    ),
-                  );
-                },
-                child: Image.memory(
-                  imageState.imageData!,
-                  key: ValueKey(imageState.lastInstruction), // Key ensures animation on new images
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 

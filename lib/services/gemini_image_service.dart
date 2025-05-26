@@ -66,16 +66,8 @@ class GeminiImageService {
         }
       }
       
-      // Last resort: generate mock image
-      if (!_useMockImages) {
-        final mockImage = await _generateMockCookingImage(instruction);
-        if (mockImage != null) {
-          debugPrint('GeminiImageService: Generated mock image as last resort');
-          return mockImage;
-        }
-      }
-      
-      debugPrint('GeminiImageService: All image generation methods failed');
+      // Skip mock images - let the UI handle the error state
+      debugPrint('GeminiImageService: All image generation methods failed, not using mock images');
       return null;
       
     } catch (e, stackTrace) {
