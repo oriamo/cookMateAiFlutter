@@ -57,7 +57,7 @@ class MainActivity: FlutterActivity() {
                 "writeAudioData" -> {
                     val data = call.argument<ByteArray>("data")
                     if (data != null) {
-                        Log.v(TAG, "Received audio data: ${data.size} bytes")
+                        //Log.v(TAG, "Received audio data: ${data.size} bytes")
                         addAudioData(data)
                         result.success(true)
                     } else {
@@ -269,7 +269,7 @@ class MainActivity: FlutterActivity() {
                         
                         if (bytesWritten > 0) {
                             totalBytesPlayed += bytesWritten
-                            Log.v(TAG, "Wrote $bytesWritten bytes to AudioTrack (total: $totalBytesPlayed)")
+                            // Log.v(TAG, "Wrote $bytesWritten bytes to AudioTrack (total: $totalBytesPlayed)")
                         } else {
                             Log.w(TAG, "Failed to write data to AudioTrack: $bytesWritten")
                         }
