@@ -51,11 +51,13 @@ class GeneratedImageNotifier extends StateNotifier<GeneratedImageState> {
       return;
     }
 
-    debugPrint('GeneratedImageProvider: Starting image generation...');
+    // Start generating in background without loading state
+    debugPrint('GeneratedImageProvider: Starting background image generation...');
+    
+    // Only update the lastInstruction to prevent duplicate requests
     state = state.copyWith(
-      isLoading: true,
-      error: null,
       lastInstruction: instruction,
+      error: null,
     );
 
     try {
@@ -67,6 +69,7 @@ class GeneratedImageNotifier extends StateNotifier<GeneratedImageState> {
 
       if (imageData != null) {
         debugPrint('GeneratedImageProvider: Image generated successfully! Size: ${imageData.length} bytes');
+        // Smoothly update to new image without loading indicator
         state = state.copyWith(
           imageData: imageData,
           isLoading: false,
@@ -74,6 +77,7 @@ class GeneratedImageNotifier extends StateNotifier<GeneratedImageState> {
         );
       } else {
         debugPrint('GeneratedImageProvider: Image generation returned null');
+        // Keep existing image if generation fails
         state = state.copyWith(
           isLoading: false,
           error: 'Failed to generate image - API returned no data',
@@ -82,6 +86,7 @@ class GeneratedImageNotifier extends StateNotifier<GeneratedImageState> {
     } catch (e, stackTrace) {
       debugPrint('GeneratedImageProvider: Error generating image: $e');
       debugPrint('GeneratedImageProvider: Stack trace: $stackTrace');
+      // Keep existing image if generation fails
       state = state.copyWith(
         isLoading: false,
         error: 'Error generating image: $e',

@@ -284,7 +284,7 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
         
         final imageState = ref.watch(generatedImageProvider);
         
-        if (imageState.imageData == null && !imageState.isLoading) {
+        if (imageState.imageData == null) {
           return const SizedBox.shrink();
         }
         
@@ -306,22 +306,25 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(12),
-              child: imageState.isLoading
-                  ? Container(
-                      color: Colors.grey.shade200,
-                      child: const Center(
-                        child: CircularProgressIndicator(strokeWidth: 2),
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 500),
+                transitionBuilder: (Widget child, Animation<double> animation) {
+                  return FadeTransition(
+                    opacity: animation,
+                    child: ScaleTransition(
+                      scale: Tween<double>(begin: 0.8, end: 1.0).animate(
+                        CurvedAnimation(parent: animation, curve: Curves.easeOut),
                       ),
-                    )
-                  : imageState.imageData != null
-                      ? Image.memory(
-                          imageState.imageData!,
-                          fit: BoxFit.cover,
-                        )
-                      : Container(
-                          color: Colors.red.shade100,
-                          child: const Icon(Icons.error, color: Colors.red),
-                        ),
+                      child: child,
+                    ),
+                  );
+                },
+                child: Image.memory(
+                  imageState.imageData!,
+                  key: ValueKey(imageState.lastInstruction), // Key ensures animation on new images
+                  fit: BoxFit.cover,
+                ),
+              ),
             ),
           ),
         );

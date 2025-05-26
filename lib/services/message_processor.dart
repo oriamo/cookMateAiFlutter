@@ -96,31 +96,58 @@ class MessageProcessor {
   void _processImageGeneration(String message, String recipeContext) {
     debugPrint('🖼️ MESSAGE PROCESSOR: Processing message for image generation: "${message.substring(0, message.length > 50 ? 50 : message.length)}..."');
     
-    // Check if this looks like a cooking instruction
-    final cookingKeywords = [
-      'step', 'cook', 'heat', 'add', 'mix', 'stir', 'chop', 'dice', 
-      'slice', 'bake', 'fry', 'boil', 'simmer', 'season', 'serve',
-      'prepare', 'combine', 'blend', 'whisk', 'sauté', 'roast',
-      'grill', 'steam', 'marinate', 'rest', 'cool', 'chill'
+    final lowerMessage = message.toLowerCase();
+    
+    // Check for step transition phrases first (high priority)
+    final stepTransitionPhrases = [
+      'let\'s move on to the next step',
+      'moving on to the next step',
+      'let\'s move to the next step',
+      'moving to the next step',
+      'next step',
+      'now let\'s',
+      'now we\'ll',
+      'let\'s now',
+      'time to',
+      'ready for the next',
     ];
     
-    final lowerMessage = message.toLowerCase();
-    final foundKeywords = cookingKeywords.where((keyword) => 
-      lowerMessage.contains(keyword)
+    final hasStepTransition = stepTransitionPhrases.any((phrase) => 
+      lowerMessage.contains(phrase)
+    );
+    
+    // Check for cooking action verbs (medium priority)
+    final cookingVerbs = [
+      'cook', 'heat', 'add', 'mix', 'stir', 'chop', 'dice', 
+      'slice', 'bake', 'fry', 'boil', 'simmer', 'season', 'serve',
+      'prepare', 'combine', 'blend', 'whisk', 'sauté', 'roast',
+      'grill', 'steam', 'marinate', 'rest', 'cool', 'chill',
+      'pour', 'sprinkle', 'garnish', 'drizzle', 'toss', 'fold'
+    ];
+    
+    final foundCookingVerbs = cookingVerbs.where((verb) => 
+      lowerMessage.contains(verb)
     ).toList();
     
-    debugPrint('🖼️ MESSAGE PROCESSOR: Found cooking keywords: $foundKeywords');
+    final hasCookingAction = foundCookingVerbs.isNotEmpty;
     
-    final isCookingInstruction = foundKeywords.isNotEmpty;
+    debugPrint('🖼️ MESSAGE PROCESSOR: Step transition: $hasStepTransition, Cooking verbs: $foundCookingVerbs');
     
-    if (isCookingInstruction && message.length > 10) {
-      debugPrint('🖼️ MESSAGE PROCESSOR: ✅ Detected cooking instruction for image generation!');
+    // Generate image if:
+    // 1. Contains step transition phrases, OR
+    // 2. Contains cooking action verbs AND message is substantial
+    final shouldGenerateImage = hasStepTransition || 
+        (hasCookingAction && message.length > 15);
+    
+    if (shouldGenerateImage) {
+      String triggerReason = hasStepTransition ? 'step transition' : 'cooking action';
+      debugPrint('🖼️ MESSAGE PROCESSOR: ✅ Generating image (trigger: $triggerReason)');
       debugPrint('🖼️ MESSAGE PROCESSOR: Recipe context: "$recipeContext"');
       
       // Call the image generation callback
       _onImageGenerationRequest?.call(message, recipeContext);
     } else {
-      debugPrint('🖼️ MESSAGE PROCESSOR: ❌ Not a cooking instruction (keywords: $foundKeywords, length: ${message.length})');
+      debugPrint('🖼️ MESSAGE PROCESSOR: ❌ No image generation trigger (transition: $hasStepTransition, actions: $foundCookingVerbs, length: ${message.length})');
     }
   }
 }
