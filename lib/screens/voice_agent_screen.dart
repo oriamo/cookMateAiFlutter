@@ -21,6 +21,7 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
   final ScrollController _scrollController = ScrollController();
   bool _isConversationActive = false;
   bool _stepListenerAttached = false;
+  bool _imageGenerationEnabled = false; // Disabled by default
 
   @override
   void dispose() {
@@ -38,6 +39,11 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
       
       // Set the image generation callback
       provider.setImageGenerationCallback((instruction, recipeContext) {
+        if (!_imageGenerationEnabled) {
+          debugPrint('🖼️ VOICE AGENT: Image generation is disabled, skipping request');
+          return;
+        }
+        
         debugPrint('🖼️ VOICE AGENT: Received image generation request for: $instruction');
         final actualRecipeContext = ref.read(recipeContextProvider);
         ref.read(generatedImageProvider.notifier).generateImageForInstruction(
@@ -348,6 +354,24 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
               provider.toggleSpeakerphone();
             },
           ),
+          // Image generation toggle
+          IconButton(
+            icon: Icon(
+              _imageGenerationEnabled ? Icons.image : Icons.image_not_supported,
+              color: _imageGenerationEnabled ? Colors.green : Colors.grey,
+            ),
+            onPressed: () {
+              setState(() {
+                _imageGenerationEnabled = !_imageGenerationEnabled;
+              });
+              
+              // Clear any existing generated image when disabled
+              if (!_imageGenerationEnabled) {
+                ref.read(generatedImageProvider.notifier).clearImage();
+              }
+            },
+            tooltip: _imageGenerationEnabled ? 'Disable Image Generation' : 'Enable Image Generation',
+          ),
           // Clear chat history
           IconButton(
             icon: const Icon(Icons.delete_outline),
@@ -414,6 +438,11 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
           // Generated cooking instruction image
           Consumer(
             builder: (context, ref, child) {
+              // If image generation is disabled, show nothing
+              if (!_imageGenerationEnabled) {
+                return const SizedBox.shrink();
+              }
+              
               final imageState = ref.watch(generatedImageProvider);
               
               if (imageState.isLoading) {
