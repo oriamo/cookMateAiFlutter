@@ -40,20 +40,20 @@ class VadService {
   Future<bool> initialize() async {
     try {
       // Request microphone permission
-      debugPrint('VAD_DEBUG: Requesting microphone permission');
+      // debugPrint('VAD_DEBUG: Requesting microphone permission');
       final status = await Permission.microphone.request();
       if (status != PermissionStatus.granted) {
         debugPrint('VAD_DEBUG: Microphone permission denied: $status');
         _errorController.add(Exception('Microphone permission denied'));
         return false;
       }
-      debugPrint('VAD_DEBUG: Microphone permission granted');
+      // debugPrint('VAD_DEBUG: Microphone permission granted');
 
       // Initialize VAD Handler - store as dynamic to avoid type errors
-      debugPrint('VAD_DEBUG: Creating VAD handler');
+      // debugPrint('VAD_DEBUG: Creating VAD handler');
       _vadHandler = VadHandler.create(isDebug: true);
-      debugPrint(
-          'VAD_DEBUG: VAD handler created successfully with type: ${_vadHandler.runtimeType}');
+      // debugPrint(
+      //     'VAD_DEBUG: VAD handler created successfully with type: ${_vadHandler.runtimeType}');
 
       // Set up stream subscriptions for VAD events
       _setupStreams();
@@ -68,7 +68,7 @@ class VadService {
 
   /// Set up stream subscriptions for VAD events
   void _setupStreams() {
-    debugPrint('VAD_DEBUG: Setting up event streams');
+    // debugPrint('VAD_DEBUG: Setting up event streams');
 
     try {
       // In v0.0.5, we need to check if these properties exist before accessing them
@@ -83,20 +83,20 @@ class VadService {
             _stateController.add(_state);
             _speechStartController.add(null);
             _didForceSpeechEnd = false;
-            debugPrint('VAD_DEBUG: Speech start detected');
+            // debugPrint('VAD_DEBUG: Speech start detected');
 
             // Set a max timeout for speech capture
             _setupForceEndTimeout();
           });
-          debugPrint('VAD_DEBUG: Successfully subscribed to onSpeechStart');
+          // debugPrint('VAD_DEBUG: Successfully subscribed to onSpeechStart');
         } else {
-          debugPrint('VAD_DEBUG: onSpeechStart stream is not available');
+          // debugPrint('VAD_DEBUG: onSpeechStart stream is not available');
         }
 
         // Try for real speech start events (new in v0.0.5)
         if (handler.onRealSpeechStart != null) {
           handler.onRealSpeechStart.listen((_) {
-            debugPrint('VAD_DEBUG: Real speech start detected');
+            // debugPrint('VAD_DEBUG: Real speech start detected');
             // Treat this as a speech start if the main one isn't available
             if (handler.onSpeechStart == null) {
               _state = VadState.listening;

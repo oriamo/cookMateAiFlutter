@@ -436,7 +436,7 @@ class DeepgramAgentService {
 
           // Handle different message types from Deepgram's Voice Agent API
           if (data.containsKey('type')) {
-            debugPrint('🔵 DEEPGRAM: Message type: ${data['type']}');
+            // debugPrint('🔵 DEEPGRAM: Message type: ${data['type']}');
 
             switch (data['type']) {
               case 'ConversationText':
@@ -506,7 +506,7 @@ class DeepgramAgentService {
                 // Wait a bit and check audio status
                 Future.delayed(Duration(seconds: 1), () async {
                   final stats = await _getAudioStats();
-                  debugPrint('🔊 DEEPGRAM: Audio stats: ${stats.toString()}');
+                  // debugPrint('🔊 DEEPGRAM: Audio stats: ${stats.toString()}');
 
                   // Only update state if we're still in speaking mode
                   if (_state == DeepgramAgentState.speaking) {
@@ -935,7 +935,7 @@ class DeepgramAgentService {
       // Send raw audio data to Deepgram
       _channel!.sink.add(audioData);
     } catch (e) {
-      debugPrint('Error sending audio data: $e');
+      debugPrint('🔴 DEEPGRAM: Error sending audio data: $e');
     }
   }
 
@@ -989,7 +989,7 @@ class DeepgramAgentService {
       // Start recording to stream
       final stream = await _recorder!.startStream(config);
 
-      debugPrint('🟢 DEEPGRAM: Audio stream started successfully');
+      // debugPrint('🟢 DEEPGRAM: Audio stream started successfully');
 
       // Add tracking variables for detailed logging
       bool hasSentAudioData = false;
