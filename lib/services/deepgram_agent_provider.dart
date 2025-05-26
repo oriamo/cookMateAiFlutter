@@ -56,11 +56,25 @@ class DeepgramAgentProvider extends ChangeNotifier {
   // Constructor
   final TimerService _timerService;
   late MessageProcessor _messageProcessor;
+  
+  // Image generation callback
+  Function(String, String)? _onImageGenerationRequest;
 
   DeepgramAgentProvider(LlmService llmService, this._timerService) {
     _deepgramAgentService = DeepgramAgentService(llmService);
-    _messageProcessor = MessageProcessor(_timerService);
+    _messageProcessor = MessageProcessor(_timerService, onImageGenerationRequest: _handleImageGenerationRequest);
     _initialize();
+  }
+  
+  // Set image generation callback
+  void setImageGenerationCallback(Function(String, String) callback) {
+    _onImageGenerationRequest = callback;
+  }
+  
+  // Handle image generation request
+  void _handleImageGenerationRequest(String instruction, String recipeContext) {
+    debugPrint('🖼️ DEEPGRAM PROVIDER: Image generation requested for: $instruction');
+    _onImageGenerationRequest?.call(instruction, recipeContext);
   }
 
   // State - enable continuous listening by default for more reliable connections
@@ -304,17 +318,20 @@ class DeepgramAgentProvider extends ChangeNotifier {
     _processMessageForTimers(content);
   }
 
-  // Process agent message for timer detection
+  // Process agent message for timer detection and image generation
   Future<void> _processMessageForTimers(String content) async {
     try {
-      // First, check if the message matches the expected timer format
+      // Always process for image generation (not just timer messages)
+      const recipeContext = 'General cooking instruction'; // Default context
+      
+      // Use MessageProcessor to detect timer requests, create timers, and trigger image generation
+      final timerDetected = await _messageProcessor.processAIMessage(content, recipeContext);
+
+      // Only show timer confirmation if a timer was actually detected
       if (content.toLowerCase().contains('set up a timer for') ||
           content.toLowerCase().contains('timer for')) {
         debugPrint(
             '🕒 DEEPGRAM PROVIDER: Potential timer request detected: "${content.substring(0, Math.min(50, content.length))}..."');
-
-        // Use MessageProcessor to detect timer requests and create timer
-        final timerDetected = await _messageProcessor.processAIMessage(content);
 
         if (timerDetected) {
           debugPrint(
@@ -330,7 +347,7 @@ class DeepgramAgentProvider extends ChangeNotifier {
       }
     } catch (e) {
       debugPrint(
-          '🔴 DEEPGRAM PROVIDER: Error processing message for timers: $e');
+          '🔴 DEEPGRAM PROVIDER: Error processing message: $e');
     }
   }
 

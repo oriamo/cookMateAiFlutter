@@ -30,37 +30,24 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
     super.dispose();
   }
 
-  /// Generate image for cooking instruction using Gemini
-  void _generateImageForInstruction(String instruction) {
-    // Check if this looks like a cooking instruction
-    final cookingKeywords = [
-      'step', 'cook', 'heat', 'add', 'mix', 'stir', 'chop', 'dice', 
-      'slice', 'bake', 'fry', 'boil', 'simmer', 'season', 'serve',
-      'prepare', 'combine', 'blend', 'whisk', 'sauté', 'roast'
-    ];
-    
-    final lowerInstruction = instruction.toLowerCase();
-    final isCookingInstruction = cookingKeywords.any((keyword) => 
-      lowerInstruction.contains(keyword)
-    );
-    
-    if (isCookingInstruction && instruction.length > 10) {
-      final recipeContext = ref.read(recipeContextProvider);
-      ref.read(generatedImageProvider.notifier).generateImageForInstruction(
-        instruction: instruction,
-        recipeContext: recipeContext,
-      );
-    }
-  }
-
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
 
-    // Check if we should auto-start the conversation
-    // Use a post-frame callback to ensure this runs after the build is complete
+    // Set up image generation callback
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final provider = ref.read(deepgramAgentProvider);
+      
+      // Set the image generation callback
+      provider.setImageGenerationCallback((instruction, recipeContext) {
+        debugPrint('🖼️ VOICE AGENT: Received image generation request for: $instruction');
+        final actualRecipeContext = ref.read(recipeContextProvider);
+        ref.read(generatedImageProvider.notifier).generateImageForInstruction(
+          instruction: instruction,
+          recipeContext: actualRecipeContext,
+        );
+      });
+      
       // Only auto-start if navigated to and not already running
       if (!_isConversationActive && provider.state == DeepgramAgentState.idle) {
         debugPrint(
@@ -97,10 +84,6 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
           for (final msg in newMsgs) {
             if (msg.type != DeepgramAgentMessageType.agent) continue;
             final content = msg.content.toLowerCase();
-            final originalContent = msg.content;
-            
-            // Generate image for cooking instructions
-            _generateImageForInstruction(originalContent);
             
             // Jump to a specific step: 'step X'
             // Explicit step number commands

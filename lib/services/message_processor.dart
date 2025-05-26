@@ -2,15 +2,19 @@
 import 'package:flutter/foundation.dart';
 import 'timer_service.dart';
 
-/// Class to process messages and detect timer requests
+/// Class to process messages and detect timer requests and image generation
 class MessageProcessor {
   final TimerService _timerService;
+  final Function(String, String)? _onImageGenerationRequest;
 
-  MessageProcessor(this._timerService);
+  MessageProcessor(this._timerService, {Function(String, String)? onImageGenerationRequest})
+      : _onImageGenerationRequest = onImageGenerationRequest;
 
-  /// Process an AI message and create timer if needed
+  /// Process an AI message for timer creation and image generation
   /// Returns true if a timer was created
-  Future<bool> processAIMessage(String message) async {
+  Future<bool> processAIMessage(String message, [String? recipeContext]) async {
+    // Check for image generation request
+    _processImageGeneration(message, recipeContext ?? 'General cooking instruction');
     // Check for timer pattern
     final minutes = TimerService.extractTimerDuration(message);
 
@@ -86,5 +90,28 @@ class MessageProcessor {
     }
 
     return false;
+  }
+
+  /// Process message for image generation
+  void _processImageGeneration(String message, String recipeContext) {
+    // Check if this looks like a cooking instruction
+    final cookingKeywords = [
+      'step', 'cook', 'heat', 'add', 'mix', 'stir', 'chop', 'dice', 
+      'slice', 'bake', 'fry', 'boil', 'simmer', 'season', 'serve',
+      'prepare', 'combine', 'blend', 'whisk', 'sauté', 'roast',
+      'grill', 'steam', 'marinate', 'rest', 'cool', 'chill'
+    ];
+    
+    final lowerMessage = message.toLowerCase();
+    final isCookingInstruction = cookingKeywords.any((keyword) => 
+      lowerMessage.contains(keyword)
+    );
+    
+    if (isCookingInstruction && message.length > 10) {
+      debugPrint('🖼️ MESSAGE PROCESSOR: Detected cooking instruction for image generation: "${message.substring(0, message.length > 50 ? 50 : message.length)}..."');
+      
+      // Call the image generation callback
+      _onImageGenerationRequest?.call(message, recipeContext);
+    }
   }
 }
