@@ -2,7 +2,6 @@
 import 'dart:async';
 import 'dart:isolate';
 import 'dart:ui';
-import 'dart:math' as Math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -314,66 +313,24 @@ class TimerService {
   }
 
   /// Extract timer duration from AI response
+  /// Only triggers when AI specifically says "let me set up a timer for x minutes"
   static int? extractTimerDuration(String message) {
     // Normalize the message - convert to lowercase and remove extra spaces
     final normalizedMessage = message.toLowerCase().trim();
 
-    // Define regex pattern to match time in the format
-    // "alright let me set up a timer for X minutes"
-    final primaryPattern = RegExp(r'set up a timer for (\d+) minute');
-    final primaryMatch = primaryPattern.firstMatch(normalizedMessage);
+    // Very strict pattern - ONLY match "let me set up a timer for X minutes"
+    // This prevents false positives from recipe descriptions or general mentions
+    final strictPattern = RegExp(r'let me set up a timer for (\d+) minutes?');
+    final match = strictPattern.firstMatch(normalizedMessage);
 
-    if (primaryMatch != null && primaryMatch.groupCount >= 1) {
-      final minutes = int.tryParse(primaryMatch.group(1) ?? '');
+    if (match != null && match.groupCount >= 1) {
+      final minutes = int.tryParse(match.group(1) ?? '');
       debugPrint(
-          '🕒 TIMER SERVICE: Detected timer duration using primary pattern: $minutes minutes');
+          '🕒 TIMER SERVICE: Timer triggered - AI said "let me set up a timer for $minutes minutes"');
       return minutes;
     }
 
-    // Try variations of the primary pattern
-    final patternVariations = [
-      RegExp(r'set a timer for (\d+) minute'),
-      RegExp(r'start a timer for (\d+) minute'),
-      RegExp(r'let me set up a timer for (\d+) minute'),
-      RegExp(r'alright let me set up a timer for (\d+) minute'),
-      RegExp(r'ok let me set up a timer for (\d+) minute'),
-      RegExp(r"i'll set a timer for (\d+) minute")
-    ];
-
-    for (final pattern in patternVariations) {
-      final match = pattern.firstMatch(normalizedMessage);
-      if (match != null && match.groupCount >= 1) {
-        final minutes = int.tryParse(match.group(1) ?? '');
-        debugPrint(
-            '🕒 TIMER SERVICE: Detected timer duration using pattern variation: $minutes minutes');
-        return minutes;
-      }
-    }
-
-    // Try a more general pattern if the specific ones don't match
-    final generalPattern = RegExp(r'timer.+?(\d+).+?minute');
-    final generalMatch = generalPattern.firstMatch(normalizedMessage);
-
-    if (generalMatch != null && generalMatch.groupCount >= 1) {
-      final minutes = int.tryParse(generalMatch.group(1) ?? '');
-      debugPrint(
-          '🕒 TIMER SERVICE: Detected timer duration using general pattern: $minutes minutes');
-      return minutes;
-    }
-
-    // Last resort - look for any number followed by "minutes" or "minute"
-    final lastResortPattern = RegExp(r'(\d+)\s*minutes?');
-    final lastResortMatch = lastResortPattern.firstMatch(normalizedMessage);
-
-    if (lastResortMatch != null && lastResortMatch.groupCount >= 1) {
-      final minutes = int.tryParse(lastResortMatch.group(1) ?? '');
-      debugPrint(
-          '🕒 TIMER SERVICE: Detected timer duration using last resort pattern: $minutes minutes');
-      return minutes;
-    }
-
-    debugPrint(
-        '🕒 TIMER SERVICE: No timer duration detected in message: "${message.substring(0, Math.min(50, message.length))}..."');
+    // No timer detected - this is intentional to prevent false triggers
     return null;
   }
 

@@ -331,7 +331,7 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
     if (messages.length <= 1) return const SizedBox.shrink();
     
     return Positioned(
-      bottom: 100,
+      bottom: 140,
       right: 16,
       child: GestureDetector(
         onTap: () => _showFullChatHistory(messages),

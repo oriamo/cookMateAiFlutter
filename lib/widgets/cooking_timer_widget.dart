@@ -40,10 +40,10 @@ class CookingTimerItem extends ConsumerWidget {
     }
 
     return Container(
-      height: 48, // Slim pill height
+      height: 36, // Much slimmer pill height (75% of 48px)
       margin: const EdgeInsets.symmetric(vertical: 4),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24), // Pill shape
+        borderRadius: BorderRadius.circular(18), // Adjusted for slimmer pill
         border: Border.all(color: timerColor.withOpacity(0.3), width: 1),
       ),
       child: Stack(
@@ -52,7 +52,7 @@ class CookingTimerItem extends ConsumerWidget {
           Positioned.fill(
             child: Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(18),
                 color: Colors.grey.withOpacity(0.1),
               ),
             ),
@@ -64,7 +64,7 @@ class CookingTimerItem extends ConsumerWidget {
               widthFactor: timer.progress,
               child: Container(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(18),
                   color: timerColor.withOpacity(0.2),
                 ),
               ),
@@ -72,54 +72,54 @@ class CookingTimerItem extends ConsumerWidget {
           ),
           // Content
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Row(
               children: [
                 // Timer icon
                 Icon(
                   Icons.timer,
                   color: timerColor,
-                  size: 18,
+                  size: 16,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 // Timer label
                 Expanded(
                   child: Text(
                     timer.label,
                     style: const TextStyle(
                       fontWeight: FontWeight.w500,
-                      fontSize: 14,
+                      fontSize: 12,
                     ),
                     overflow: TextOverflow.ellipsis,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 // Time remaining
                 Text(
                   timeString,
                   style: TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 12,
                     color: timerColor,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 // Pause/Resume button
                 InkWell(
                   onTap: timer.isPaused 
                       ? () => timerService.resumeTimer(timer.id)
                       : () => timerService.pauseTimer(timer.id),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                   child: Container(
-                    width: 32,
-                    height: 32,
+                    width: 24,
+                    height: 24,
                     decoration: BoxDecoration(
                       color: timerColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
                       timer.isPaused ? Icons.play_arrow : Icons.pause,
-                      size: 16,
+                      size: 12,
                       color: timerColor,
                     ),
                   ),
@@ -128,17 +128,17 @@ class CookingTimerItem extends ConsumerWidget {
                 // Cancel button
                 InkWell(
                   onTap: () => timerService.cancelTimer(timer.id),
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(12),
                   child: Container(
-                    width: 32,
-                    height: 32,
+                    width: 24,
+                    height: 24,
                     decoration: BoxDecoration(
                       color: Colors.red.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(
                       Icons.close,
-                      size: 16,
+                      size: 12,
                       color: Colors.red,
                     ),
                   ),
