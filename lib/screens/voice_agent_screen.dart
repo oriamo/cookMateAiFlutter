@@ -273,34 +273,13 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
         
         const SizedBox(height: 20),
         
-        // Compact waveform visualization
+        // Very compact waveform visualization
         SizedBox(
-          height: 60,
+          height: 30,
           child: WaveformVisualization(
             state: _mapToWaveformState(provider.state),
           ),
         ),
-        
-        const SizedBox(height: 20),
-        
-        // Current message display (compact)
-        if (currentMessage != null)
-          Container(
-            padding: const EdgeInsets.all(12),
-            margin: const EdgeInsets.symmetric(horizontal: 24),
-            decoration: BoxDecoration(
-              color: Colors.grey.shade50,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.grey.shade200),
-            ),
-            child: Text(
-              currentMessage.content,
-              style: Theme.of(context).textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
       ],
     );
   }

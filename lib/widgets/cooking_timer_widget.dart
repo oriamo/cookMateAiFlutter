@@ -40,93 +40,111 @@ class CookingTimerItem extends ConsumerWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      height: 48, // Slim pill height
+      margin: const EdgeInsets.symmetric(vertical: 4),
       decoration: BoxDecoration(
-        color: timerColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: timerColor.withOpacity(0.3),
-          width: 1,
-        ),
+        borderRadius: BorderRadius.circular(24), // Pill shape
+        border: Border.all(color: timerColor.withOpacity(0.3), width: 1),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
+      child: Stack(
         children: [
-          // Timer label and remaining time
-          Row(
-            children: [
-              Icon(
-                Icons.timer,
-                color: timerColor,
-                size: 20,
+          // Background progress bar
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                color: Colors.grey.withOpacity(0.1),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  timer.label,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
+            ),
+          ),
+          // Progress fill
+          Positioned.fill(
+            child: FractionallySizedBox(
+              alignment: Alignment.centerLeft,
+              widthFactor: timer.progress,
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  color: timerColor.withOpacity(0.2),
+                ),
+              ),
+            ),
+          ),
+          // Content
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                // Timer icon
+                Icon(
+                  Icons.timer,
+                  color: timerColor,
+                  size: 18,
+                ),
+                const SizedBox(width: 8),
+                // Timer label
+                Expanded(
+                  child: Text(
+                    timer.label,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w500,
+                      fontSize: 14,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
-              ),
-              Text(
-                timeString,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
+                const SizedBox(width: 8),
+                // Time remaining
+                Text(
+                  timeString,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: timerColor,
+                  ),
                 ),
-              ),
-            ],
-          ),
-
-          const SizedBox(height: 8),
-
-          // Progress bar
-          LinearProgressIndicator(
-            value: timer.progress,
-            backgroundColor: Colors.grey.withOpacity(0.3),
-            valueColor: AlwaysStoppedAnimation<Color>(
-              timerColor,
+                const SizedBox(width: 8),
+                // Pause/Resume button
+                InkWell(
+                  onTap: timer.isPaused 
+                      ? () => timerService.resumeTimer(timer.id)
+                      : () => timerService.pauseTimer(timer.id),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: timerColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Icon(
+                      timer.isPaused ? Icons.play_arrow : Icons.pause,
+                      size: 16,
+                      color: timerColor,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+                // Cancel button
+                InkWell(
+                  onTap: () => timerService.cancelTimer(timer.id),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Icon(
+                      Icons.close,
+                      size: 16,
+                      color: Colors.red,
+                    ),
+                  ),
+                ),
+              ],
             ),
-            borderRadius: BorderRadius.circular(4),
-          ),
-
-          const SizedBox(height: 8),
-
-          // Controls
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              // Pause/Resume button
-              if (timer.isPaused)
-                IconButton(
-                  icon: Icon(Icons.play_arrow),
-                  onPressed: () => timerService.resumeTimer(timer.id),
-                  tooltip: 'Resume',
-                  iconSize: 20,
-                  constraints: BoxConstraints.tight(Size(32, 32)),
-                  padding: EdgeInsets.zero,
-                )
-              else
-                IconButton(
-                  icon: Icon(Icons.pause),
-                  onPressed: () => timerService.pauseTimer(timer.id),
-                  tooltip: 'Pause',
-                  iconSize: 20,
-                  constraints: BoxConstraints.tight(Size(32, 32)),
-                  padding: EdgeInsets.zero,
-                ),
-
-              // Cancel button
-              IconButton(
-                icon: Icon(Icons.cancel_outlined),
-                onPressed: () => timerService.cancelTimer(timer.id),
-                tooltip: 'Cancel',
-                iconSize: 20,
-                constraints: BoxConstraints.tight(Size(32, 32)),
-                padding: EdgeInsets.zero,
-              ),
-            ],
           ),
         ],
       ),
