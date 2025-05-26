@@ -126,9 +126,6 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
               final hasSuccessfulImage = _imageGenerationEnabled && 
                   imageState.imageData != null && 
                   imageState.error == null;
-              final hasImageError = _imageGenerationEnabled && 
-                  imageState.error != null && 
-                  imageState.imageData == null;
 
               return Column(
                 children: [
@@ -211,6 +208,8 @@ class _VoiceAgentScreenState extends ConsumerState<VoiceAgentScreen> {
                 ),
               ),
             ],
+          );
+            }
           ),
           
           // Chat transcript overlay (minimally visible)
