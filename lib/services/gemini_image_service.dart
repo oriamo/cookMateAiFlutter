@@ -271,19 +271,21 @@ class GeminiImageService {
           final parts = data['candidates'][0]['content']['parts'];
           debugPrint('GeminiImageService: Found ${parts.length} parts in response');
           
-          // Look for inline_data with image
+          // Look for inlineData with image (note: API uses camelCase, not snake_case)
           for (int i = 0; i < parts.length; i++) {
             final part = parts[i];
             debugPrint('GeminiImageService: Part $i: ${part.keys}');
             
-            if (part['inline_data'] != null && 
-                part['inline_data']['mime_type'] != null &&
-                part['inline_data']['mime_type'].toString().startsWith('image/')) {
-              
-              final base64Data = part['inline_data']['data'];
-              if (base64Data != null) {
-                debugPrint('GeminiImageService: Found image data of length: ${base64Data.length}');
-                return base64Decode(base64Data);
+            // Check for both possible formats: inlineData (camelCase) and inline_data (snake_case)
+            final inlineData = part['inlineData'] ?? part['inline_data'];
+            if (inlineData != null) {
+              final mimeType = inlineData['mimeType'] ?? inlineData['mime_type'];
+              if (mimeType != null && mimeType.toString().startsWith('image/')) {
+                final base64Data = inlineData['data'];
+                if (base64Data != null) {
+                  debugPrint('GeminiImageService: Found image data of length: ${base64Data.length}');
+                  return base64Decode(base64Data);
+                }
               }
             }
           }

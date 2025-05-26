@@ -40,12 +40,12 @@ class _WaveformVisualizationState extends State<WaveformVisualization>
     
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 150),
+      duration: const Duration(milliseconds: 240), // Slowed down by 60% (150 * 1.6)
     );
     
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 2),
+      duration: const Duration(milliseconds: 3200), // Slowed down by 60% (2000 * 1.6)
     );
     
     _updateAnimation();
