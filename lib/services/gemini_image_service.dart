@@ -7,13 +7,12 @@ import 'package:flutter/material.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 
 class GeminiImageService {
-  // Image generation settings
-  static const String _imageModelUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
+  // Gemini Image Generation API settings
+  static const String _imageModel = 'gemini-2.0-flash-preview-image-generation';
+  static const String _baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models';
   
-  // Note: Gemini image generation is not yet publicly available
-  // Current status: Using enhanced mock images until real API is available
-  // Set to false once real Gemini image generation becomes available
-  static const bool _useMockImages = true;
+  // Use real Gemini image generation API
+  static const bool _useMockImages = false;
   
   static String get _apiKey {
     final key = dotenv.env['GEMINI_API_KEY'];
@@ -184,22 +183,24 @@ class GeminiImageService {
     }
   }
 
-  /// Try to generate image using Gemini 2.0 Flash experimental model
+  /// Try to generate image using direct HTTP API call
   static Future<Uint8List?> _tryImageGeneration(String prompt) async {
     try {
-      debugPrint('GeminiImageService: Trying image generation with Gemini 2.0 Flash Experimental...');
+      debugPrint('GeminiImageService: Trying image generation with direct HTTP API...');
       
-      // Try using Google Generative AI package first
+      // Try using Google Generative AI package first (recommended approach)
       final geminiResult = await _tryGeminiPackageGeneration(prompt);
       if (geminiResult != null) {
         return geminiResult;
       }
       
-      // Fall back to direct HTTP call
+      // Fall back to direct HTTP call with correct format
       debugPrint('GeminiImageService: Gemini package failed, trying direct HTTP call...');
       
+      final url = '$_baseUrl/$_imageModel:generateContent?key=$_apiKey';
+      
       final response = await http.post(
-        Uri.parse('$_imageModelUrl?key=$_apiKey'),
+        Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
         },
@@ -218,6 +219,7 @@ class GeminiImageService {
             'topK': 40,
             'topP': 0.95,
             'maxOutputTokens': 8192,
+            'responseModalities': ['TEXT', 'IMAGE'], // Required for image generation
           },
           'safetySettings': [
             {
@@ -289,53 +291,81 @@ class GeminiImageService {
     }
   }
 
-  /// Try using Google Generative AI package for image generation
+  /// Generate image using Google Generative AI package with correct configuration
   static Future<Uint8List?> _tryGeminiPackageGeneration(String prompt) async {
     try {
-      debugPrint('GeminiImageService: Trying with Google Generative AI package...');
+      debugPrint('GeminiImageService: Using Gemini 2.0 Flash Preview Image Generation...');
       
-      // Initialize the Gemini model
+      // Initialize the Gemini image generation model
       final model = GenerativeModel(
-        model: 'gemini-2.0-flash-exp',
+        model: _imageModel,
         apiKey: _apiKey,
+        generationConfig: GenerationConfig(
+          temperature: 0.7,
+          topK: 40,
+          topP: 0.95,
+          maxOutputTokens: 8192,
+        ),
       );
       
-      // Try to generate content with image request
+      // Generate content with image generation request
+      // According to docs, we need to explicitly ask for image generation
       final response = await model.generateContent([
-        Content.text('Generate an image: $prompt')
+        Content.text('Generate an image: $prompt'),
       ]);
       
-      debugPrint('GeminiImageService: Gemini package response: ${response.text}');
+      debugPrint('GeminiImageService: Response received with ${response.candidates.length} candidates');
       
-      // The Google Generative AI package currently doesn't support image generation
-      // This will likely return text explaining that image generation isn't supported
+      if (response.candidates.isNotEmpty) {
+        final candidate = response.candidates.first;
+        
+        if (candidate.content.parts.isNotEmpty) {
+          debugPrint('GeminiImageService: Found ${candidate.content.parts.length} parts in response');
+          
+          for (int i = 0; i < candidate.content.parts.length; i++) {
+            final part = candidate.content.parts[i];
+            debugPrint('GeminiImageService: Part $i type: ${part.runtimeType}');
+            
+            // Check for different part types
+            if (part is DataPart) {
+              debugPrint('GeminiImageService: Found DataPart with mimeType: ${part.mimeType}');
+              
+              if (part.mimeType.startsWith('image/')) {
+                debugPrint('GeminiImageService: Found image data, decoding base64...');
+                return part.bytes;
+              }
+            } else if (part is TextPart) {
+              debugPrint('GeminiImageService: Text response: ${part.text}');
+            } else {
+              debugPrint('GeminiImageService: Unknown part type: ${part.runtimeType}');
+            }
+          }
+        }
+      }
+      
+      debugPrint('GeminiImageService: No image data found in response');
       return null;
       
-    } catch (e) {
+    } catch (e, stackTrace) {
       debugPrint('GeminiImageService: Google Generative AI package error: $e');
+      debugPrint('GeminiImageService: Stack trace: $stackTrace');
       return null;
     }
   }
 
   /// Build a detailed prompt for cooking image generation
   static String _buildCookingPrompt(String instruction, String recipeContext) {
-    return '''
-Generate a high-quality, photorealistic cooking image for the following instruction:
+    return '''Please generate an image for this cooking instruction:
 
-Recipe Context: $recipeContext
+Recipe: $recipeContext
+Instruction: $instruction
 
-Current Instruction: $instruction
+Create a professional food photography image showing:
+- The specific cooking step or technique mentioned
+- Realistic food ingredients and cooking equipment
+- Well-lit kitchen setting with appetizing presentation
+- Clear focus on the cooking action or result
 
-Please create an image that shows:
-1. The specific cooking step or technique mentioned in the instruction
-2. Realistic food items and cooking equipment relevant to the recipe
-3. Professional kitchen lighting and composition
-4. Clean, appetizing presentation
-5. Focus on the action or result described in the instruction
-
-Style: Professional food photography, well-lit, appetizing, realistic textures and colors.
-Format: High resolution, suitable for mobile display.
-Perspective: Close-up or medium shot that clearly shows the cooking process.
-''';
+Style: High-quality food photography, professional kitchen lighting, appetizing colors and textures.''';
   }
 }
