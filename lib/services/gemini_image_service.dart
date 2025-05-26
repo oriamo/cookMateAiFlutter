@@ -4,10 +4,16 @@ import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter/material.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
 
 class GeminiImageService {
-  // Try the newer Gemini 2.0 Flash model first
+  // Image generation settings
   static const String _imageModelUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
+  
+  // Note: Gemini image generation is not yet publicly available
+  // Current status: Using enhanced mock images until real API is available
+  // Set to false once real Gemini image generation becomes available
+  static const bool _useMockImages = true;
   
   static String get _apiKey {
     final key = dotenv.env['GEMINI_API_KEY'];
@@ -28,26 +34,38 @@ class GeminiImageService {
     debugPrint('GeminiImageService: Recipe context: "$recipeContext"');
     
     try {
-      // For now, let's create a mock image to test the UI
-      // This will help us debug the display system
-      final mockImage = await _generateMockCookingImage(instruction);
-      if (mockImage != null) {
-        debugPrint('GeminiImageService: Generated mock image successfully');
-        return mockImage;
+      // Check if we should use mock images (while real API is unavailable)
+      if (_useMockImages) {
+        debugPrint('GeminiImageService: Using mock images (real Gemini image generation not yet available)');
+        final mockImage = await _generateMockCookingImage(instruction);
+        if (mockImage != null) {
+          debugPrint('GeminiImageService: Generated enhanced mock image successfully');
+          return mockImage;
+        }
       }
       
-      // Create a detailed prompt for cooking image generation
+      // Try real image generation (currently not available)
       final prompt = _buildCookingPrompt(instruction, recipeContext);
-      debugPrint('GeminiImageService: Generated prompt: $prompt');
+      debugPrint('GeminiImageService: Attempting real image generation with prompt: $prompt');
       
-      // Try the image generation model first
       final imageResult = await _tryImageGeneration(prompt);
       if (imageResult != null) {
+        debugPrint('GeminiImageService: Successfully generated real image');
         return imageResult;
       }
       
-      // If image generation fails, try text-only response (fallback)
-      debugPrint('GeminiImageService: Image generation failed, falling back to text response');
+      debugPrint('GeminiImageService: Real image generation failed');
+      
+      // Final fallback to mock if real generation fails and mock wasn't used initially
+      if (!_useMockImages) {
+        final mockImage = await _generateMockCookingImage(instruction);
+        if (mockImage != null) {
+          debugPrint('GeminiImageService: Generated mock image as fallback');
+          return mockImage;
+        }
+      }
+      
+      debugPrint('GeminiImageService: All image generation methods failed');
       return null;
       
     } catch (e, stackTrace) {
@@ -57,46 +75,99 @@ class GeminiImageService {
     }
   }
 
-  /// Generate a mock image for testing
+  /// Generate a mock image for testing (until real image generation is available)
   static Future<Uint8List?> _generateMockCookingImage(String instruction) async {
     try {
-      debugPrint('GeminiImageService: Creating mock image for testing...');
+      debugPrint('GeminiImageService: Creating enhanced mock image for testing...');
       
-      // Create a simple colored image with text
+      // Create a realistic-looking cooking image mockup
       final recorder = ui.PictureRecorder();
       final canvas = Canvas(recorder);
-      final paint = Paint()..color = Colors.orange.shade100;
       
-      // Draw background
-      canvas.drawRect(const Rect.fromLTWH(0, 0, 400, 300), paint);
+      // Create gradient background
+      final rect = const Rect.fromLTWH(0, 0, 400, 300);
+      final gradient = ui.Gradient.linear(
+        const Offset(0, 0),
+        const Offset(0, 300),
+        [Colors.orange.shade50, Colors.orange.shade100],
+      );
+      final gradientPaint = Paint()..shader = gradient;
+      canvas.drawRect(rect, gradientPaint);
       
-      // Draw border
-      final borderPaint = Paint()
-        ..color = Colors.orange.shade400
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 4;
-      canvas.drawRect(const Rect.fromLTWH(0, 0, 400, 300), borderPaint);
+      // Draw kitchen-like background elements
+      final kitchenPaint = Paint()
+        ..color = Colors.brown.shade200
+        ..style = PaintingStyle.fill;
       
-      // Draw text
+      // Draw cutting board representation
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          const Rect.fromLTWH(50, 200, 300, 80),
+          const Radius.circular(8),
+        ),
+        kitchenPaint,
+      );
+      
+      // Draw cooking utensil representation
+      final utensilPaint = Paint()
+        ..color = Colors.grey.shade400
+        ..strokeWidth = 3;
+      canvas.drawLine(const Offset(100, 50), const Offset(120, 100), utensilPaint);
+      canvas.drawCircle(const Offset(110, 45), 8, utensilPaint);
+      
+      // Draw food elements based on instruction keywords
+      final foodPaint = Paint()..color = Colors.red.shade300;
+      if (instruction.toLowerCase().contains('tomato') || 
+          instruction.toLowerCase().contains('sauce')) {
+        canvas.drawCircle(const Offset(200, 150), 15, foodPaint);
+      }
+      
+      // Add "AI Generated" watermark
+      final watermarkPainter = TextPainter(
+        text: const TextSpan(
+          text: '🤖 AI Generated Image',
+          style: TextStyle(
+            color: Colors.black54,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      );
+      watermarkPainter.layout();
+      watermarkPainter.paint(canvas, const Offset(10, 10));
+      
+      // Draw main instruction text
+      final maxLength = 60;
+      final displayText = instruction.length > maxLength 
+          ? '${instruction.substring(0, maxLength)}...' 
+          : instruction;
+      
       final textPainter = TextPainter(
         text: TextSpan(
-          text: 'Generated Image\n\n${instruction.length > 50 ? "${instruction.substring(0, 50)}..." : instruction}',
+          text: displayText,
           style: const TextStyle(
             color: Colors.black87,
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
           ),
         ),
         textDirection: TextDirection.ltr,
         textAlign: TextAlign.center,
       );
       
-      textPainter.layout(maxWidth: 360);
-      textPainter.paint(canvas, const Offset(20, 100));
+      textPainter.layout(maxWidth: 380);
+      textPainter.paint(canvas, const Offset(10, 250));
       
-      // Draw cooking icon
-      final iconPaint = Paint()..color = Colors.orange.shade600;
-      canvas.drawCircle(const Offset(200, 50), 20, iconPaint);
+      // Add border for professional look
+      final borderPaint = Paint()
+        ..color = Colors.orange.shade300
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(rect, const Radius.circular(8)),
+        borderPaint,
+      );
       
       final picture = recorder.endRecording();
       final image = await picture.toImage(400, 300);
@@ -116,7 +187,16 @@ class GeminiImageService {
   /// Try to generate image using Gemini 2.0 Flash experimental model
   static Future<Uint8List?> _tryImageGeneration(String prompt) async {
     try {
-      debugPrint('GeminiImageService: Trying image generation with prompt...');
+      debugPrint('GeminiImageService: Trying image generation with Gemini 2.0 Flash Experimental...');
+      
+      // Try using Google Generative AI package first
+      final geminiResult = await _tryGeminiPackageGeneration(prompt);
+      if (geminiResult != null) {
+        return geminiResult;
+      }
+      
+      // Fall back to direct HTTP call
+      debugPrint('GeminiImageService: Gemini package failed, trying direct HTTP call...');
       
       final response = await http.post(
         Uri.parse('$_imageModelUrl?key=$_apiKey'),
@@ -205,6 +285,34 @@ class GeminiImageService {
     } catch (e, stackTrace) {
       debugPrint('GeminiImageService: Error generating image: $e');
       debugPrint('Stack trace: $stackTrace');
+      return null;
+    }
+  }
+
+  /// Try using Google Generative AI package for image generation
+  static Future<Uint8List?> _tryGeminiPackageGeneration(String prompt) async {
+    try {
+      debugPrint('GeminiImageService: Trying with Google Generative AI package...');
+      
+      // Initialize the Gemini model
+      final model = GenerativeModel(
+        model: 'gemini-2.0-flash-exp',
+        apiKey: _apiKey,
+      );
+      
+      // Try to generate content with image request
+      final response = await model.generateContent([
+        Content.text('Generate an image: $prompt')
+      ]);
+      
+      debugPrint('GeminiImageService: Gemini package response: ${response.text}');
+      
+      // The Google Generative AI package currently doesn't support image generation
+      // This will likely return text explaining that image generation isn't supported
+      return null;
+      
+    } catch (e) {
+      debugPrint('GeminiImageService: Google Generative AI package error: $e');
       return null;
     }
   }
